@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "mdship": {
+      "command": "mdship",
+      "args": [
+        "mcp"
+      ]
+    }
+  }
+}
