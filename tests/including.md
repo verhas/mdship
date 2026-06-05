@@ -23,7 +23,55 @@ def test_shift_down(self):
 
 The lines above are copied from the test_markdown.py file.
 
-Another example with custom terminator:
+Another example in which we include from the file we are in, a recursive include with custom terminator:
+
+<!--INCLUDE
+from: "including.md"
+start:
+  pattern: "--INCLUDE"
+  include: true
+end: 
+  pattern: '--\s*>'
+  include: true
+prefix: '```'
+postfix: "```"
+_terminate_ : "WAPWAPWAP"
+-->
+```
+<!--INCLUDE
+from: "test_markdown.py"
+start:
+  pattern: 'class\s+TestShiftHeadings'
+  include: false
+end: '^\s*$'
+prefix: "```python"
+postfix: "```"
+margin: 0
+-->
+<!--INCLUDE
+from: "including.md"
+start:
+  pattern: "--INCLUDE"
+  include: true
+end: 
+  pattern: '--\s*>'
+  include: true
+prefix: '```'
+postfix: "```"
+_terminate_ : "WAPWAPWAP"
+-->
+<!--INCLUDE
+from: "test_markdown.py"
+range: "1..5"
+prefix: "```python"
+postfix: "```"
+_terminate_: "CODESNIPPET"
+-->
+```
+<!--/WAPWAPWAP-->
+
+
+
 
 <!--INCLUDE
 from: "test_markdown.py"

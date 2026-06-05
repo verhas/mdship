@@ -1251,14 +1251,16 @@ def update_includes(content: str, markdown_dir: str) -> str:
         if before_marker.strip() != '':
             continue
 
-        valid_matches.append(match)
+        # Calculate line number for error reporting
+        line_num = content[:match_pos].count('\n') + 1
+        valid_matches.append((match, line_num))
 
     if not valid_matches:
         return content
 
     # Process matches in reverse order (from end of file backwards)
     # This prevents position shifting from affecting subsequent matches
-    for match in reversed(valid_matches):
+    for match, line_num in reversed(valid_matches):
         match_text = match.group(0)
         match_start = match.start()
         match_end = match.end()
@@ -1274,11 +1276,14 @@ def update_includes(content: str, markdown_dir: str) -> str:
 
         # Parse YAML config
         config = {}
+        yaml_error = None
+
         if config_text:
             if yaml:
                 try:
                     config = yaml.safe_load(config_text) or {}
-                except yaml.YAMLError:
+                except yaml.YAMLError as e:
+                    yaml_error = str(e)
                     config = {}
             else:
                 for line in config_text.split('\n'):
@@ -1289,7 +1294,25 @@ def update_includes(content: str, markdown_dir: str) -> str:
 
         # from parameter is required
         if 'from' not in config:
-            raise ValueError("INCLUDE placeholder requires 'from' parameter specifying the file to include")
+            error_msg = f"Line {line_num}: INCLUDE placeholder requires 'from' parameter specifying the file to include"
+
+            # Provide helpful diagnostics
+            if config_text:
+                if yaml_error:
+                    error_msg += f"\n\nYAML parsing error: {yaml_error}"
+                    error_msg += f"\n\nPlease check the YAML syntax in the placeholder:"
+                    error_msg += f"\n{config_text}"
+                elif not config:
+                    error_msg += f"\n\nNo configuration was found. YAML content:"
+                    error_msg += f"\n{config_text}"
+                    error_msg += f"\n\nHint: Check for YAML syntax errors like missing colons, incorrect indentation, or quotes."
+                else:
+                    error_msg += f"\n\nFound keys: {', '.join(config.keys())}"
+                    error_msg += f"\n\nHint: Make sure 'from' is spelled correctly and has a value."
+            else:
+                error_msg += "\n\nThe placeholder appears to be empty or malformed."
+
+            raise ValueError(error_msg)
 
         # Resolve file path relative to markdown directory
         from_path = config['from']
@@ -1297,7 +1320,10 @@ def update_includes(content: str, markdown_dir: str) -> str:
             from_path = str(Path(markdown_dir) / from_path)
 
         # Extract lines from the file
-        extracted_lines = _extract_lines_from_file(from_path, config)
+        try:
+            extracted_lines = _extract_lines_from_file(from_path, config)
+        except ValueError as e:
+            raise ValueError(f"Line {line_num}: {str(e)}")
 
         # Build the included content with prefix and postfix
         prefix = config.get('prefix', '')
