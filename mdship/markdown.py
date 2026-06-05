@@ -2,7 +2,300 @@
 
 import hashlib
 import re
-from typing import Optional, Tuple
+from pathlib import Path
+from typing import Callable, Optional, Tuple
+
+try:
+    import yaml
+except ImportError:
+    yaml = None
+
+
+def _is_in_code_block(content: str, position: int) -> bool:
+    """Check if a position in content is inside a code block (between ``` markers)."""
+    in_code = False
+    lines = content[:position].split('\n')
+
+    for line in lines:
+        # Check if line starts a code block
+        if line.strip().startswith('```'):
+            in_code = not in_code
+
+    return in_code
+
+
+def _parse_placeholder(content: str, placeholder_name: str) -> dict:
+    """Parse a placeholder comment block with YAML configuration.
+
+    Finds <!--PLACEHOLDER_NAME [YAML config]--> and <!--/PLACEHOLDER_NAME-->
+    or <!--/CUSTOM_TERMINATE--> if _terminate_ is specified in config.
+
+    Only recognizes markers that:
+    - Start at the beginning of a line (with optional whitespace)
+    - Are not inside code blocks (between ``` markers)
+
+    Args:
+        content: Markdown content
+        placeholder_name: Name of the placeholder (e.g., 'TOC')
+
+    Returns:
+        {
+            'config': {...parsed YAML config...},
+            'start_pos': int (position after opening marker),
+            'end_pos': int (position before closing marker),
+            'open_marker': str (the opening comment),
+            'close_marker': str (the closing comment),
+        }
+
+    Raises:
+        ValueError: If placeholder markers are not found
+    """
+    # Find opening marker: <!--PLACEHOLDER_NAME ... -->
+    # Match from <!--PLACEHOLDER_NAME to --> allowing any content including newlines
+    open_pattern = rf"<!--{re.escape(placeholder_name)}(.*?)-->"
+    open_match = re.search(open_pattern, content, re.DOTALL)
+
+    if not open_match:
+        raise ValueError(f"Opening marker <!--{placeholder_name}--> not found in content")
+
+    # Verify that the opening marker is at the start of a line and not in a code block
+    match_pos = open_match.start()
+    if _is_in_code_block(content, match_pos):
+        raise ValueError(f"Opening marker <!--{placeholder_name}--> found in code block (not a valid placeholder)")
+
+    # Check if marker is at the start of a line (possibly with whitespace)
+    line_start = content.rfind('\n', 0, match_pos) + 1
+    before_marker = content[line_start:match_pos]
+    if before_marker.strip() != '':
+        raise ValueError(f"Opening marker <!--{placeholder_name}--> must be at the start of a line")
+
+    open_marker = open_match.group(0)
+    start_pos = open_match.end()
+
+    # Extract config from between <!--PLACEHOLDER and -->
+    config_text = open_match.group(1).strip() if open_match.group(1) else ""
+
+    # Parse YAML config
+    config = {}
+    if config_text:
+        if yaml:
+            try:
+                config = yaml.safe_load(config_text) or {}
+            except yaml.YAMLError:
+                # Fall back to empty config if YAML parsing fails
+                config = {}
+        else:
+            # Simple fallback parsing if yaml not available
+            for line in config_text.split('\n'):
+                line = line.strip()
+                if ':' in line and not line.startswith('#'):
+                    key, value = line.split(':', 1)
+                    config[key.strip()] = value.strip().strip('"\'')
+
+    # Determine closing marker
+    terminate = config.get('_terminate_', placeholder_name)
+    close_pattern = rf"<!--/{re.escape(terminate)}-->"
+    close_match = re.search(close_pattern, content[start_pos:])
+
+    if not close_match:
+        raise ValueError(f"Closing marker <!--/{terminate}--> not found in content")
+
+    end_pos = start_pos + close_match.start()  # Position BEFORE the closing marker
+    close_marker = close_match.group(0)
+
+    return {
+        'config': config,
+        'start_pos': start_pos,
+        'end_pos': end_pos,
+        'open_marker': open_marker,
+        'close_marker': close_marker,
+    }
+
+
+def _update_placeholder(content: str, placeholder_name: str,
+                       update_func: Callable[[dict], str]) -> str:
+    """Update a placeholder with new content generated from config.
+
+    Args:
+        content: Markdown content
+        placeholder_name: Name of the placeholder (e.g., 'TOC')
+        update_func: Function that takes config dict and returns new content
+
+    Returns:
+        Updated content with placeholder content replaced
+    """
+    info = _parse_placeholder(content, placeholder_name)
+    new_content = update_func(info['config'])
+
+    result = (
+        content[:info['start_pos']] +
+        "\n" + new_content + "\n" +
+        content[info['end_pos']:]
+    )
+
+    return result
+
+
+def _load_file_lines(filepath: str) -> list:
+    """Load lines from a file, handling errors gracefully.
+
+    Args:
+        filepath: Path to file to load
+
+    Returns:
+        List of lines (without newlines)
+
+    Raises:
+        ValueError: If file cannot be read
+    """
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            return [line.rstrip('\n\r') for line in f.readlines()]
+    except FileNotFoundError:
+        raise ValueError(f"File not found: {filepath}")
+    except Exception as e:
+        raise ValueError(f"Error reading file {filepath}: {e}")
+
+
+def _extract_lines_from_file(filepath: str, config: dict) -> list:
+    """Extract specific lines from a file based on config.
+
+    Supports three methods:
+    - range: "x..y" - lines x through y (1-based, inclusive)
+    - start: "regex" - start from line after first match
+    - end: "regex" - end at line before last match
+    - start and end together: extract between matches (multiple sections supported)
+
+    Optional:
+    - margin: int - indent lines so the leftmost line has this many spaces
+
+    Args:
+        filepath: Path to file
+        config: Config dict with extraction parameters
+
+    Returns:
+        List of extracted lines with margin applied if specified
+    """
+    lines = _load_file_lines(filepath)
+    extracted = None
+
+    # Method 1: Range-based extraction
+    if 'range' in config:
+        range_str = config['range']
+        try:
+            parts = range_str.split('..')
+            if len(parts) != 2:
+                raise ValueError(f"Invalid range format: {range_str}, expected 'x..y'")
+            start_line = int(parts[0].strip()) - 1  # Convert to 0-based
+            end_line = int(parts[1].strip())  # Keep inclusive end
+
+            if start_line < 0 or end_line > len(lines) or start_line >= end_line:
+                raise ValueError(f"Invalid range: {range_str}")
+
+            extracted = lines[start_line:end_line]
+        except ValueError as e:
+            raise ValueError(f"Range extraction failed: {e}")
+
+    # Method 2: Regex-based extraction
+    elif 'start' in config or 'end' in config:
+        start_config = config.get('start')
+        end_config = config.get('end')
+
+        if not start_config and not end_config:
+            raise ValueError("Either 'start' or 'end' must be specified")
+
+        # Parse start/end - can be string (regex) or dict with pattern and include
+        start_pattern = None
+        start_include = False
+        end_pattern = None
+        end_include = False
+
+        if start_config:
+            if isinstance(start_config, str):
+                start_pattern = re.compile(start_config)
+                start_include = False
+            elif isinstance(start_config, dict):
+                if 'pattern' not in start_config:
+                    raise ValueError("'start' structure must have 'pattern' key")
+                start_pattern = re.compile(start_config['pattern'])
+                start_include = start_config.get('include', False)
+            else:
+                raise ValueError("'start' must be a string or a structure with 'pattern' and optional 'include'")
+
+        if end_config:
+            if isinstance(end_config, str):
+                end_pattern = re.compile(end_config)
+                end_include = False
+            elif isinstance(end_config, dict):
+                if 'pattern' not in end_config:
+                    raise ValueError("'end' structure must have 'pattern' key")
+                end_pattern = re.compile(end_config['pattern'])
+                end_include = end_config.get('include', False)
+            else:
+                raise ValueError("'end' must be a string or a structure with 'pattern' and optional 'include'")
+
+        extracted = []
+        in_section = False
+
+        for i, line in enumerate(lines):
+            # Check for section start
+            if start_pattern and start_pattern.search(line):
+                in_section = True
+                # Include the marker line if include=true, otherwise skip it
+                if start_include:
+                    extracted.append(line)
+                continue
+
+            # Check for section end
+            if in_section and end_pattern and end_pattern.search(line):
+                # Include the marker line if include=true, otherwise skip it
+                if end_include:
+                    extracted.append(line)
+                in_section = False
+                continue
+
+            # Collect lines in section
+            if in_section or (not start_pattern and not in_section):
+                # If only end_pattern specified, start from beginning
+                if not start_pattern:
+                    if end_pattern and end_pattern.search(line):
+                        if end_include:
+                            extracted.append(line)
+                        break
+                    extracted.append(line)
+                elif in_section:
+                    extracted.append(line)
+
+    # If no extraction method specified, use all lines
+    if extracted is None:
+        extracted = lines
+
+    # Apply margin if specified
+    if 'margin' in config and extracted:
+        margin = int(config['margin'])
+
+        # Find the minimum indentation (spaces at start of non-empty lines)
+        min_indent = float('inf')
+        for line in extracted:
+            if line.strip():  # Only consider non-empty lines
+                indent = len(line) - len(line.lstrip())
+                min_indent = min(min_indent, indent)
+
+        # If all lines are empty, set min_indent to 0
+        if min_indent == float('inf'):
+            min_indent = 0
+
+        # Calculate how many spaces to add
+        spaces_to_add = margin - min_indent
+
+        # Apply the indentation
+        if spaces_to_add > 0:
+            extracted = [(' ' * spaces_to_add) + line if line.strip() else line for line in extracted]
+        elif spaces_to_add < 0:
+            # Remove excess spaces
+            extracted = [line[abs(spaces_to_add):] if len(line) > abs(spaces_to_add) else line.lstrip() for line in extracted]
+
+    return extracted
 
 
 def fix_heading_levels(content: str) -> str:
@@ -871,10 +1164,15 @@ def generate_table_of_contents(content: str, min_level: int = 1, max_level: int 
     md = MarkdownIt()
     tokens = md.parse(content_to_parse)
 
-    # Extract headings
+    # Extract headings, skipping any inside code blocks
     toc_entries = []
+    in_code_block = False
+
     for i, token in enumerate(tokens):
-        if token.type == "heading_open":
+        # Track code blocks to avoid collecting headings from them
+        if token.type == "fence":
+            in_code_block = False
+        elif token.type == "heading_open" and not in_code_block:
             level = int(token.tag[1])
             if min_level <= level <= max_level:
                 # Get heading text from inline token
@@ -912,38 +1210,167 @@ def _remove_trailing_spaces_from_headings(content: str) -> str:
     return "\n".join(result)
 
 
-def insert_table_of_contents(content: str, min_level: int = 1, max_level: int = 6) -> str:
+def update_includes(content: str, markdown_dir: str) -> str:
+    """Update INCLUDE placeholders by reading content from other files.
+
+    Configuration in the marker:
+    <!--INCLUDE
+    from: "path/to/file.ext"
+    prefix: "```python"
+    postfix: "```"
+    range: "10..20"
+    -->
+
+    Args:
+        content: Markdown content
+        markdown_dir: Directory of the markdown file (for resolving relative paths)
+
+    Returns:
+        Content with INCLUDE placeholders updated
+    """
+    # Process all INCLUDE placeholders by finding all matches first, then processing backwards
+    # This avoids position shifting issues and infinite loops
+    import re as regex_module
+
+    # Find all INCLUDE placeholders that are at line start and not in code blocks
+    placeholder_pattern = r'<!--INCLUDE.*?<!--/[^>]*?-->'
+    all_matches = list(regex_module.finditer(placeholder_pattern, content, regex_module.DOTALL))
+
+    # Filter matches to only those at line start and not in code blocks
+    valid_matches = []
+    for match in all_matches:
+        match_pos = match.start()
+
+        # Skip if in code block
+        if _is_in_code_block(content, match_pos):
+            continue
+
+        # Skip if not at line start
+        line_start = content.rfind('\n', 0, match_pos) + 1
+        before_marker = content[line_start:match_pos]
+        if before_marker.strip() != '':
+            continue
+
+        valid_matches.append(match)
+
+    if not valid_matches:
+        return content
+
+    # Process matches in reverse order (from end of file backwards)
+    # This prevents position shifting from affecting subsequent matches
+    for match in reversed(valid_matches):
+        match_text = match.group(0)
+        match_start = match.start()
+        match_end = match.end()
+
+        # Parse the placeholder config
+        open_pattern = r'<!--INCLUDE(.*?)-->'
+        open_match = regex_module.search(open_pattern, match_text, regex_module.DOTALL)
+
+        if not open_match:
+            continue
+
+        config_text = open_match.group(1).strip() if open_match.group(1) else ""
+
+        # Parse YAML config
+        config = {}
+        if config_text:
+            if yaml:
+                try:
+                    config = yaml.safe_load(config_text) or {}
+                except yaml.YAMLError:
+                    config = {}
+            else:
+                for line in config_text.split('\n'):
+                    line = line.strip()
+                    if ':' in line and not line.startswith('#'):
+                        key, value = line.split(':', 1)
+                        config[key.strip()] = value.strip().strip('"\'')
+
+        # from parameter is required
+        if 'from' not in config:
+            raise ValueError("INCLUDE placeholder requires 'from' parameter specifying the file to include")
+
+        # Resolve file path relative to markdown directory
+        from_path = config['from']
+        if not from_path.startswith('/'):
+            from_path = str(Path(markdown_dir) / from_path)
+
+        # Extract lines from the file
+        extracted_lines = _extract_lines_from_file(from_path, config)
+
+        # Build the included content with prefix and postfix
+        prefix = config.get('prefix', '')
+        postfix = config.get('postfix', '')
+
+        included_content = ''
+        if prefix:
+            included_content += prefix + '\n'
+
+        included_content += '\n'.join(extracted_lines)
+
+        if postfix:
+            included_content += '\n' + postfix
+
+        # Find the position to insert content (after opening marker, before closing marker)
+        close_pattern = r'<!--/[^>]*?-->'
+        close_match = regex_module.search(close_pattern, match_text)
+
+        # Calculate positions relative to the full content
+        opening_end = match_start + open_match.end()
+        closing_start = match_start + (close_match.start() if close_match else len(match_text))
+
+        # Replace content between markers (preserve markers)
+        content = (
+            content[:opening_end] +
+            '\n' + included_content + '\n' +
+            content[closing_start:]
+        )
+
+    return content
+
+
+def insert_table_of_contents(content: str) -> str:
     """Insert or replace table of contents between <!--TOC--> markers.
+
+    Configuration is read from YAML inside the marker:
+
+    <!--TOC min-level: 2
+    max-level: 3
+    _terminate_: "TOC"
+    -->
+
+    Configuration keys:
+    - min-level: Minimum heading level to include in TOC (1-6, default: 1)
+    - max-level: Maximum heading level to include in TOC (1-6, default: 6)
+    - _terminate_: Custom closing marker name (optional, default: TOC)
 
     Removes trailing spaces from headings before generating TOC.
 
     Args:
         content: Markdown content
-        min_level: Minimum heading level to include in TOC (1-6)
-        max_level: Maximum heading level to include in TOC (1-6)
+
+    Returns:
+        Content with TOC updated
+
+    Raises:
+        ValueError: If no TOC placeholder is found
     """
-    # Validate markers FIRST before making any changes
-    toc_start_marker = "<!--TOC-->"
-    toc_end_marker = "<!--/TOC-->"
-
-    if toc_start_marker not in content:
-        raise ValueError(f"TOC start marker '{toc_start_marker}' not found in content")
-    if toc_end_marker not in content:
-        raise ValueError(f"TOC end marker '{toc_end_marker}' not found in content")
-
     # Remove trailing spaces from headings
     content = _remove_trailing_spaces_from_headings(content)
 
-    # Generate TOC
-    toc_content = generate_table_of_contents(content, min_level=min_level, max_level=max_level)
+    def generate_toc_content(config: dict) -> str:
+        """Generate TOC content based on config from placeholder marker."""
+        # Get min/max levels from config with defaults
+        cfg_min = config.get('min-level')
+        cfg_max = config.get('max-level')
 
-    # Split content and rebuild with new TOC
-    before_toc = content[: content.index(toc_start_marker) + len(toc_start_marker)]
-    after_toc = content[content.index(toc_end_marker) :]
+        effective_min = int(cfg_min) if cfg_min is not None else 1
+        effective_max = int(cfg_max) if cfg_max is not None else 6
 
-    # Build result with proper spacing
-    result = before_toc + "\n" + toc_content + "\n" + after_toc
-    return result
+        return generate_table_of_contents(content, min_level=effective_min, max_level=effective_max)
+
+    return _update_placeholder(content, 'TOC', generate_toc_content)
 
 
 def _generate_anchor(text: str) -> str:

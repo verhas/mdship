@@ -195,8 +195,8 @@ def main() -> None:
                 },
             ),
             Tool(
-                name="toc",
-                description="Generate and insert table of contents between <!--TOC--> markers",
+                name="update",
+                description="Update markdown placeholders (TOC, INCLUDE, etc). Processes both INCLUDE placeholders and table of contents generation.",
                 inputSchema={
                     "type": "object",
                     "properties": {
@@ -204,15 +204,43 @@ def main() -> None:
                             "type": "string",
                             "description": "Markdown content to process",
                         },
-                        "min_level": {
-                            "type": "integer",
-                            "description": "Minimum heading level to include in TOC (1-6)",
-                            "default": 1,
+                        "markdown_dir": {
+                            "type": "string",
+                            "description": "Directory of the markdown file (for resolving relative paths in INCLUDE placeholders). Defaults to current directory.",
+                            "default": ".",
                         },
-                        "max_level": {
-                            "type": "integer",
-                            "description": "Maximum heading level to include in TOC (1-6)",
-                            "default": 6,
+                    },
+                    "required": ["content"],
+                },
+            ),
+            Tool(
+                name="toc",
+                description="Generate and insert table of contents between <!--TOC--> markers. Configuration is specified inside the marker using YAML (min-level, max-level, _terminate_).",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "content": {
+                            "type": "string",
+                            "description": "Markdown content to process",
+                        },
+                    },
+                    "required": ["content"],
+                },
+            ),
+            Tool(
+                name="include",
+                description="Include content from other files between <!--INCLUDE--> markers. Configuration is specified inside the marker using YAML (from, prefix, postfix, range, start, end, _terminate_).",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "content": {
+                            "type": "string",
+                            "description": "Markdown content to process",
+                        },
+                        "markdown_dir": {
+                            "type": "string",
+                            "description": "Directory of the markdown file (for resolving relative paths in 'from' parameter). Defaults to current directory.",
+                            "default": ".",
                         },
                     },
                     "required": ["content"],
@@ -231,6 +259,7 @@ def main() -> None:
             remove_heading_numbers,
             reflow_paragraphs,
             shift_heading_levels,
+            update_includes,
         )
 
         try:
@@ -279,12 +308,31 @@ def main() -> None:
                 start_line = arguments.get("start_line")
                 end_line = arguments.get("end_line")
                 result = remove_heading_numbers(content, start_line=start_line, end_line=end_line)
+            elif name == "update":
+                content = arguments["content"]
+                markdown_dir = arguments.get("markdown_dir", ".")
+                try:
+                    # Process INCLUDE placeholders first
+                    content = update_includes(content, markdown_dir)
+                    # Then process TOC placeholders (ignore error if no TOC marker)
+                    try:
+                        content = insert_table_of_contents(content)
+                    except ValueError:
+                        pass
+                    result = content
+                except ValueError as e:
+                    return [TextContent(type="text", text=f"Error: {str(e)}")]
             elif name == "toc":
                 content = arguments["content"]
-                min_level = arguments.get("min_level", 1)
-                max_level = arguments.get("max_level", 6)
                 try:
-                    result = insert_table_of_contents(content, min_level=min_level, max_level=max_level)
+                    result = insert_table_of_contents(content)
+                except ValueError as e:
+                    return [TextContent(type="text", text=f"Error: {str(e)}")]
+            elif name == "include":
+                content = arguments["content"]
+                markdown_dir = arguments.get("markdown_dir", ".")
+                try:
+                    result = update_includes(content, markdown_dir)
                 except ValueError as e:
                     return [TextContent(type="text", text=f"Error: {str(e)}")]
             else:

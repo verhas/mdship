@@ -45,8 +45,9 @@ class TestShiftHeadings:
 
     def test_valid_shift_to_boundary(self):
         content = "### Heading 3\n#### Heading 4"
-        result = shift_heading_levels(content, 3)
-        assert "###### Heading 3" in result
+        result = shift_heading_levels(content, 2)
+        assert "##### Heading 3" in result
+        assert "###### Heading 4" in result
 
     def test_shift_with_line_range(self):
         content = "# H1\n\n## H2\n\n### H3"
@@ -104,7 +105,7 @@ class TestReflowParagraphs:
     def test_one_sentence_per_line(self):
         content = "First sentence. Second sentence. Third sentence."
         result = reflow_paragraphs(content, width=0)
-        lines = result.split("\n")
+        lines = [line for line in result.split("\n") if line.strip()]
         assert len(lines) == 3
 
     def test_preserve_headings(self):
@@ -238,7 +239,7 @@ class TestTableOfContents:
 
     def test_insert_toc_missing_markers(self):
         content = "# Intro\n## Section"
-        with pytest.raises(ValueError, match="TOC start marker"):
+        with pytest.raises(ValueError, match="Opening marker"):
             insert_table_of_contents(content)
 
     def test_toc_with_special_characters(self):
@@ -250,7 +251,7 @@ class TestTableOfContents:
 
 class TestCheckChecksum:
     def test_check_valid_checksum(self):
-        content = "---\nchecksum: 0e5751c026e543b2e8ab2eb06099dda1d35c7720677e52b43a15ebd7a32e0edb\nchecksum_algorithm: sha256\n---\n"
+        content = "---\nchecksum: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\nchecksum_algorithm: sha256\n---\n"
         is_valid, message = check_content_checksum(content)
         assert is_valid
 

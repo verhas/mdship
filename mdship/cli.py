@@ -130,6 +130,28 @@ def add_checksum(
 
 
 @app.command()
+def check_checksum(
+    file: Annotated[Path, typer.Argument(help="Markdown file to check")],
+) -> None:
+    """Verify the checksum in front-matter against the content."""
+    if not file.exists():
+        err.print(f"[red]Error:[/red] file not found: {file}")
+        raise typer.Exit(1)
+
+    from mdship.markdown import check_content_checksum
+
+    content = file.read_text()
+    is_valid, message = check_content_checksum(content)
+
+    if is_valid:
+        print("OK")
+        raise typer.Exit(0)
+    else:
+        err.print(f"[red]Error:[/red] {message}")
+        raise typer.Exit(1)
+
+
+@app.command()
 def reflow(
     file: Annotated[Path, typer.Argument(help="Markdown file to process")],
     width: Annotated[int | None, typer.Option("--width", "-w", help="Line width (0 for one sentence per line)")] = None,
@@ -188,28 +210,6 @@ def semantic_line_breaks(
 
 
 @app.command()
-def check_checksum(
-    file: Annotated[Path, typer.Argument(help="Markdown file to check")],
-) -> None:
-    """Verify the checksum in front-matter against the content."""
-    if not file.exists():
-        err.print(f"[red]Error:[/red] file not found: {file}")
-        raise typer.Exit(1)
-
-    from mdship.markdown import check_content_checksum
-
-    content = file.read_text()
-    is_valid, message = check_content_checksum(content)
-
-    if is_valid:
-        print("OK")
-        raise typer.Exit(0)
-    else:
-        err.print(f"[red]Error:[/red] {message}")
-        raise typer.Exit(1)
-
-
-@app.command()
 def number(
     file: Annotated[Path, typer.Argument(help="Markdown file to process")],
     style: Annotated[str, typer.Option("--style", "-s", help="Numbering style: period (1.1.), space (1 1), parenthesis (1))")] = "period",
@@ -255,7 +255,7 @@ def number(
 
     # Warn if TOC placeholder exists
     if "<!--TOC-->" in numbered_content:
-        err.print(f"[yellow]⚠[/yellow]  Document contains TOC placeholder. Update it with: mdship toc {file}")
+        err.print(f"[yellow]⚠[/yellow]  Document contains TOC placeholder. Update it with: mdship update {file}")
 
 
 @app.command()
@@ -299,16 +299,31 @@ def unnumber(
 
     # Warn if TOC placeholder exists
     if "<!--TOC-->" in unnumbered_content:
-        err.print(f"[yellow]⚠[/yellow]  Document contains TOC placeholder. Update it with: mdship toc {file}")
+        err.print(f"[yellow]⚠[/yellow]  Document contains TOC placeholder. Update it with: mdship update {file}")
 
 
 @app.command()
-def toc(
+def update(
     file: Annotated[Path, typer.Argument(help="Markdown file to process")],
-    min_level: Annotated[int, typer.Option("--min-level", "-m", help="Minimum heading level to include (1-6)")] = 1,
-    max_level: Annotated[int, typer.Option("--max-level", "-M", help="Maximum heading level to include (1-6)")] = 6,
 ) -> None:
-    """Generate and insert table of contents between <!--TOC--> markers.
+    """Update markdown placeholders (table of contents, includes, etc).
+
+    Supports multiple placeholder types:
+    - <!--TOC--> for table of contents
+    - <!--INCLUDE--> for including content from other files
+
+    Configuration is specified inside markers using YAML:
+
+        <!--TOC min-level: 2
+        max-level: 3
+        -->
+
+        <!--INCLUDE
+        from: "path/to/file.ext"
+        prefix: "```python"
+        postfix: "```"
+        range: "10..20"
+        -->
 
     Also adds anchors to headings that don't have them.
     """
@@ -316,20 +331,26 @@ def toc(
         err.print(f"[red]Error:[/red] file not found: {file}")
         raise typer.Exit(1)
 
-    if min_level < 1 or max_level > 6 or min_level > max_level:
-        err.print(f"[red]Error:[/red] heading levels must be between 1 and 6, with min-level <= max-level")
-        raise typer.Exit(1)
-
-    from mdship.markdown import insert_table_of_contents
+    from mdship.markdown import insert_table_of_contents, update_includes
 
     content = file.read_text()
+    markdown_dir = file.parent
+
     try:
-        toc_content = insert_table_of_contents(content, min_level=min_level, max_level=max_level)
+        # Process INCLUDE placeholders first (they may generate content for TOC)
+        content = update_includes(content, str(markdown_dir))
     except ValueError as e:
         err.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)
 
-    _write_file(file, toc_content)
+    try:
+        # Then process TOC placeholders (if they exist)
+        content = insert_table_of_contents(content)
+    except ValueError:
+        # No TOC placeholder found, which is fine - just skip
+        pass
+
+    _write_file(file, content)
     err.print(f"[green]✓[/green] Processed {file}")
 
 

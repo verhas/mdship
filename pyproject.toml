@@ -12,7 +12,13 @@ dependencies = [
     "rich>=13",
     "mcp>=1.0",
     "markdown-it-py>=3",
+    "pyyaml>=6",
 ]
+
+[project.urls]
+Homepage = "https://github.com/verhas/mdship"
+Repository = "https://github.com/verhas/mdship"
+"Bug Tracker" = "https://github.com/verhas/mdship/issues"
 
 [project.scripts]
 mdship = "mdship.cli:app"
