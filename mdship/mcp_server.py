@@ -246,6 +246,25 @@ def main() -> None:
                     "required": ["content"],
                 },
             ),
+            Tool(
+                name="mermaid",
+                description="Render Mermaid diagrams between <!--MERMAID--> markers. Configuration is specified inside the marker using YAML (file, diagram, _terminate_).",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "content": {
+                            "type": "string",
+                            "description": "Markdown content to process",
+                        },
+                        "markdown_dir": {
+                            "type": "string",
+                            "description": "Directory of the markdown file (for resolving relative paths in 'file' parameter). Defaults to current directory.",
+                            "default": ".",
+                        },
+                    },
+                    "required": ["content"],
+                },
+            ),
         ]
 
     @server.call_tool()
@@ -260,6 +279,7 @@ def main() -> None:
             reflow_paragraphs,
             shift_heading_levels,
             update_includes,
+            update_mermaid,
         )
 
         try:
@@ -333,6 +353,13 @@ def main() -> None:
                 markdown_dir = arguments.get("markdown_dir", ".")
                 try:
                     result = update_includes(content, markdown_dir)
+                except ValueError as e:
+                    return [TextContent(type="text", text=f"Error: {str(e)}")]
+            elif name == "mermaid":
+                content = arguments["content"]
+                markdown_dir = arguments.get("markdown_dir", ".")
+                try:
+                    result = update_mermaid(content, markdown_dir)
                 except ValueError as e:
                     return [TextContent(type="text", text=f"Error: {str(e)}")]
             else:

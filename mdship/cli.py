@@ -112,7 +112,7 @@ def shift_headings(
 
 
 @app.command()
-def add_checksum(
+def sum(
     file: Annotated[Path, typer.Argument(help="Markdown file to process")],
     algorithm: Annotated[str, typer.Option("--algorithm", "-a", help="Hash algorithm (md5, sha256, sha1)")] = "sha256",
 ) -> None:
@@ -130,7 +130,7 @@ def add_checksum(
 
 
 @app.command()
-def check_checksum(
+def verify(
     file: Annotated[Path, typer.Argument(help="Markdown file to check")],
 ) -> None:
     """Verify the checksum in front-matter against the content."""
@@ -331,7 +331,7 @@ def update(
         err.print(f"[red]Error:[/red] file not found: {file}")
         raise typer.Exit(1)
 
-    from mdship.markdown import insert_table_of_contents, update_includes
+    from mdship.markdown import insert_table_of_contents, update_includes, update_mermaid
 
     content = file.read_text()
     markdown_dir = file.parent
@@ -339,6 +339,13 @@ def update(
     try:
         # Process INCLUDE placeholders first (they may generate content for TOC)
         content = update_includes(content, str(markdown_dir))
+    except ValueError as e:
+        err.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1)
+
+    try:
+        # Process MERMAID placeholders
+        content = update_mermaid(content, str(markdown_dir))
     except ValueError as e:
         err.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)

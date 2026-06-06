@@ -12,6 +12,7 @@ from mdship.markdown import (
     remove_heading_numbers,
     reflow_paragraphs,
     shift_heading_levels,
+    update_mermaid,
 )
 
 
@@ -278,3 +279,204 @@ class TestCheckChecksum:
         with_checksum = add_content_checksum(content)
         is_valid, message = check_content_checksum(with_checksum)
         assert is_valid
+
+
+class TestMermaid:
+    def test_basic_svg_rendering(self, tmp_path):
+        """Test basic SVG rendering of a mermaid diagram."""
+        content = """# Test
+
+<!--MERMAID
+file: "test.svg"
+diagram: |
+  flowchart LR
+    A[Start] --> B[End]
+-->
+<!--/MERMAID-->
+"""
+        result = update_mermaid(content, str(tmp_path))
+        
+        # Check that the diagram was rendered
+        assert (tmp_path / "test.svg").exists()
+        
+        # Check that the content was replaced with image markdown
+        assert "![diagram](test.svg)" in result
+        assert "<!--MERMAID" in result
+        assert "<!--/MERMAID-->" in result
+
+    def test_basic_png_rendering(self, tmp_path):
+        """Test basic PNG rendering of a mermaid diagram.
+
+        Note: PNG rendering requires cairosvg, which may not be installed.
+        This test checks that the framework works, even if cairosvg is missing.
+        """
+        content = """# Test
+
+<!--MERMAID
+file: "diagram.png"
+diagram: |
+  graph TD
+    A[Node A] --> B[Node B]
+-->
+<!--/MERMAID-->
+"""
+        try:
+            result = update_mermaid(content, str(tmp_path))
+            # If it succeeds, check that the diagram was rendered
+            assert (tmp_path / "diagram.png").exists()
+            assert "![diagram](diagram.png)" in result
+        except ValueError as e:
+            # PNG rendering requires cairosvg - that's OK, just skip if not installed
+            if "cairosvg is required" in str(e):
+                pytest.skip("cairosvg not installed")
+            else:
+                raise
+
+    def test_idempotency(self, tmp_path):
+        """Running update twice should produce identical results."""
+        content = """# Test
+
+<!--MERMAID
+file: "idempotent.svg"
+diagram: |
+  flowchart LR
+    A[Start] --> B[End]
+-->
+<!--/MERMAID-->
+"""
+        # First run
+        result1 = update_mermaid(content, str(tmp_path))
+        
+        # Second run should produce the same result
+        result2 = update_mermaid(result1, str(tmp_path))
+        
+        assert result1 == result2
+
+    def test_missing_file_parameter(self, tmp_path):
+        """Missing 'file' parameter should raise an error."""
+        content = """# Test
+
+<!--MERMAID
+diagram: |
+  flowchart LR
+    A[Start] --> B[End]
+-->
+<!--/MERMAID-->
+"""
+        with pytest.raises(ValueError, match="requires 'file' parameter"):
+            update_mermaid(content, str(tmp_path))
+
+    def test_missing_diagram_parameter(self, tmp_path):
+        """Missing 'diagram' parameter should raise an error."""
+        content = """# Test
+
+<!--MERMAID
+file: "test.svg"
+-->
+<!--/MERMAID-->
+"""
+        with pytest.raises(ValueError, match="requires 'diagram' parameter"):
+            update_mermaid(content, str(tmp_path))
+
+    def test_unsupported_file_extension(self, tmp_path):
+        """Unsupported file extension should raise an error."""
+        content = """# Test
+
+<!--MERMAID
+file: "test.pdf"
+diagram: |
+  flowchart LR
+    A[Start] --> B[End]
+-->
+<!--/MERMAID-->
+"""
+        with pytest.raises(ValueError, match="Unsupported file extension"):
+            update_mermaid(content, str(tmp_path))
+
+    def test_custom_terminate_marker(self, tmp_path):
+        """Custom _terminate_ marker should work correctly."""
+        content = """# Test
+
+<!--MERMAID
+file: "custom.svg"
+diagram: |
+  flowchart LR
+    A[Start] --> B[End]
+_terminate_: "DIAGRAM"
+-->
+<!--/DIAGRAM-->
+"""
+        result = update_mermaid(content, str(tmp_path))
+        
+        # Check that the diagram was rendered
+        assert (tmp_path / "custom.svg").exists()
+        
+        # Check that the markers are preserved
+        assert "<!--MERMAID" in result
+        assert "<!--/DIAGRAM-->" in result
+        assert "![diagram](custom.svg)" in result
+
+    def test_nested_directories_created(self, tmp_path):
+        """Nested directories should be created automatically."""
+        content = r"""# Test
+
+<!--MERMAID
+file: "_diagrams/nested/diagram.svg"
+diagram: |
+  flowchart LR
+    A[Start] --\> B[End]
+-->
+<!--/MERMAID-->
+"""
+        result = update_mermaid(content, str(tmp_path))
+
+        # Check that nested directories were created
+        assert (tmp_path / "_diagrams" / "nested" / "diagram.svg").exists()
+        assert "![diagram](_diagrams/nested/diagram.svg)" in result
+
+    def test_escaped_arrow_syntax(self, tmp_path):
+        """Escaped arrow syntax (--\\>) should be converted to --> before rendering."""
+        content = r"""# Test
+
+<!--MERMAID
+file: "test.svg"
+diagram: |
+  flowchart LR
+    A[Start] --\> B[Middle] --\> C[End]
+-->
+<!--/MERMAID-->
+"""
+        result = update_mermaid(content, str(tmp_path))
+
+        # Check that the diagram was rendered successfully
+        assert (tmp_path / "test.svg").exists()
+        assert "![diagram](test.svg)" in result
+
+        # The file should exist and be non-empty (successful render)
+        svg_content = (tmp_path / "test.svg").read_text()
+        assert len(svg_content) > 0
+        assert "svg" in svg_content.lower()
+
+    def test_theme_parameter(self, tmp_path):
+        """Theme parameter should be passed to the renderer."""
+        content = r"""# Test
+
+<!--MERMAID
+file: "dark.svg"
+theme: "dark"
+diagram: |
+  flowchart LR
+    A[Start] --\> B[End]
+-->
+<!--/MERMAID-->
+"""
+        result = update_mermaid(content, str(tmp_path))
+
+        # Check that the diagram was rendered successfully
+        assert (tmp_path / "dark.svg").exists()
+        assert "![diagram](dark.svg)" in result
+
+        # The file should exist and be non-empty (successful render)
+        svg_content = (tmp_path / "dark.svg").read_text()
+        assert len(svg_content) > 0
+        assert "svg" in svg_content.lower()

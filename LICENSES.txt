@@ -1,0 +1,92 @@
+================================================================================
+MDSHIP - LICENSE AND DEPENDENCY INFORMATION
+================================================================================
+
+MDSHIP DUAL LICENSE
+-------------------
+mdship itself is dual-licensed under:
+  - MIT License (see LICENSE-MIT)
+  - Apache License 2.0 (see LICENSE-APACHE2)
+
+You may choose to use either license at your option.
+
+
+THIRD-PARTY DEPENDENCIES AND THEIR LICENSES
+--------------------------------------------
+
+Production Dependencies:
+
+1. typer (>=0.12)
+   License: BSD 3-Clause
+   Repository: https://github.com/fastapi/typer
+   Purpose: CLI framework for building command-line interfaces
+
+2. rich (>=13)
+   License: MIT
+   Repository: https://github.com/Textualize/rich
+   Purpose: Rich text and beautiful formatting in the terminal
+
+3. mcp (>=1.0)
+   License: MIT
+   Repository: https://modelcontextprotocol.io
+   Purpose: Model Context Protocol for connecting Claude with external tools
+
+4. markdown-it-py (>=3)
+   License: MIT
+   Repository: https://github.com/executablebooks/markdown-it-py
+   Purpose: Markdown parser with Abstract Syntax Tree support
+
+5. pyyaml (>=6)
+   License: MIT
+   Repository: https://pyyaml.org/
+   Purpose: YAML parser and emitter for configuration handling
+
+6. merm (>=0.1)
+   License: WTFPL (Do What The F* You Want To Public License)
+   Purpose: Mermaid diagram rendering to SVG/PNG
+
+
+Development Dependencies (not included in distribution):
+
+1. pytest (>=8)
+   License: MIT
+   Repository: https://docs.pytest.org/
+   Purpose: Testing framework
+
+2. ruff (>=0.4)
+   License: MIT
+   Repository: https://github.com/astral-sh/ruff
+   Purpose: Python linter and code formatter
+
+
+LICENSE COMPATIBILITY
+---------------------
+
+All dependencies use permissive open-source licenses that are compatible with
+both MIT and Apache 2.0. You can distribute mdship under either or both licenses
+without restriction.
+
+License compatibility summary:
+  - MIT: Compatible with all dependencies
+  - Apache 2.0: Compatible with all dependencies
+  - BSD 3-Clause: Compatible with both MIT and Apache 2.0
+  - WTFPL: More permissive than both MIT and Apache 2.0
+
+
+COMPLIANCE NOTES
+----------------
+
+When distributing mdship:
+
+1. Include copies of LICENSE-MIT and/or LICENSE-APACHE2
+2. Include this LICENSES.txt file
+3. Provide notice of third-party licenses in your distribution
+4. Consider including a NOTICE file in packages referencing this document
+
+Users should review the individual licenses of dependencies they use.
+
+
+For questions about licensing, consult:
+  - https://opensource.org/licenses/MIT
+  - https://www.apache.org/licenses/LICENSE-2.0
+  - https://en.wikipedia.org/wiki/Do_What_The_F%2A_You_Want_To_Public_License

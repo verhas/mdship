@@ -1356,6 +1356,149 @@ def update_includes(content: str, markdown_dir: str) -> str:
     return content
 
 
+def update_mermaid(content: str, markdown_dir: str) -> str:
+    """Update MERMAID placeholders by rendering diagram source to files.
+
+    Configuration in the marker:
+    <!--MERMAID
+    file: "_diagrams/architecture.svg"
+    diagram: |
+      flowchart LR
+        A[Client] --> B[API]
+        B --> C[(DB)]
+    -->
+
+    Args:
+        content: Markdown content
+        markdown_dir: Directory of the markdown file (for resolving relative paths)
+
+    Returns:
+        Content with MERMAID placeholders updated (diagram path as image markdown)
+    """
+    import re as regex_module
+
+    # Find all MERMAID placeholders that are at line start and not in code blocks
+    placeholder_pattern = r'<!--MERMAID.*?<!--/[^>]*?-->'
+    all_matches = list(regex_module.finditer(placeholder_pattern, content, regex_module.DOTALL))
+
+    # Filter matches to only those at line start and not in code blocks
+    valid_matches = []
+    for match in all_matches:
+        match_pos = match.start()
+
+        # Skip if in code block
+        if _is_in_code_block(content, match_pos):
+            continue
+
+        # Skip if not at line start
+        line_start = content.rfind('\n', 0, match_pos) + 1
+        before_marker = content[line_start:match_pos]
+        if before_marker.strip() != '':
+            continue
+
+        # Calculate line number for error reporting
+        line_num = content[:match_pos].count('\n') + 1
+        valid_matches.append((match, line_num))
+
+    if not valid_matches:
+        return content
+
+    # Process matches in reverse order (from end of file backwards)
+    for match, line_num in reversed(valid_matches):
+        match_text = match.group(0)
+        match_start = match.start()
+
+        # Parse the placeholder config
+        open_pattern = r'<!--MERMAID(.*?)-->'
+        open_match = regex_module.search(open_pattern, match_text, regex_module.DOTALL)
+
+        if not open_match:
+            continue
+
+        config_text = open_match.group(1).strip() if open_match.group(1) else ""
+
+        # Parse YAML config
+        config = {}
+        yaml_error = None
+
+        if config_text:
+            if yaml:
+                try:
+                    config = yaml.safe_load(config_text) or {}
+                except yaml.YAMLError as e:
+                    yaml_error = str(e)
+                    config = {}
+            else:
+                for line in config_text.split('\n'):
+                    line = line.strip()
+                    if ':' in line and not line.startswith('#'):
+                        key, value = line.split(':', 1)
+                        config[key.strip()] = value.strip().strip('"\'')
+
+        # Validate required parameters
+        if 'file' not in config:
+            error_msg = f"Line {line_num}: MERMAID placeholder requires 'file' parameter"
+            if yaml_error:
+                error_msg += f"\n\nYAML parsing error: {yaml_error}"
+            raise ValueError(error_msg)
+
+        if 'diagram' not in config:
+            error_msg = f"Line {line_num}: MERMAID placeholder requires 'diagram' parameter"
+            if config:
+                error_msg += f"\n\nFound keys: {', '.join(config.keys())}"
+            raise ValueError(error_msg)
+
+        # Validate file extension
+        file_path = config['file']
+        ext = Path(file_path).suffix.lower()
+        if ext not in ['.svg', '.png']:
+            raise ValueError(f"Line {line_num}: Unsupported file extension '{ext}'. Must be .svg or .png")
+
+        # Resolve file path relative to markdown directory
+        if not file_path.startswith('/'):
+            file_path = str(Path(markdown_dir) / file_path)
+
+        # Create parent directories if needed
+        Path(file_path).parent.mkdir(parents=True, exist_ok=True)
+
+        # Render diagram
+        try:
+            from merm import render_to_file
+            diagram_source = config['diagram']
+            # Unescape --\> to --> (used to prevent premature HTML comment closure)
+            diagram_source = diagram_source.replace('--\\>', '-->')
+
+            # Prepare rendering options
+            render_kwargs = {}
+            if 'theme' in config:
+                render_kwargs['theme'] = config['theme']
+
+            render_to_file(diagram_source, file_path, **render_kwargs)
+        except Exception as e:
+            raise ValueError(f"Line {line_num}: Failed to render diagram: {str(e)}")
+
+        # Build image markdown (relative path for the markdown file)
+        relative_file_path = config['file']
+        image_markdown = f"![diagram]({relative_file_path})"
+
+        # Find the position to insert content (after opening marker, before closing marker)
+        close_pattern = r'<!--/[^>]*?-->'
+        close_match = regex_module.search(close_pattern, match_text)
+
+        # Calculate positions relative to the full content
+        opening_end = match_start + open_match.end()
+        closing_start = match_start + (close_match.start() if close_match else len(match_text))
+
+        # Replace content between markers (preserve markers)
+        content = (
+            content[:opening_end] +
+            '\n' + image_markdown + '\n' +
+            content[closing_start:]
+        )
+
+    return content
+
+
 def insert_table_of_contents(content: str) -> str:
     """Insert or replace table of contents between <!--TOC--> markers.
 

@@ -1,6 +1,6 @@
 # INCLUDE placeholder test
 
-This file demonstrates how to include some content into one file from another.
+This file demonstrates how to include some content in one file from another.
 
 <!--INCLUDE
 from: "test_markdown.py"

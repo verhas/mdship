@@ -14,9 +14,10 @@ A command-line and MCP tool for manipulating markdown files.
     - [1.3.5. Number Headings](#135-number-headings)
     - [1.3.6. Table of Contents](#136-table-of-contents)
     - [1.3.7. Including Files](#137-including-files)
-    - [1.3.8. Checking Checksums](#138-checking-checksums)
-    - [1.3.9. Skipping Backups](#139-skipping-backups)
-    - [1.3.10. MCP Server](#1310-mcp-server)
+    - [1.3.8. Rendering Mermaid Diagrams](#138-rendering-mermaid-diagrams)
+    - [1.3.9. Checking Checksums](#139-checking-checksums)
+    - [1.3.10. Skipping Backups](#1310-skipping-backups)
+    - [1.3.11. MCP Server](#1311-mcp-server)
   - [1.4. Design](#14-design)
   - [1.5. Development](#15-development)
 <!--/TIC-->
@@ -32,6 +33,8 @@ A command-line and MCP tool for manipulating markdown files.
 - **Number headings**: Add hierarchical numbering to headings (1. 1.1. 1.1.1.)
 - **Remove numbering**: Strip numbering from headings
 - **Table of contents**: Generate and insert a TOC with anchor links between markers
+- **Include files**: Embed code snippets and content from other files with flexible line selection
+- **Render Mermaid diagrams**: Generate SVG/PNG diagrams from Mermaid source code
 
 ## 1.2. Installation
 
@@ -49,13 +52,13 @@ Most commands modify the file in place and create a backup with a `.md.bak` exte
 ```bash
 mdship fix-headings file.md              # Creates file.md.bak
 mdship shift-headings file.md --levels 1 # Validates shift is safe, errors if invalid
-mdship add-checksum file.md --algorithm sha256
-mdship check-checksum file.md            # Verify checksum
+mdship sum file.md --algorithm sha256    # Add or update checksum
+mdship verify file.md                    # Verify checksum
 mdship reflow file.md --width 80
 mdship semantic-line-breaks file.md      # One sentence per line
 mdship number file.md                    # Add hierarchical numbering
 mdship unnumber file.md                  # Remove numbering
-mdship update file.md                    # Update placeholders (TOC, etc)
+mdship update file.md                    # Update placeholders (TOC, INCLUDE, MERMAID)
 ```
 
 ### 1.3.2. Shift Validation
@@ -346,12 +349,131 @@ After running `mdship update`, the file contains:
 [included code from lines 5-7 of hello.py]
 ```
 
-### 1.3.8. Checking Checksums
+### 1.3.8. Rendering Mermaid Diagrams
 
-The `check-checksum` command verifies the checksum and is useful in shell scripts:
+Generate Mermaid diagrams and embed them as images between `<!--MERMAID-->` markers. Diagrams are rendered to SVG or PNG files:
 
 ```bash
-mdship check-checksum file.md
+mdship update file.md                  # Update all placeholders
+```
+
+**Configuration inside markers:**
+
+You can render Mermaid diagrams with flexible output options:
+
+```markdown
+<!--MERMAID
+file: "_diagrams/architecture.svg"
+diagram: |
+  flowchart LR
+    A[Client] --\> B[API Server]
+    B --\> C[(Database)]
+-->
+<!--/MERMAID-->
+```
+
+**Important:** Use `--\>` instead of `-->` in your diagram source to prevent the HTML comment from closing prematurely. The `--\>` is automatically converted to `-->` during rendering.
+
+**Configuration parameters:**
+
+- `file`: Output file path (required). Relative to the markdown file. Supports `.svg` or `.png` extensions
+- `diagram`: Mermaid diagram source code (required). Can be multiline YAML literal block
+- `theme`: Mermaid theme to use (optional). Supported themes: `default`, `forest`, `dark`, `neutral`
+- `_terminate_`: Custom closing marker (optional, default: `/MERMAID`)
+
+**File creation:**
+
+- Files are created relative to the markdown file's directory
+- Intermediate directories are created automatically (e.g., `_diagrams/nested/diagram.svg`)
+- Running `update` again with the same configuration is idempotent (produces identical results)
+
+**After running `mdship update`:**
+
+The content between markers is replaced with image markdown:
+
+```markdown
+<!--MERMAID
+file: "architecture.svg"
+diagram: |
+  flowchart LR
+    A[Client] --\> B[API]
+-->
+![diagram](architecture.svg)
+<!--/MERMAID-->
+```
+
+The diagram file `architecture.svg` is created in the same directory as the markdown file.
+
+**Arrow Syntax Escaping:**
+
+When your Mermaid diagram includes arrow syntax, you must escape the `-->` part:
+
+| Mermaid Arrow              | In HTML Comment | Auto-converted to                      |
+|----------------------------|-----------------|----------------------------------------|
+| `A --> B`                  | `A --\> B`      | `A --> B` (rendered)                   |
+| `A -->> B`                 | `A --\>> B`     | `A -->> B` (rendered)                  |
+| `A <-- B`                  | `A <-- B`       | `A <-- B` (rendered, no escape needed) |
+| `A \|--> B` (classDiagram) | `A \|--\> B`    | `A \|--> B` (rendered)                 |
+
+The escape sequence `--\>` tells the MERMAID processor to replace it with `-->` before rendering, preventing premature closure of the outer HTML comment.
+
+**Supported diagram types:**
+
+- **Flowchart**: `flowchart TD`, `flowchart LR`
+- **Sequence diagram**: `sequenceDiagram`
+- **Entity Relationship**: `erDiagram`
+- **Class diagram**: `classDiagram`
+- **State diagram**: `stateDiagram-v2`
+- **Timeline**: `timeline`
+- **Pie chart**: `pie title`
+- And all other Mermaid diagram types
+
+**Example with nested paths:**
+
+```markdown
+<!--MERMAID
+file: "_diagrams/architecture/system.svg"
+diagram: |
+  flowchart LR
+    A[Client] --\> B[Server]
+-->
+<!--/MERMAID-->
+```
+
+This creates `_diagrams/architecture/` automatically if it doesn't exist.
+
+**Example with theme:**
+
+```markdown
+<!--MERMAID
+file: "dark-diagram.svg"
+theme: "dark"
+diagram: |
+  flowchart TD
+    A[Start] --\> B{Decision}
+    B --\>|Yes| C[Success]
+    B --\>|No| D[Retry]
+-->
+<!--/MERMAID-->
+```
+
+Supported themes are `default`, `forest`, `dark`, and `neutral`. The theme affects colors, fonts, and styling in the rendered diagram.
+
+**Note:** PNG rendering requires the `cairosvg` library. SVG rendering works out of the box.
+
+### 1.3.9. Checksums
+
+Use `sum` to add or update checksums, and `verify` to check them:
+
+```bash
+mdship sum file.md --algorithm sha256     # Add or update checksum
+mdship verify file.md                     # Verify checksum
+```
+
+The `verify` command is useful in shell scripts:
+
+```bash
+mdship verify document.md
 # Prints "OK" and exits with 0 if valid
 # Prints error message and exits with 1 if invalid
 ```
@@ -359,14 +481,14 @@ mdship check-checksum file.md
 Example in a script:
 
 ```bash
-if mdship check-checksum document.md; then
+if mdship verify document.md; then
   echo "Checksum is valid"
 else
   echo "Checksum is invalid"
 fi
 ```
 
-### 1.3.9. Skipping Backups
+### 1.3.10. Skipping Backups
 
 To skip backup creation, use the `--no-bak` option:
 
@@ -377,7 +499,7 @@ mdship --no-bak shift-headings file.md --levels 1
 
 The `--no-bak` option can be used with any modifying command.
 
-### 1.3.10. MCP Server
+### 1.3.11. MCP Server
 
 Configure in your Claude settings:
 
@@ -402,6 +524,30 @@ Then use the available tools in Claude with markdown content.
 - Preservation of document structure (headings, lists, code blocks, etc.)
 - Proper handling of inline formatting (bold, italic, links, etc.)
 - Reliable reflow operations that respect markdown semantics
+
+### Dependencies
+
+Production dependencies used by mdship:
+
+| Package | Version | License | Purpose |
+|---------|---------|---------|---------|
+| typer | >=0.12 | BSD 3-Clause | CLI framework for building command-line interfaces with type hints |
+| rich | >=13 | MIT | Rich text and beautiful formatting in the terminal |
+| mcp | >=1.0 | MIT | Model Context Protocol for connecting Claude with external tools |
+| markdown-it-py | >=3 | MIT | Markdown parser with AST support |
+| pyyaml | >=6 | MIT | YAML parser and emitter for configuration |
+| merm | >=0.1 | WTFPL | Mermaid diagram rendering to SVG/PNG |
+
+### Development Dependencies
+
+Testing and code quality tools (not included in distribution):
+
+| Package | Version | License | Purpose |
+|---------|---------|---------|---------|
+| pytest | >=8 | MIT | Testing framework |
+| ruff | >=0.4 | MIT | Python linter and formatter |
+
+All dependencies are pinned to minimum compatible versions for stability and compatibility. Most use permissive open-source licenses (MIT, BSD, WTFPL).
 
 ## 1.5. Development
 

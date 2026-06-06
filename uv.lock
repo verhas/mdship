@@ -336,6 +336,7 @@ source = { editable = "." }
 dependencies = [
     { name = "markdown-it-py" },
     { name = "mcp" },
+    { name = "merm" },
     { name = "pyyaml" },
     { name = "rich" },
     { name = "typer" },
@@ -351,6 +352,7 @@ dev = [
 requires-dist = [
     { name = "markdown-it-py", specifier = ">=3" },
     { name = "mcp", specifier = ">=1.0" },
+    { name = "merm", specifier = ">=0.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
     { name = "pyyaml", specifier = ">=6" },
     { name = "rich", specifier = ">=13" },
@@ -366,6 +368,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d6/54/cfe61301667036ec958cb99bd3efefba235e65cdeb9c84d24a8293ba1d90/mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba", size = 8729, upload-time = "2022-08-14T12:40:10.846Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8", size = 9979, upload-time = "2022-08-14T12:40:09.779Z" },
+]
+
+[[package]]
+name = "merm"
+version = "0.1.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/8f/e0/979fd10d4e24359156aa60d4f994bbcb3ca9475783c5fc689efb81a217c7/merm-0.1.5.tar.gz", hash = "sha256:32ec2d1b582621a482295811c35a445072355d13b9f9da6136d63cfd9d3b4cfd", size = 823627, upload-time = "2026-05-24T13:45:51.998Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c9/6a/37843c1e6fd78a2ed4cfc23ae4c09d93417b5c076d30df1be5df5d021fae/merm-0.1.5-py3-none-any.whl", hash = "sha256:4372cd5474a1a42e185a21f9ab19ac9aa24fcab2638f1f0379545d9cc10b1e4a", size = 159316, upload-time = "2026-05-24T13:45:50.754Z" },
 ]
 
 [[package]]
