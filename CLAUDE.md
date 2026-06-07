@@ -168,13 +168,42 @@ These variables can then be referenced in MERMAID diagrams and other placeholder
 The `mdship update` command processes placeholders in a specific order to ensure variables are available when needed:
 
 1. **SET placeholders** (must be first) - Define variables for use in subsequent placeholders
-2. **INCLUDE placeholders** - Insert content from external files
-3. **TOC placeholders** - Generate table of contents
-4. **MERMAID placeholders** - Render diagrams with variable substitution
+2. **Variable replacement** - Replace variable references in the document (e.g., `<!--$variable-->`)
+3. **INCLUDE placeholders** - Insert content from external files
+4. **TOC placeholders** - Generate table of contents
+5. **MERMAID placeholders** - Render diagrams with variable substitution
 
 All placeholder types are self-contained: they may be followed by a closing `<!--/NAME-->` marker, but it's optional and ignored.
 
 **Variable availability**: Variables defined by SET placeholders are available throughout the document, even before their definition point. This allows using constants defined at the end of the document.
+
+### Variable References in Markdown
+
+Variables can be referenced directly in the markdown document using two forms. Both `$variable` and `${variable}` syntax are supported:
+
+**Without spaces** (for single-word values):
+```
+<!--$variable-->value
+<!--${variable}-->value
+```
+The value is replaced with the actual variable value. Must be a single word (no spaces).
+
+**With spaces** (for multi-word values):
+```
+<!--$variable<MARKER>-->value with spaces<!--MARKER-->
+<!--${variable}<MARKER>-->value with spaces<!--MARKER-->
+```
+Example with empty marker:
+```
+<!--$appName<>-->Old Value<!---->
+<!--${appName}<>-->Old Value<!---->
+```
+
+Variables support nested access and array indexing:
+- `<!--$config.language-->Python` or `<!--${config.language}-->Python`
+- `<!--$items[0]<>-->first item<!---->` or `<!--${items[0]}<>-->first item<!---->`
+
+**Note:** Variables in MERMAID diagram source are NOT replaced in the document itself. They are only substituted when the diagram is rendered.
 
 ---
 

@@ -1516,6 +1516,140 @@ def update_mermaid(content: str, markdown_dir: str, variables: Optional[dict] = 
     return content
 
 
+def _extract_front_matter(content: str) -> Optional[dict]:
+    """Extract YAML front-matter and return as a dict.
+
+    Returns None if no front-matter found.
+    """
+    lines = content.split("\n")
+
+    if not lines or lines[0] != "---":
+        return None
+
+    fm_end = None
+    for i in range(1, len(lines)):
+        if lines[i] == "---":
+            fm_end = i
+            break
+
+    if fm_end is None:
+        return None
+
+    fm_lines = lines[1:fm_end]
+    fm_text = "\n".join(fm_lines)
+
+    try:
+        if yaml:
+            fm_dict = yaml.safe_load(fm_text) or {}
+        else:
+            fm_dict = {}
+            for line in fm_lines:
+                line = line.strip()
+                if ':' in line and not line.startswith('#'):
+                    key, value = line.split(':', 1)
+                    fm_dict[key.strip()] = value.strip().strip('"\'')
+        return fm_dict
+    except Exception:
+        return None
+
+
+def replace_variables_in_document(content: str, variables: dict) -> str:
+    """Replace variable references in the markdown document.
+
+    Supports two forms:
+    1. Without spaces: <!--$variable-->placeholder-->
+       The placeholder text (no spaces) is replaced with the variable value.
+
+    2. With spaces: <!--$variable<MARKER>-->placeholder text<!--MARKER-->
+       The placeholder text (can have spaces) is replaced with the variable value.
+       Example: <!--$appName<>-->Old Value<!---->
+
+    Variables in MERMAID placeholders and code blocks are NOT replaced
+    (they are only substituted during diagram rendering or kept as documentation).
+
+    Args:
+        content: Markdown content
+        variables: Dict of variables from SET placeholders and front-matter
+
+    Returns:
+        Content with variable references replaced
+
+    Raises:
+        ValueError: If variable reference is invalid or variable not found
+    """
+    import re as regex_module
+
+    # Split content into code blocks and non-code blocks
+    # Code blocks are marked with ``` or <!--MERMAID ... -->
+    parts = []
+    pos = 0
+
+    # Find all code blocks and MERMAID blocks
+    code_block_pattern = r'(```.*?```|<!--MERMAID.*?-->)'
+    for code_match in regex_module.finditer(code_block_pattern, content, regex_module.DOTALL):
+        # Add non-code content before this block
+        if pos < code_match.start():
+            parts.append(('text', content[pos:code_match.start()]))
+        # Add code block as-is
+        parts.append(('code', code_match.group(0)))
+        pos = code_match.end()
+
+    # Add remaining content
+    if pos < len(content):
+        parts.append(('text', content[pos:]))
+
+    # Replace variables only in text parts
+    def replace_with_marker(match):
+        open_brace = match.group(1)  # Either "$" or "${"
+        var_name = match.group(2)
+        close_brace = match.group(3)  # Either "" or "}"
+        marker = match.group(4)
+        value = _get_nested_value(variables, var_name)
+        if value is None:
+            raise ValueError(f"Variable '{var_name}' not found or is None")
+        # Preserve original format: if it was ${...}, keep it that way
+        return f"<!--{open_brace}{var_name}{close_brace}<{marker}>-->{value}<!--{marker}-->"
+
+    def replace_without_marker(match):
+        open_brace = match.group(1)  # Either "$" or "${"
+        var_name = match.group(2)
+        close_brace = match.group(3)  # Either "" or "}"
+        value = _get_nested_value(variables, var_name)
+        if value is None:
+            raise ValueError(f"Variable '{var_name}' not found or is None")
+        # Value must be single word (no spaces)
+        if ' ' in str(value):
+            raise ValueError(
+                f"Variable '{var_name}' value '{value}' contains spaces. "
+                f"Use the marker form: <!--{open_brace}{var_name}{close_brace}<MARKER>-->value with spaces<!--MARKER-->"
+            )
+        # Preserve original format: if it was ${...}, keep it that way
+        return f"<!--{open_brace}{var_name}{close_brace}-->{value}"
+
+    try:
+        result = []
+        for part_type, part_content in parts:
+            if part_type == 'text':
+                # Pattern 1: Variables with markers (both $ and ${} forms)
+                # <!--$variable<MARKER>-->content<!--MARKER-->
+                # <!--${variable}<MARKER>-->content<!--MARKER-->
+                # Capture groups: (1) opening ${ or $, (2) variable name, (3) closing } or empty, (4) marker
+                marker_pattern = r'<!--(\$\{?)([a-zA-Z_][a-zA-Z0-9_\.\[\]]*)(\}?)<([^>]*)>-->.*?<!--\4-->'
+                part_content = regex_module.sub(marker_pattern, replace_with_marker, part_content, flags=regex_module.DOTALL)
+
+                # Pattern 2: Variables without markers (both $ and ${} forms)
+                # <!--$variable-->value (value is single word, no spaces)
+                # <!--${variable}-->value
+                # Capture groups: (1) opening ${ or $, (2) variable name, (3) closing } or empty
+                nomarker_pattern = r'<!--(\$\{?)([a-zA-Z_][a-zA-Z0-9_\.\[\]]*)(\}?)-->(\S+)'
+                part_content = regex_module.sub(nomarker_pattern, replace_without_marker, part_content)
+
+            result.append(part_content)
+        return ''.join(result)
+    except ValueError as e:
+        raise ValueError(f"Error replacing variable: {e}")
+
+
 def collect_set_variables(content: str) -> dict:
     """Collect all variables defined by SET placeholders.
 
@@ -1600,6 +1734,11 @@ def collect_set_variables(content: str) -> dict:
             if var_name in variables:
                 raise ValueError(f"Line {line_num}: Variable '{var_name}' is already defined")
             variables[var_name] = var_value
+
+    # Add front-matter variables as $fm
+    fm_dict = _extract_front_matter(content)
+    if fm_dict:
+        variables['fm'] = fm_dict
 
     return variables
 

@@ -81,7 +81,7 @@ The following diagram uses variables for dynamic labels:
 file: "_test_diagram.svg"
 diagram: |
   graph TD
-    A["$appName v$version"] --\> B["Language: $projectConfig.language"]
+    A["$appName v${version}"] --\> B["Language: $projectConfig.language"]
     B --\> C["Framework: $projectConfig.framework"]
     C --\> D["License: $projectConfig.license"]
     D --\> E["Author 1: $projectConfig.authors[0]"]
@@ -89,6 +89,62 @@ diagram: |
 -->
 ![diagram](_test_diagram.svg)
 <!--/MERMAID-->
+
+## Variable References in Markdown
+
+Variables can also be directly referenced in the markdown document using special comment syntax.
+
+### Simple Variable Reference (No Spaces)
+
+For single-word values, use the format:
+
+```
+<!--$variable-->value_here
+```
+
+The value text will be replaced with the actual variable value.
+
+Example in this document:
+- Application: <!--$appName-->MyApplication
+- Version: <!--$version-->2.5.1
+- License: <!--$projectConfig.license-->MIT
+
+### Variable Reference with Spaces
+
+For values containing spaces, use a marker:
+
+```
+<!--$variable<MARKER>-->placeholder<!--MARKER-->
+```
+
+The simplest form uses empty markers.
+
+Examples in this document:
+- Framework: <!--$projectConfig.framework<>-->mdship<!---->
+- Language: <!--$projectConfig.language<>-->Python<!---->
+- First author: <!--$projectConfig.authors[0]<>-->Alice<!---->
+- Second author: <!--$projectConfig.authors[1]<>-->Bob<!---->
+- Third author: <!--$projectConfig.authors[2]<>-->Charlie<!---->
+
+You can also use any arbitrary marker string:
+
+- Debug mode: <!--$projectConfig.settings.debug<DEBUG>-->True<!--DEBUG-->
+- Max retries: <!--$projectConfig.settings.maxRetries<RETRY>-->3<!--RETRY-->
+
+### Complex References
+
+Nested variables work the same way:
+
+- Config language: <!--${projectConfig.language}-->Python
+- Array element: <!--$projectConfig.authors[2]<>-->Charlie<!---->
+- Deep nesting: <!--$projectConfig.settings.maxRetries-->3
+
+### Important Notes
+
+- Variable references are updated by `mdship update` command
+- They are NOT updated in MERMAID diagram source (MERMAID variables stay as-is in document)
+- Markers must match exactly: opening marker `<X>` must have closing marker `<!--X-->`
+- Without spaces form must have placeholder with no spaces
 
 ## Documentation
 

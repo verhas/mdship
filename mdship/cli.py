@@ -345,7 +345,7 @@ def update(
         err.print(f"[red]Error:[/red] file not found: {file}")
         raise typer.Exit(1)
 
-    from mdship.markdown import collect_set_variables, insert_table_of_contents, update_includes, update_mermaid
+    from mdship.markdown import collect_set_variables, replace_variables_in_document, insert_table_of_contents, update_includes, update_mermaid
 
     content = file.read_text()
     markdown_dir = file.parent
@@ -353,6 +353,13 @@ def update(
     # Step 0: Collect variables from SET placeholders (must be first)
     try:
         variables = collect_set_variables(content)
+    except ValueError as e:
+        err.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1)
+
+    # Step 0.5: Replace variable references in the document
+    try:
+        content = replace_variables_in_document(content, variables)
     except ValueError as e:
         err.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)
