@@ -12,12 +12,13 @@ A command-line and MCP tool for manipulating markdown files.
     - [1.3.3. Shift Line Range](#133-shift-line-range)
     - [1.3.4. Semantic Line Breaks](#134-semantic-line-breaks)
     - [1.3.5. Number Headings](#135-number-headings)
-    - [1.3.6. Table of Contents](#136-table-of-contents)
-    - [1.3.7. Including Files](#137-including-files)
-    - [1.3.8. Rendering Mermaid Diagrams](#138-rendering-mermaid-diagrams)
-    - [1.3.9. Checking Checksums](#139-checking-checksums)
-    - [1.3.10. Skipping Backups](#1310-skipping-backups)
-    - [1.3.11. MCP Server](#1311-mcp-server)
+    - [1.3.6. Placeholder Processing Order](#136-placeholder-processing-order)
+    - [1.3.7. Table of Contents](#137-table-of-contents)
+    - [1.3.8. Including Files](#138-including-files)
+    - [1.3.9. Rendering Mermaid Diagrams](#139-rendering-mermaid-diagrams)
+    - [1.3.10. Checksums](#1310-checksums)
+    - [1.3.11. Skipping Backups](#1311-skipping-backups)
+    - [1.3.12. MCP Server](#1312-mcp-server)
   - [1.4. Design](#14-design)
   - [1.5. Development](#15-development)
 <!--/TIC-->
@@ -129,7 +130,27 @@ mdship unnumber file.md                # Remove all numbering
 mdship unnumber file.md --lines 10:50  # Only lines 10-50
 ```
 
-### 1.3.6. Table of Contents
+### 1.3.6. Placeholder Processing Order
+
+The `update` command processes placeholders in a specific order to enable powerful workflows:
+
+1. **<!--INCLUDE-->** placeholders first
+   - Embeds content from other files
+   - Included content becomes available for TOC generation
+2. **<!--TOC-->** placeholders second
+   - Generates table of contents from headings
+   - Can now include headings from included content
+3. **Other placeholders (top-to-bottom)**
+   - <!--MERMAID--> diagrams
+   - Additional placeholder types as they are implemented
+   - Processed in document order
+
+This order allows:
+- INCLUDE to provide content for TOC
+- Subsequent placeholders to process in document order
+- Future placeholders to integrate seamlessly with the processing pipeline
+
+### 1.3.7. Table of Contents
 
 Generate and insert a table of contents between `<!--TOC-->` markers. Configuration is specified inside the marker using YAML. Also adds anchor links to headings:
 
@@ -210,7 +231,7 @@ max-level: 3
 ### Configuration
 ```
 
-### 1.3.7. Including Files
+### 1.3.8. Including Files
 
 Include content from other files between `<​!--INCLUDE-->` markers. Useful for embedding code examples, documentation snippets, or keeping content synchronized:
 
@@ -349,7 +370,7 @@ After running `mdship update`, the file contains:
 [included code from lines 5-7 of hello.py]
 ```
 
-### 1.3.8. Rendering Mermaid Diagrams
+### 1.3.9. Rendering Mermaid Diagrams
 
 Generate Mermaid diagrams and embed them as images between `<!--MERMAID-->` markers. Diagrams are rendered to SVG or PNG files:
 
@@ -461,7 +482,7 @@ Supported themes are `default`, `forest`, `dark`, and `neutral`. The theme affec
 
 **Note:** PNG rendering requires the `cairosvg` library. SVG rendering works out of the box.
 
-### 1.3.9. Checksums
+### 1.3.10. Checksums
 
 Use `sum` to add or update checksums, and `verify` to check them:
 
@@ -488,7 +509,7 @@ else
 fi
 ```
 
-### 1.3.10. Skipping Backups
+### 1.3.11. Skipping Backups
 
 To skip backup creation, use the `--no-bak` option:
 
@@ -499,7 +520,7 @@ mdship --no-bak shift-headings file.md --levels 1
 
 The `--no-bak` option can be used with any modifying command.
 
-### 1.3.11. MCP Server
+### 1.3.12. MCP Server
 
 Configure in your Claude settings:
 

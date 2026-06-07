@@ -137,6 +137,45 @@ Inserts or replaces a table of contents between `<!--TOC-->` and `<!--/TOC-->` m
 
 **Status**: Full implementation with anchor generation
 
+### `collect_set_variables(content: str) -> dict`
+
+Collects all variables defined by SET placeholders in a document.
+
+SET placeholders allow defining variables with simple values or complex YAML structures:
+
+```
+<!--SET
+appName: "MyApp"
+version: "1.0.0"
+config:
+  theme: "dark"
+  maxItems: 100
+-->
+```
+
+These variables can then be referenced in MERMAID diagrams and other placeholders using:
+- `$variableName` for simple references
+- `$structure.field` for nested access
+- `$array[0]` for array indexing
+- `${variable}` for bracketed syntax
+
+**Status**: Full implementation with YAML parsing and variable substitution
+
+---
+
+## Placeholder Processing
+
+The `mdship update` command processes placeholders in a specific order to ensure variables are available when needed:
+
+1. **SET placeholders** (must be first) - Define variables for use in subsequent placeholders
+2. **INCLUDE placeholders** - Insert content from external files
+3. **TOC placeholders** - Generate table of contents
+4. **MERMAID placeholders** - Render diagrams with variable substitution
+
+All placeholder types are self-contained: they may be followed by a closing `<!--/NAME-->` marker, but it's optional and ignored.
+
+**Variable availability**: Variables defined by SET placeholders are available throughout the document, even before their definition point. This allows using constants defined at the end of the document.
+
 ---
 
 ## CLI Interface
@@ -164,12 +203,14 @@ mdship unnumber file.md                                    # Remove numbering
 mdship toc file.md                                         # Generate TOC between <!--TOC--> markers
 mdship toc file.md --max-level 2                           # Include only h1-h2
 mdship toc file.md --min-level 2                           # Start from h2
-mdship mcp  # Start MCP server on stdio
+mdship update file.md                                      # Update all placeholders (SET, INCLUDE, TOC, MERMAID)
+mdship mcp                                                 # Start MCP server on stdio
 
 # With --no-bak flag (prevents backup creation)
 mdship --no-bak fix-headings file.md
 mdship --no-bak shift-headings file.md --levels 1
 mdship --no-bak number file.md --style period
+mdship --no-bak update file.md
 ```
 
 The `--no-bak` flag is a global option that works with any modifying command.

@@ -306,16 +306,20 @@ def unnumber(
 def update(
     file: Annotated[Path, typer.Argument(help="Markdown file to process")],
 ) -> None:
-    """Update markdown placeholders (table of contents, includes, etc).
+    """Update markdown placeholders (includes, TOC, diagrams, etc).
 
-    Supports multiple placeholder types:
-    - <!--TOC--> for table of contents
-    - <!--INCLUDE--> for including content from other files
+    Processing order:
+    1. <!--SET--> placeholders (collect variables for use in subsequent steps)
+    2. <!--INCLUDE--> placeholders (so included content is available for TOC)
+    3. <!--TOC--> placeholders (can now include headings from included content)
+    4. Other placeholders processed top-to-bottom
+       - <!--MERMAID--> diagrams (with variable substitution)
+       - Future placeholder types
 
     Configuration is specified inside markers using YAML:
 
-        <!--TOC min-level: 2
-        max-level: 3
+        <!--SET
+        myVar: "value"
         -->
 
         <!--INCLUDE
@@ -325,37 +329,55 @@ def update(
         range: "10..20"
         -->
 
-    Also adds anchors to headings that don't have them.
+        <!--TOC min-level: 2
+        max-level: 3
+        -->
+
+        <!--MERMAID
+        file: "diagram.svg"
+        theme: "dark"
+        diagram: |
+          graph TD
+            A[Example]
+        -->
     """
     if not file.exists():
         err.print(f"[red]Error:[/red] file not found: {file}")
         raise typer.Exit(1)
 
-    from mdship.markdown import insert_table_of_contents, update_includes, update_mermaid
+    from mdship.markdown import collect_set_variables, insert_table_of_contents, update_includes, update_mermaid
 
     content = file.read_text()
     markdown_dir = file.parent
 
+    # Step 0: Collect variables from SET placeholders (must be first)
     try:
-        # Process INCLUDE placeholders first (they may generate content for TOC)
+        variables = collect_set_variables(content)
+    except ValueError as e:
+        err.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1)
+
+    # Step 1: Process all INCLUDE placeholders (they may generate content for TOC)
+    try:
         content = update_includes(content, str(markdown_dir))
     except ValueError as e:
         err.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)
 
+    # Step 2: Process TOC placeholders (can now include headings from included content)
     try:
-        # Process MERMAID placeholders
-        content = update_mermaid(content, str(markdown_dir))
-    except ValueError as e:
-        err.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(1)
-
-    try:
-        # Then process TOC placeholders (if they exist)
         content = insert_table_of_contents(content)
     except ValueError:
         # No TOC placeholder found, which is fine - just skip
         pass
+
+    # Step 3: Process remaining placeholders (MERMAID and others)
+    # This allows variables to be used by subsequent placeholders
+    try:
+        content = update_mermaid(content, str(markdown_dir), variables=variables)
+    except ValueError as e:
+        err.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1)
 
     _write_file(file, content)
     err.print(f"[green]✓[/green] Processed {file}")

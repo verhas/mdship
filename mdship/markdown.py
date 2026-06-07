@@ -24,10 +24,10 @@ def _is_in_code_block(content: str, position: int) -> bool:
     return in_code
 
 
-def _parse_placeholder(content: str, placeholder_name: str) -> dict:
+def _parse_placeholder(content: str, placeholder_name: str, self_contained: bool = False) -> dict:
     """Parse a placeholder comment block with YAML configuration.
 
-    Finds <!--PLACEHOLDER_NAME [YAML config]--> and <!--/PLACEHOLDER_NAME-->
+    Finds <!--PLACEHOLDER_NAME [YAML config]--> and optionally <!--/PLACEHOLDER_NAME-->
     or <!--/CUSTOM_TERMINATE--> if _terminate_ is specified in config.
 
     Only recognizes markers that:
@@ -37,14 +37,16 @@ def _parse_placeholder(content: str, placeholder_name: str) -> dict:
     Args:
         content: Markdown content
         placeholder_name: Name of the placeholder (e.g., 'TOC')
+        self_contained: If True, the placeholder is self-contained (no closing marker required).
+                       Any closing marker found will be ignored.
 
     Returns:
         {
             'config': {...parsed YAML config...},
             'start_pos': int (position after opening marker),
-            'end_pos': int (position before closing marker),
+            'end_pos': int (position before closing marker, or same as start_pos if self_contained),
             'open_marker': str (the opening comment),
-            'close_marker': str (the closing comment),
+            'close_marker': str (the closing comment, or empty string if self_contained),
         }
 
     Raises:
@@ -92,16 +94,23 @@ def _parse_placeholder(content: str, placeholder_name: str) -> dict:
                     key, value = line.split(':', 1)
                     config[key.strip()] = value.strip().strip('"\'')
 
-    # Determine closing marker
-    terminate = config.get('_terminate_', placeholder_name)
-    close_pattern = rf"<!--/{re.escape(terminate)}-->"
-    close_match = re.search(close_pattern, content[start_pos:])
+    # Handle closing marker based on self_contained flag
+    if self_contained:
+        # For self-contained placeholders, no closing marker required
+        # end_pos equals start_pos (no content between markers)
+        end_pos = start_pos
+        close_marker = ""
+    else:
+        # Determine closing marker
+        terminate = config.get('_terminate_', placeholder_name)
+        close_pattern = rf"<!--/{re.escape(terminate)}-->"
+        close_match = re.search(close_pattern, content[start_pos:])
 
-    if not close_match:
-        raise ValueError(f"Closing marker <!--/{terminate}--> not found in content")
+        if not close_match:
+            raise ValueError(f"Closing marker <!--/{terminate}--> not found in content")
 
-    end_pos = start_pos + close_match.start()  # Position BEFORE the closing marker
-    close_marker = close_match.group(0)
+        end_pos = start_pos + close_match.start()  # Position BEFORE the closing marker
+        close_marker = close_match.group(0)
 
     return {
         'config': config,
@@ -1356,7 +1365,7 @@ def update_includes(content: str, markdown_dir: str) -> str:
     return content
 
 
-def update_mermaid(content: str, markdown_dir: str) -> str:
+def update_mermaid(content: str, markdown_dir: str, variables: Optional[dict] = None) -> str:
     """Update MERMAID placeholders by rendering diagram source to files.
 
     Configuration in the marker:
@@ -1368,13 +1377,19 @@ def update_mermaid(content: str, markdown_dir: str) -> str:
         B --> C[(DB)]
     -->
 
+    Variables from SET placeholders are substituted in the diagram before rendering.
+    Variable references like $variable, $structure.field, or ${variable} are replaced.
+
     Args:
         content: Markdown content
         markdown_dir: Directory of the markdown file (for resolving relative paths)
+        variables: Optional dict of variables from SET placeholders (default: None)
 
     Returns:
         Content with MERMAID placeholders updated (diagram path as image markdown)
     """
+    if variables is None:
+        variables = {}
     import re as regex_module
 
     # Find all MERMAID placeholders that are at line start and not in code blocks
@@ -1467,6 +1482,8 @@ def update_mermaid(content: str, markdown_dir: str) -> str:
             diagram_source = config['diagram']
             # Unescape --\> to --> (used to prevent premature HTML comment closure)
             diagram_source = diagram_source.replace('--\\>', '-->')
+            # Substitute variables in diagram source
+            diagram_source = _substitute_variables(diagram_source, variables)
 
             # Prepare rendering options
             render_kwargs = {}
@@ -1497,6 +1514,94 @@ def update_mermaid(content: str, markdown_dir: str) -> str:
         )
 
     return content
+
+
+def collect_set_variables(content: str) -> dict:
+    """Collect all variables defined by SET placeholders.
+
+    SET placeholders define variables that can be used throughout the document.
+    Multiple SET placeholders are processed in order, and their variables are merged.
+
+    Configuration in the marker:
+    <!--SET
+    variable1: value1
+    variable2: value2
+    myStructure:
+      degree: 3
+      direction: "north"
+    -->
+
+    Variables are made available for use by subsequent placeholders like MERMAID,
+    and for variable references like <!--$variable--> in the document.
+
+    Args:
+        content: Markdown content
+
+    Returns:
+        Dict of all collected variables from all SET placeholders
+
+    Raises:
+        ValueError: If a variable is redefined or other configuration errors occur
+    """
+    import re as regex_module
+
+    # Find all SET placeholders - match from <!--SET to the closing -->
+    # The optional closing <!--/SET--> (or custom name) is ignored
+    placeholder_pattern = r'<!--SET(.*?)-->'
+    all_matches = list(regex_module.finditer(placeholder_pattern, content, regex_module.DOTALL))
+
+    variables = {}
+
+    for match_idx, match in enumerate(all_matches):
+        match_pos = match.start()
+
+        # Skip if in code block
+        if _is_in_code_block(content, match_pos):
+            continue
+
+        # Skip if not at line start
+        line_start = content.rfind('\n', 0, match_pos) + 1
+        before_marker = content[line_start:match_pos]
+        if before_marker.strip() != '':
+            continue
+
+        # Calculate line number for error reporting
+        line_num = content[:match_pos].count('\n') + 1
+
+        # Extract config text from the captured group
+        config_text = match.group(1).strip() if match.group(1) else ""
+
+        # Parse YAML config
+        config = {}
+        yaml_error = None
+
+        if config_text:
+            if yaml:
+                try:
+                    config = yaml.safe_load(config_text) or {}
+                except yaml.YAMLError as e:
+                    yaml_error = str(e)
+                    config = {}
+            else:
+                for line in config_text.split('\n'):
+                    line = line.strip()
+                    if ':' in line and not line.startswith('#'):
+                        key, value = line.split(':', 1)
+                        config[key.strip()] = value.strip().strip('"\'')
+
+        if yaml_error:
+            raise ValueError(f"Line {line_num}: SET placeholder has YAML parsing error: {yaml_error}")
+
+        if not config:
+            raise ValueError(f"Line {line_num}: SET placeholder has no variables defined")
+
+        # Check for variable redefinition
+        for var_name, var_value in config.items():
+            if var_name in variables:
+                raise ValueError(f"Line {line_num}: Variable '{var_name}' is already defined")
+            variables[var_name] = var_value
+
+    return variables
 
 
 def insert_table_of_contents(content: str) -> str:
@@ -1540,6 +1645,73 @@ def insert_table_of_contents(content: str) -> str:
         return generate_table_of_contents(content, min_level=effective_min, max_level=effective_max)
 
     return _update_placeholder(content, 'TOC', generate_toc_content)
+
+
+def _get_nested_value(obj: any, path: str) -> Optional[str]:
+    """Get a value from a nested dictionary/list using dot notation.
+
+    Examples:
+        _get_nested_value({"a": {"b": 1}}, "a.b") -> 1
+        _get_nested_value({"arr": [1, 2, 3]}, "arr[1]") -> 2
+    """
+    parts = path.split('.')
+    current = obj
+
+    for part in parts:
+        if not current:
+            return None
+
+        # Handle array indexing like "arr[0]"
+        if '[' in part:
+            key_part, index_part = part.split('[', 1)
+            index = int(index_part.rstrip(']'))
+
+            if key_part:
+                if isinstance(current, dict):
+                    current = current.get(key_part)
+                else:
+                    return None
+
+            if isinstance(current, list):
+                try:
+                    current = current[index]
+                except (IndexError, TypeError):
+                    return None
+            else:
+                return None
+        else:
+            if isinstance(current, dict):
+                current = current.get(part)
+            else:
+                return None
+
+    return str(current) if current is not None else None
+
+
+def _substitute_variables(text: str, variables: dict) -> str:
+    """Substitute variable references in text with their values.
+
+    Supports:
+    - $variable (simple reference)
+    - $structure.field.subfield (nested reference)
+    - $array[0] (array indexing)
+    - ${variable} (bracketed reference)
+    """
+    # Pattern 1: ${variable.path}
+    text = re.sub(
+        r'\$\{([a-zA-Z_][a-zA-Z0-9_\.\[\]]*)\}',
+        lambda m: _get_nested_value(variables, m.group(1)) or m.group(0),
+        text
+    )
+
+    # Pattern 2: $variable.path (stops at non-alphanumeric/non-dot/non-bracket characters)
+    text = re.sub(
+        r'\$([a-zA-Z_][a-zA-Z0-9_\.\[\]]*)',
+        lambda m: _get_nested_value(variables, m.group(1)) or m.group(0),
+        text
+    )
+
+    return text
 
 
 def _generate_anchor(text: str) -> str:
