@@ -105,7 +105,7 @@ For single-word values, use the format:
 The value text will be replaced with the actual variable value.
 
 Example in this document:
-- Application: <!--$appName-->MyApplication
+- Application: <!--$appName-->`MyApplication`
 - Version: <!--$version-->2.5.1
 - License: <!--$projectConfig.license-->MIT
 
@@ -120,7 +120,7 @@ For values containing spaces, use a marker:
 The simplest form uses empty markers.
 
 Examples in this document:
-- Framework: <!--$projectConfig.framework<>-->mdship<!---->
+- Framework: <!--$projectConfig.framework<>-->``mdship``<!---->
 - Language: <!--$projectConfig.language<>-->Python<!---->
 - First author: <!--$projectConfig.authors[0]<>-->Alice<!---->
 - Second author: <!--$projectConfig.authors[1]<>-->Bob<!---->

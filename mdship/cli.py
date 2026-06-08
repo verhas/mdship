@@ -359,7 +359,7 @@ def update(
 
     # Step 0.5: Replace variable references in the document
     try:
-        content = replace_variables_in_document(content, variables)
+        content = replace_variables_in_document(content, variables, file_path=str(file))
     except ValueError as e:
         err.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)

@@ -1553,11 +1553,11 @@ def _extract_front_matter(content: str) -> Optional[dict]:
         return None
 
 
-def replace_variables_in_document(content: str, variables: dict) -> str:
+def replace_variables_in_document(content: str, variables: dict, file_path: Optional[str] = None) -> str:
     """Replace variable references in the markdown document.
 
     Supports two forms:
-    1. Without spaces: <!--$variable-->placeholder-->
+    1. Without spaces: <!--$variable-->placeholder
        The placeholder text (no spaces) is replaced with the variable value.
 
     2. With spaces: <!--$variable<MARKER>-->placeholder text<!--MARKER-->
@@ -1570,6 +1570,7 @@ def replace_variables_in_document(content: str, variables: dict) -> str:
     Args:
         content: Markdown content
         variables: Dict of variables from SET placeholders and front-matter
+        file_path: Optional file path for error reporting
 
     Returns:
         Content with variable references replaced
@@ -1579,75 +1580,145 @@ def replace_variables_in_document(content: str, variables: dict) -> str:
     """
     import re as regex_module
 
+    # Helper function to get line number from match position
+    def get_line_number(match_pos: int) -> int:
+        """Get 1-based line number from position in content."""
+        return content[:match_pos].count('\n') + 1
+
+    # Helper function to format error message with file and line info
+    def format_error(message: str, match_pos: int) -> str:
+        """Format error message with file path and line number."""
+        line_num = get_line_number(match_pos)
+        if file_path:
+            return f"{file_path}:{line_num}: {message}"
+        else:
+            return f"Line {line_num}: {message}"
+
     # Split content into code blocks and non-code blocks
-    # Code blocks are marked with ``` or <!--MERMAID ... -->
+    # Code blocks are marked with ``` (on own line) or <!--MERMAID ... -->
     parts = []
     pos = 0
 
     # Find all code blocks and MERMAID blocks
-    code_block_pattern = r'(```.*?```|<!--MERMAID.*?-->)'
+    # Code blocks must start at beginning of line (with optional whitespace)
+    code_block_pattern = r'((?:^|\n)[ \t]*```.*?```|<!--MERMAID.*?-->)'
     for code_match in regex_module.finditer(code_block_pattern, content, regex_module.DOTALL):
+        # Determine if match starts with newline
+        match_text = code_match.group(0)
+        match_start = code_match.start()
+
+        # If the match starts with a newline, include it in the code block, not the text before
+        if match_text.startswith('\n'):
+            text_end = match_start + 1  # Include the newline with the code
+            match_text = match_text[1:]  # Remove the leading newline from code block
+        else:
+            text_end = match_start
+
         # Add non-code content before this block
-        if pos < code_match.start():
-            parts.append(('text', content[pos:code_match.start()]))
-        # Add code block as-is
-        parts.append(('code', code_match.group(0)))
+        if pos < text_end:
+            parts.append(('text', content[pos:text_end]))
+        # Add code block as-is (without the leading newline we separated)
+        parts.append(('code', match_text))
         pos = code_match.end()
 
     # Add remaining content
     if pos < len(content):
         parts.append(('text', content[pos:]))
 
-    # Replace variables only in text parts
-    def replace_with_marker(match):
-        open_brace = match.group(1)  # Either "$" or "${"
-        var_name = match.group(2)
-        close_brace = match.group(3)  # Either "" or "}"
-        marker = match.group(4)
-        value = _get_nested_value(variables, var_name)
-        if value is None:
-            raise ValueError(f"Variable '{var_name}' not found or is None")
-        # Preserve original format: if it was ${...}, keep it that way
-        return f"<!--{open_brace}{var_name}{close_brace}<{marker}>-->{value}<!--{marker}-->"
-
-    def replace_without_marker(match):
-        open_brace = match.group(1)  # Either "$" or "${"
-        var_name = match.group(2)
-        close_brace = match.group(3)  # Either "" or "}"
-        value = _get_nested_value(variables, var_name)
-        if value is None:
-            raise ValueError(f"Variable '{var_name}' not found or is None")
-        # Value must be single word (no spaces)
-        if ' ' in str(value):
-            raise ValueError(
-                f"Variable '{var_name}' value '{value}' contains spaces. "
-                f"Use the marker form: <!--{open_brace}{var_name}{close_brace}<MARKER>-->value with spaces<!--MARKER-->"
-            )
-        # Preserve original format: if it was ${...}, keep it that way
-        return f"<!--{open_brace}{var_name}{close_brace}-->{value}"
-
     try:
         result = []
-        for part_type, part_content in parts:
+        for part_index, (part_type, part_content) in enumerate(parts):
             if part_type == 'text':
-                # Pattern 1: Variables with markers (both $ and ${} forms)
-                # <!--$variable<MARKER>-->content<!--MARKER-->
-                # <!--${variable}<MARKER>-->content<!--MARKER-->
-                # Capture groups: (1) opening ${ or $, (2) variable name, (3) closing } or empty, (4) marker
-                marker_pattern = r'<!--(\$\{?)([a-zA-Z_][a-zA-Z0-9_\.\[\]]*)(\}?)<([^>]*)>-->.*?<!--\4-->'
-                part_content = regex_module.sub(marker_pattern, replace_with_marker, part_content, flags=regex_module.DOTALL)
+                # Get the offset for this part (position in original content)
+                part_offset = sum(len(parts[i][1]) for i in range(part_index))
 
-                # Pattern 2: Variables without markers (both $ and ${} forms)
-                # <!--$variable-->value (value is single word, no spaces)
-                # <!--${variable}-->value
-                # Capture groups: (1) opening ${ or $, (2) variable name, (3) closing } or empty
+                # Create replacement functions with the correct offset
+                def make_replace_with_marker(offset):
+                    def replace_with_marker(match):
+                        open_brace = match.group(1)
+                        var_name = match.group(2)
+                        close_brace = match.group(3)
+                        marker = match.group(4)
+                        placeholder = match.group(5)
+                        value = _get_nested_value(variables, var_name)
+                        if value is None:
+                            error_msg = format_error(f"Variable '{var_name}' not found or is None", offset + match.start())
+                            raise ValueError(error_msg)
+
+                        # Check if placeholder is surrounded by backticks
+                        backtick_count = 0
+                        if placeholder.startswith('`'):
+                            for char in placeholder:
+                                if char == '`':
+                                    backtick_count += 1
+                                else:
+                                    break
+
+                            trailing_backticks = 0
+                            for char in reversed(placeholder):
+                                if char == '`':
+                                    trailing_backticks += 1
+                                else:
+                                    break
+
+                            if backtick_count == trailing_backticks and backtick_count * 2 < len(placeholder):
+                                value_str = '`' * backtick_count + str(value) + '`' * backtick_count
+                                return f"<!--{open_brace}{var_name}{close_brace}<{marker}>-->{value_str}<!--{marker}-->"
+
+                        return f"<!--{open_brace}{var_name}{close_brace}<{marker}>-->{value}<!--{marker}-->"
+                    return replace_with_marker
+
+                def make_replace_without_marker(offset):
+                    def replace_without_marker(match):
+                        open_brace = match.group(1)
+                        var_name = match.group(2)
+                        close_brace = match.group(3)
+                        placeholder = match.group(4)
+                        value = _get_nested_value(variables, var_name)
+                        if value is None:
+                            error_msg = format_error(f"Variable '{var_name}' not found or is None", offset + match.start())
+                            raise ValueError(error_msg)
+
+                        # Check if placeholder is surrounded by backticks
+                        backtick_count = 0
+                        if placeholder.startswith('`'):
+                            for char in placeholder:
+                                if char == '`':
+                                    backtick_count += 1
+                                else:
+                                    break
+
+                            trailing_backticks = 0
+                            for char in reversed(placeholder):
+                                if char == '`':
+                                    trailing_backticks += 1
+                                else:
+                                    break
+
+                            if backtick_count == trailing_backticks and backtick_count * 2 < len(placeholder):
+                                value_str = '`' * backtick_count + str(value) + '`' * backtick_count
+                                return f"<!--{open_brace}{var_name}{close_brace}-->{value_str}"
+
+                        if ' ' in str(value):
+                            raise ValueError(
+                                f"Variable '{var_name}' value '{value}' contains spaces. "
+                                f"Use the marker form: <!--{open_brace}{var_name}{close_brace}<MARKER>-->value with spaces<!--MARKER-->"
+                            )
+                        return f"<!--{open_brace}{var_name}{close_brace}-->{value}"
+                    return replace_without_marker
+
+                # Apply replacements with offset tracking
+                marker_pattern = r'<!--(\$\{?)([a-zA-Z_][a-zA-Z0-9_\.\[\]]*)(\}?)<([^>]*)>-->(.+?)<!--\4-->'
+                part_content = regex_module.sub(marker_pattern, make_replace_with_marker(part_offset), part_content, flags=regex_module.DOTALL)
+
                 nomarker_pattern = r'<!--(\$\{?)([a-zA-Z_][a-zA-Z0-9_\.\[\]]*)(\}?)-->(\S+)'
-                part_content = regex_module.sub(nomarker_pattern, replace_without_marker, part_content)
+                part_content = regex_module.sub(nomarker_pattern, make_replace_without_marker(part_offset), part_content)
 
             result.append(part_content)
         return ''.join(result)
     except ValueError as e:
-        raise ValueError(f"Error replacing variable: {e}")
+        # Re-raise the error as-is since it already includes file and line info from format_error
+        raise
 
 
 def collect_set_variables(content: str) -> dict:
