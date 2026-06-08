@@ -12,7 +12,8 @@ A command-line and MCP tool for manipulating markdown files.
     - [1.3.3. Shift Line Range](#133-shift-line-range)
     - [1.3.4. Semantic Line Breaks](#134-semantic-line-breaks)
     - [1.3.5. Number Headings](#135-number-headings)
-    - [1.3.6. Placeholder Processing Order](#136-placeholder-processing-order)
+    - [1.3.6. Variables](#136-variables)
+    - [1.3.7. Placeholder Processing Order](#137-placeholder-processing-order)
     - [1.3.7. Table of Contents](#137-table-of-contents)
     - [1.3.8. Including Files](#138-including-files)
     - [1.3.9. Rendering Mermaid Diagrams](#139-rendering-mermaid-diagrams)
@@ -20,6 +21,8 @@ A command-line and MCP tool for manipulating markdown files.
     - [1.3.11. Skipping Backups](#1311-skipping-backups)
     - [1.3.12. MCP Server](#1312-mcp-server)
   - [1.4. Design](#14-design)
+    - [Dependencies](#dependencies)
+    - [Development Dependencies](#development-dependencies)
   - [1.5. Development](#15-development)
 <!--/TIC-->
 
@@ -33,9 +36,10 @@ A command-line and MCP tool for manipulating markdown files.
 - **Semantic line breaks**: Break lines at sentence/clause boundaries for better readability and diffs
 - **Number headings**: Add hierarchical numbering to headings (1. 1.1. 1.1.1.)
 - **Remove numbering**: Strip numbering from headings
+- **Variables**: Define and use variables throughout your document with SET placeholders
 - **Table of contents**: Generate and insert a TOC with anchor links between markers
 - **Include files**: Embed code snippets and content from other files with flexible line selection
-- **Render Mermaid diagrams**: Generate SVG/PNG diagrams from Mermaid source code
+- **Render Mermaid diagrams**: Generate SVG/PNG diagrams from Mermaid source code with variable substitution
 
 ## 1.2. Installation
 
@@ -130,22 +134,87 @@ mdship unnumber file.md                # Remove all numbering
 mdship unnumber file.md --lines 10:50  # Only lines 10-50
 ```
 
-### 1.3.6. Placeholder Processing Order
+### 1.3.6. Variables
+
+Define and use variables throughout your document. Variables are defined using SET placeholders and can be referenced in two ways:
+
+**Define variables with SET placeholder:**
+
+```markdown
+<!--SET
+appName: "MyApplication"
+version: "1.0.0"
+config:
+  language: "Python"
+  framework: "mdship"
+  authors:
+    - "Alice"
+    - "Bob"
+-->
+```
+
+**Simple variable references (no spaces in value):**
+
+```markdown
+Application: <!--$appName-->placeholder
+Version: <!--$version-->placeholder
+Language: <!--$config.language-->placeholder
+```
+
+After `mdship update`:
+```markdown
+Application: <!--$appName-->MyApplication
+Version: <!--$version-->1.0.0
+Language: <!--$config.language-->Python
+```
+
+**Variable references with spaces (using markers):**
+
+```markdown
+Framework: <!--$config.framework<>-->old framework<!---->
+Author: <!--$config.authors[0]<>-->Unknown<!---->
+```
+
+After `mdship update`:
+```markdown
+Framework: <!--$config.framework<>-->mdship<!---->
+Author: <!--$config.authors[0]<>-->Alice<!---->
+```
+
+**Features:**
+
+- Variables support nested access: `$config.language`, `$config.nested.field`
+- Array indexing: `$items[0]`, `$authors[2]`
+- Both `$variable` and `${variable}` syntax are supported
+- Front-matter YAML is automatically available as `$fm`
+- Code blocks and MERMAID diagrams are preserved (variables in code blocks are not replaced)
+- Backtick-wrapped values are preserved: `` `value` `` becomes `` `newValue` ``
+- Error messages include file path and line number for easy debugging
+
+### 1.3.7. Placeholder Processing Order
 
 The `update` command processes placeholders in a specific order to enable powerful workflows:
 
-1. **<!--INCLUDE-->** placeholders first
+1. **<!--SET-->** placeholders first
+   - Collects all variables from the document
+   - Variables become available to all subsequent placeholders
+   - Front-matter YAML is automatically available as `$fm`
+2. **Variable references** 
+   - Replaces `<!​--$variable-->value` and `<!​--$variable<MARKER>-->value<!--MARKER-->` in the document
+   - Variables from SET placeholders are substituted
+3. **<!--INCLUDE-->** placeholders
    - Embeds content from other files
    - Included content becomes available for TOC generation
-2. **<!--TOC-->** placeholders second
+4. **<!--TOC-->** placeholders
    - Generates table of contents from headings
    - Can now include headings from included content
-3. **Other placeholders (top-to-bottom)**
-   - <!--MERMAID--> diagrams
+5. **Other placeholders (top-to-bottom)**
+   - <!--MERMAID--> diagrams with variable substitution
    - Additional placeholder types as they are implemented
    - Processed in document order
 
 This order allows:
+- Variables to be available to all placeholders that need them
 - INCLUDE to provide content for TOC
 - Subsequent placeholders to process in document order
 - Future placeholders to integrate seamlessly with the processing pipeline
