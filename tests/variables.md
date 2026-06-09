@@ -2,7 +2,9 @@
 checksum: 70c60adc881eabc1887fe7f5513ca4bfa4ecccea94127c7c0f13b3ca1365c5e6
 checksum_algorithm: sha256
 ---
-<!--TOC-->
+<!--TOC
+_terminate_: "TIC"
+-->
 - [1. Using variables in Markdown files](#1-using-variables-in-markdown-files)
   - [1.1. Variable without space in value](#11-variable-without-space-in-value)
   - [1.2. Variable with space in value](#12-variable-with-space-in-value)
@@ -17,7 +19,7 @@ checksum_algorithm: sha256
     - [1.5.6. Slurp values](#156-slurp-values)
     - [1.5.7. Sipping values](#157-sipping-values)
     - [1.5.8. Specifying names](#158-specifying-names)
-<!--/TOC-->
+<!--/TIC-->
 
 # 1. Using variables in Markdown files
 

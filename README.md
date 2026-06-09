@@ -17,13 +17,16 @@ A command-line and MCP tool for manipulating markdown files.
       - [1.3.6.2. SLURP: Extract Names and Values from Files](#1362-slurp-extract-names-and-values-from-files)
       - [1.3.6.3. SIP: Extract Predefined Variables from Files](#1363-sip-extract-predefined-variables-from-files)
       - [1.3.6.4. SUP: Extract from Document Lines](#1364-sup-extract-from-document-lines)
-    - [1.3.7. Placeholder Processing Order](#137-placeholder-processing-order)
-    - [1.3.8. Table of Contents](#138-table-of-contents)
-    - [1.3.9. Including Files](#139-including-files)
-    - [1.3.10. Rendering Mermaid Diagrams](#1310-rendering-mermaid-diagrams)
-    - [1.3.11. Checksums](#1311-checksums)
-    - [1.3.12. Skipping Backups](#1312-skipping-backups)
-    - [1.3.13. MCP Server](#1313-mcp-server)
+      - [1.3.6.5. Pattern Dictionary](#1365-pattern-dictionary)
+    - [1.3.7. Template Placeholders](#137-template-placeholders)
+    - [1.3.8. Placeholder Processing Order](#138-placeholder-processing-order)
+    - [1.3.9. Table of Contents](#139-table-of-contents)
+    - [1.3.10. Including Files](#1310-including-files)
+    - [1.3.11. Rendering Mermaid Diagrams](#1311-rendering-mermaid-diagrams)
+    - [1.3.12. Checksums](#1312-checksums)
+    - [1.3.13. Skipping Backups](#1313-skipping-backups)
+    - [1.3.14. Placeholder Validation](#1314-placeholder-validation)
+    - [1.3.15. MCP Server](#1315-mcp-server)
   - [1.4. Design](#14-design)
     - [1.4.1. Dependencies](#141-dependencies)
     - [1.4.2. Development Dependencies](#142-development-dependencies)
@@ -50,6 +53,9 @@ A command-line and MCP tool for manipulating markdown files.
 - **Table of contents**: Generate and insert a TOC with anchor links between markers
 - **Include files**: Embed code snippets and content from other files with flexible line selection
 - **Render Mermaid diagrams**: Generate SVG/PNG diagrams from Mermaid source code with variable substitution
+- **Template placeholders**: Insert dynamic content with variable substitution (useful for code blocks with dynamic values)
+- **Pattern dictionary**: Built-in patterns for common extraction tasks (@heading, @version) and support for custom patterns
+- **Placeholder validation**: Early detection of mistyped closing tags and unclosed placeholders before processing
 
 ## 1.2. Installation
 
@@ -330,17 +336,143 @@ Title: <!--$doc.title-->placeholder<!---->
 
 The pattern is matched against the first non-empty line following the placeholder, and the captured value is stored.
 
-### 1.3.7. Placeholder Processing Order
+#### 1.3.6.5. Pattern Dictionary
+
+SUP and SIP support a built-in pattern dictionary for common extraction tasks. Pre-defined patterns are available:
+
+- `@heading`: Extract heading numbers (e.g., `1.5.8`)
+- `@version`: Extract semantic versions (e.g., `1.2.3`)
+
+**Using built-in patterns:**
+
+```markdown
+<!--SUP
+name: "chapter_number"
+pattern: "@heading"
+-->
+# 1.5.8. Advanced Topics
+
+Chapter: <!--$chapter_number-->placeholder<!---->
+```
+
+**Defining custom patterns:**
+
+You can define custom patterns using SET with a `pattern` dictionary:
+
+```markdown
+<!--SET
+pattern:
+  snapshot: '(\d+\.\d+\.\d+)-SNAPSHOT'
+  buildnum: 'build-(\d+)'
+-->
+
+<!--SUP
+name: "release"
+pattern: "@snapshot"
+-->
+v1.2.3-SNAPSHOT
+
+Build: <!--$buildnum-->placeholder<!---->
+```
+
+**Accessing patterns:**
+
+All patterns (built-in and custom) are stored in the `$pattern` variable and can be referenced elsewhere:
+
+```markdown
+Available patterns: <!--$pattern<>-->
+{heading: ..., version: ..., custom: ...}
+<!---->
+```
+
+**Configuration:**
+
+- `pattern`: Dictionary of pattern name → regex pairs (inside SET)
+  - Patterns must have exactly 1 capturing group for the value
+  - Built-in patterns are automatically available
+  - Custom patterns extend the built-in set (they don't replace it)
+
+### 1.3.7. Template Placeholders
+
+Insert dynamic content between opening and closing markers. TEMPLATE is useful for:
+- Code blocks with dynamic values
+- Multi-line formatted content with variables
+- Content that cannot contain HTML comments
+
+**Basic usage:**
+
+```markdown
+<​!--TEMPLATE
+content: |
+  ```python
+  # Generated code with $variable
+  app = "$appName"
+  version = "$appVersion"
+  ```
+-->
+(old content gets replaced)
+<​!--/TEMPLATE-->
+```
+
+**Configuration:**
+
+- `content`: The template content (multi-line YAML literal block, required)
+  - Variables are substituted in the content
+  - Supports all variable features: `$var`, `$nested.field`, `${var}`
+
+**Example:**
+
+```markdown
+<​!--SET
+appName: "MyApp"
+config:
+  debug: true
+  port: 8000
+-->
+
+<​!--TEMPLATE
+content: |
+  Application Configuration
+  =======================
+  
+  - Name: $appName
+  - Debug: $config.debug
+  - Port: $config.port
+-->
+old documentation
+<​!--/TEMPLATE-->
+```
+
+After running `mdship update`:
+
+```markdown
+  Application Configuration
+  =======================
+  
+  - Name: MyApp
+  - Debug: true
+  - Port: 8000
+```
+
+**Key features:**
+
+- Content is inserted between the opening `-->` and closing `<​!--/TEMPLATE-->`
+- All variables are substituted before insertion
+- Idempotent: running update multiple times produces the same result
+- Perfect for code examples with dynamic values
+
+### 1.3.8. Placeholder Processing Order
 
 The `update` command processes placeholders in a specific order to enable powerful workflows:
 
 1. **Variable source placeholders** (collected in order they appear)
-   - **<!--SET-->**: Define variables with scalar or YAML values
+   - **<!--SET-->**: Define variables with scalar or YAML values (including custom patterns)
    - **<!--IMPORT-->**: Load data from JSON, YAML, TOML, or XML files
    - **<!--SLURP-->**: Extract variable names and values from files using regex (2 capturing groups)
    - **<!--SIP-->**: Extract predefined variables from files using regex (1 capturing group)
-   - **<!--SUP-->**: Extract a single value from the next line in the document
+   - **<!--SUP-->**: Extract a single value from the next line in the document (can use pattern references like `@heading`)
    - All variables become available to subsequent placeholders
+   - Built-in patterns (`@heading`, `@version`) are automatically available
    - Front-matter YAML is automatically available as `$fm`
 
 2. **<!--INCLUDE-->** placeholders
@@ -353,22 +485,28 @@ The `update` command processes placeholders in a specific order to enable powerf
    - Variables are NOT replaced inside code blocks (between ``` markers) — they are safe for code that uses `$var` notation
    - Front-matter YAML is automatically available as `$fm`
 
-4. **<!--TOC-->** placeholders
+4. **<!--TEMPLATE-->** placeholders
+   - Substitutes variables in template content and inserts between opening and closing markers
+   - Useful for dynamic code blocks and formatted content with variables
+
+5. **<!--TOC-->** placeholders
    - Generates table of contents from headings
    - Can include headings from both original document and included content
 
-5. **Other placeholders (top-to-bottom)**
+6. **Other placeholders (top-to-bottom)**
    - <!--MERMAID--> diagrams with variable substitution
    - Processed in document order
 
 This order allows:
 - Variables to be defined early and used everywhere in the document
 - INCLUDE content to be embedded before variables are replaced (so included content benefits from variable substitution)
+- TEMPLATE to use any variables including those in included content
 - TOC to include headings from included files
 - Subsequent placeholders to use variables defined anywhere in the document
 - Safe inclusion of code with `$var` notation since code blocks are skipped
+- Pattern references (@heading, @version) to work in SUP placeholders
 
-### 1.3.8. Table of Contents
+### 1.3.9. Table of Contents
 
 Generate and insert a table of contents between `<!--TOC-->` markers. Configuration is specified inside the marker using YAML. Also adds anchor links to headings:
 
@@ -449,7 +587,7 @@ max-level: 3
 ### Configuration
 ```
 
-### 1.3.9. Including Files
+### 1.3.10. Including Files
 
 Include content from other files between `<​!--INCLUDE-->` markers. Useful for embedding code examples, documentation snippets, or keeping content synchronized:
 
@@ -588,7 +726,7 @@ After running `mdship update`, the file contains:
 [included code from lines 5-7 of hello.py]
 ```
 
-### 1.3.10. Rendering Mermaid Diagrams
+### 1.3.11. Rendering Mermaid Diagrams
 
 Generate Mermaid diagrams and embed them as images between `<!--MERMAID-->` markers. Diagrams are rendered to SVG or PNG files:
 
@@ -700,7 +838,7 @@ Supported themes are `default`, `forest`, `dark`, and `neutral`. The theme affec
 
 **Note:** PNG rendering requires the `cairosvg` library. SVG rendering works out of the box.
 
-### 1.3.11. Checksums
+### 1.3.12. Checksums
 
 Use `sum` to add or update checksums, and `verify` to check them:
 
@@ -727,7 +865,7 @@ else
 fi
 ```
 
-### 1.3.12. Skipping Backups
+### 1.3.13. Skipping Backups
 
 To skip backup creation, use the `--no-bak` option:
 
@@ -738,7 +876,81 @@ mdship --no-bak shift-headings file.md --levels 1
 
 The `--no-bak` option can be used with any modifying command.
 
-### 1.3.13. MCP Server
+### 1.3.14. Placeholder Validation
+
+mdship automatically validates placeholder syntax before processing to prevent silent data corruption. All opening placeholders must have matching closing tags (where required).
+
+**Placeholders that require closing tags:**
+- `<!--TEMPLATE ... -->...<!--/TEMPLATE-->`
+- `<!--MERMAID ... -->...<!--/MERMAID-->`
+- `<!--INCLUDE ... -->...<!--/INCLUDE-->`
+- `<!--TOC ... -->...<!--/TOC-->`
+
+**Placeholders without closing tags:**
+- `<!--SET ... -->`
+- `<!--IMPORT ... -->`
+- `<!--SLURP ... -->`
+- `<!--SIP ... -->`
+- `<!--SUP ... -->`
+
+**Error Detection:**
+
+mdship catches common mistakes before any processing:
+
+```markdown
+# ❌ Typo in closing tag
+<​!--TEMPLATE
+content: |
+  Test
+-->
+content
+<​!--/TEMPLATEE-->  ← Error: Should be <!--/TEMPLATE-->
+```
+
+Error message:
+```
+Line 6: Closing <​!--/TEMPLATEE--> does not match opening <​!--TEMPLATE--> at line 1.
+Is there a typo in the closing tag? Expected <!--/TEMPLATE-->
+```
+
+```markdown
+# ❌ Unclosed TEMPLATE placeholder
+<​!--TEMPLATE
+content: |
+  Test
+-->
+content
+(missing closing tag)
+```
+
+Error message:
+```
+Line 1: Unclosed <!--TEMPLATE--> placeholder. Expected closing tag <!--/TEMPLATE-->
+```
+
+```markdown
+# ❌ Mismatched nested placeholders
+<​!--TEMPLATE ... -->
+  <​!--MERMAID ... -->
+  <​!--/TEMPLATE-->  ← Should be <!--/MERMAID-->
+<​!--/MERMAID-->
+```
+
+Error message:
+```
+Line 3: Closing <!--/TEMPLATE--> does not match opening <!--MERMAID--> at line 2.
+```
+
+**Safety with backups:**
+
+Combined with the `.md.bak` backup files, you can always compare changes using `diff`:
+
+```bash
+mdship update myfile.md
+diff myfile.md.bak myfile.md  # See exactly what changed
+```
+
+### 1.3.15. MCP Server
 
 Configure in your Claude settings:
 

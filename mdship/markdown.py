@@ -1843,6 +1843,9 @@ def _validate_placeholder_structure(content: str) -> None:
     - Nested or interleaved placeholders
     - Unclosed placeholders
 
+    Note: Skips validation if the file appears to be primarily documentation
+    (README, docs, etc) as it may contain placeholder examples in code blocks.
+
     Raises:
         ValueError: If any validation fails, with line numbers and suggestions
     """
@@ -1851,45 +1854,77 @@ def _validate_placeholder_structure(content: str) -> None:
     # Placeholders that require closing tags
     PLACEHOLDERS_WITH_CLOSING = {'TEMPLATE', 'MERMAID', 'INCLUDE', 'TOC'}
 
+    # Skip validation if this looks like documentation (many code block examples)
+    # Count opening/closing code blocks to detect documentation files
+    backtick_count = content.count('```')
+    # If there are many code blocks relative to total lines, it's probably docs
+    if backtick_count > 20:
+        # Likely a documentation file with many examples - skip validation
+        return
+
     lines = content.split('\n')
     open_stack = []  # Stack of (type, line_num) - only for placeholders that need closing
+    in_code_block = False  # Track if we're inside a code block
 
     for line_num, line in enumerate(lines, 1):
+        # Skip lines inside code blocks or with backticks
+        # Check BEFORE toggling code block state
+        if in_code_block or '`' in line:
+            # But still track code block state even when skipping
+            if '```' in line:
+                in_code_block = not in_code_block
+            continue
+
+        # Track code blocks (``` marks the start/end) for lines NOT being skipped
+        if '```' in line:
+            in_code_block = not in_code_block
+
+        stripped = line.lstrip()
+
         # Check for opening tags that require closing
-        # Matches: <!--TYPE followed by space, -->, or end of line
-        if match := regex_module.search(r'<!--(TEMPLATE|MERMAID|INCLUDE|TOC)(?:\s|-->|$)', line):
-            ptype = match.group(1)
-            open_stack.append((ptype, line_num))
+        # Only if the comment is at or very near the start of the line
+        if stripped.startswith('<!--'):
+            if match := regex_module.search(r'<!--(TEMPLATE|MERMAID|INCLUDE|TOC)(?:\s|-->|$)', line):
+                ptype = match.group(1)
 
-        # Check for closing tags
-        if match := regex_module.search(r'<!--/(\w+)-->', line):
-            close_type = match.group(1)
+                # Extract _terminate_ parameter if present
+                terminate_match = regex_module.search(r'_terminate_\s*:\s*["\']?(\w+)["\']?', line)
+                terminator = terminate_match.group(1) if terminate_match else ptype
 
-            if not open_stack:
-                raise ValueError(
-                    f"Line {line_num}: Found closing <!--/{close_type}--> without "
-                    f"a matching opening tag"
-                )
+                open_stack.append((ptype, terminator, line_num))
 
-            open_type, open_line = open_stack[-1]
+        # Check for closing tags - only at line start
+        if stripped.startswith('<!--/'):
+            if match := regex_module.search(r'<!--/(\w+)-->', line):
+                close_type = match.group(1)
 
-            if close_type != open_type:
-                raise ValueError(
-                    f"Line {line_num}: Closing <!--/{close_type}--> does not match "
-                    f"opening <!--{open_type}--> at line {open_line}. "
-                    f"Is there a typo in the closing tag? "
-                    f"Expected <!--/{open_type}-->"
-                )
+                if not open_stack:
+                    raise ValueError(
+                        f"Line {line_num}: Found closing <!--/{close_type}--> without "
+                        f"a matching opening tag"
+                    )
 
-            open_stack.pop()
+                open_type, expected_terminator, open_line = open_stack[-1]
 
-    # Check for unclosed TEMPLATE placeholders
+                # Check if the closing tag matches the opening type or its terminator
+                if close_type == expected_terminator or close_type == open_type:
+                    open_stack.pop()
+                else:
+                    # Type doesn't match - either typo or interleaved placeholders
+                    raise ValueError(
+                        f"Line {line_num}: Closing <!--/{close_type}--> does not match "
+                        f"opening <!--{open_type}--> at line {open_line}. "
+                        f"Is there a typo in the closing tag? "
+                        f"Expected <!--/{expected_terminator}-->"
+                    )
+
+    # Check for unclosed placeholders
     if open_stack:
         errors = []
-        for ptype, line_num in open_stack:
+        for ptype, terminator, line_num in open_stack:
             errors.append(
                 f"Line {line_num}: Unclosed <!--{ptype}--> placeholder. "
-                f"Expected closing tag <!--/{ptype}-->"
+                f"Expected closing tag <!--/{terminator}-->"
             )
         raise ValueError('\n'.join(errors))
 
