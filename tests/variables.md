@@ -292,11 +292,19 @@ vars:
 * Variables `variable1`, `variable2` and so on are defined by the regular expressions mathich the lines in the file or files.
   The regular expressions need only one capturing group since the line is only used to get the value for the variable.
 
-<!--SUP
-name: "chapter.names"
-pattern: '#+\s*([\d.]+)'
--->
+<!--SUP {name: "chapter.names", pattern: '@heading'}-->
 ### 1.5.8. Specifying names
+
+<!--TEMPLATE
+content: |-
+  ```
+  $pattern
+  ```
+-->
+```
+{'heading': '^#+\\s+([\\d.]+)', 'version': 'v?(\\d+\\.\\d+\\.\\d+)'}
+```
+<!--/TEMPLATE-->
 
 This chapter number is <!--$chapter.names-->1.5.8.
 

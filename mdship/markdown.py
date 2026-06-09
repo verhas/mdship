@@ -1385,6 +1385,97 @@ def update_includes(content: str, markdown_dir: str) -> str:
     return content
 
 
+def process_template(content: str, variables: Optional[dict] = None) -> str:
+    """Process TEMPLATE placeholders by substituting variables in content.
+
+    Configuration in the marker:
+    <!--TEMPLATE
+    content: |
+      Line 1 with $variable
+      Line 2 with $nested.variable
+    -->
+    old content here
+    <!--/TEMPLATE-->
+
+    Args:
+        content: Markdown content
+        variables: Dictionary of available variables for substitution
+
+    Returns:
+        Content with TEMPLATE placeholders processed
+    """
+    import re as regex_module
+    import yaml as yaml_module
+
+    if not variables:
+        variables = {}
+
+    # Find all TEMPLATE placeholders
+    placeholder_pattern = r'<!--TEMPLATE(.*?)-->(.*?)<!--/TEMPLATE-->'
+    all_matches = list(regex_module.finditer(placeholder_pattern, content, regex_module.DOTALL))
+
+    if not all_matches:
+        return content
+
+    # Process matches in reverse order (from end of file backwards)
+    for match in reversed(all_matches):
+        config_str = match.group(1)
+        match_pos = match.start()
+        line_num = content[:match_pos].count('\n') + 1
+
+        # Skip if in code block
+        if _is_in_code_block(content, match_pos):
+            continue
+
+        # Parse YAML configuration
+        try:
+            if yaml_module:
+                config = yaml_module.safe_load(config_str) or {}
+            else:
+                # Fallback parsing if yaml not available
+                config = {}
+        except Exception as e:
+            raise ValueError(f"Line {line_num}: TEMPLATE placeholder has YAML parsing error: {e}")
+
+        if 'content' not in config:
+            raise ValueError(f"Line {line_num}: TEMPLATE placeholder requires 'content' parameter")
+
+        template_content = config['content']
+        if not isinstance(template_content, str):
+            raise ValueError(f"Line {line_num}: TEMPLATE 'content' must be a string")
+
+        # Substitute variables in the template content
+        # Use the same approach as variable replacement
+        processed_content = template_content
+
+        # Simple variable replacement: $varname or ${varname}
+        # This is a simplified version - for complex needs, use the full replace_variables_in_document
+        var_pattern = r'\$\{?([a-zA-Z_][a-zA-Z0-9_\.\[\]]*)\}?'
+
+        def replace_var(match_obj):
+            var_name = match_obj.group(1)
+            value = _get_nested_value(variables, var_name)
+            if value is None:
+                return match_obj.group(0)  # Keep original if variable not found
+            return str(value)
+
+        processed_content = regex_module.sub(var_pattern, replace_var, processed_content)
+
+        # Replace the entire placeholder including markers and old content
+        opening_marker = match.group(0)[:match.group(0).find('-->') + 3]  # Everything up to and including -->
+        new_content = (
+            content[:match.start()] +
+            opening_marker +
+            '\n' + processed_content + '\n' +
+            '<!--/TEMPLATE-->' +
+            content[match.end():]
+        )
+
+        content = new_content
+
+    return content
+
+
 def update_mermaid(content: str, markdown_dir: str, variables: Optional[dict] = None) -> str:
     """Update MERMAID placeholders by rendering diagram source to files.
 
@@ -1728,7 +1819,7 @@ def replace_variables_in_document(content: str, variables: dict, file_path: Opti
                     return replace_without_marker
 
                 # Apply replacements with offset tracking
-                marker_pattern = r'<!--(\$\{?)([a-zA-Z_][a-zA-Z0-9_\.\[\]]*)(\}?)<([^>]*)>-->(.+?)<!--\4-->'
+                marker_pattern = r'<!--(\$\{?)([a-zA-Z_][a-zA-Z0-9_\.\[\]]*)(\}?)<([^>]*)>-->(.*?)<!--\4-->'
                 part_content = regex_module.sub(marker_pattern, make_replace_with_marker(part_offset), part_content, flags=regex_module.DOTALL)
 
                 # Pattern that matches variables with optional placeholder (or none)
@@ -1741,6 +1832,66 @@ def replace_variables_in_document(content: str, variables: dict, file_path: Opti
     except ValueError as e:
         # Re-raise the error as-is since it already includes file and line info from format_error
         raise
+
+
+def _validate_placeholder_structure(content: str) -> None:
+    """Validate that all placeholders have matching open/close tags.
+
+    Checks for:
+    - Mismatched opening and closing tags
+    - Typos in closing tags
+    - Nested or interleaved placeholders
+    - Unclosed placeholders
+
+    Raises:
+        ValueError: If any validation fails, with line numbers and suggestions
+    """
+    import re as regex_module
+
+    # Placeholders that require closing tags
+    PLACEHOLDERS_WITH_CLOSING = {'TEMPLATE', 'MERMAID', 'INCLUDE', 'TOC'}
+
+    lines = content.split('\n')
+    open_stack = []  # Stack of (type, line_num) - only for placeholders that need closing
+
+    for line_num, line in enumerate(lines, 1):
+        # Check for opening tags that require closing
+        # Matches: <!--TYPE followed by space, -->, or end of line
+        if match := regex_module.search(r'<!--(TEMPLATE|MERMAID|INCLUDE|TOC)(?:\s|-->|$)', line):
+            ptype = match.group(1)
+            open_stack.append((ptype, line_num))
+
+        # Check for closing tags
+        if match := regex_module.search(r'<!--/(\w+)-->', line):
+            close_type = match.group(1)
+
+            if not open_stack:
+                raise ValueError(
+                    f"Line {line_num}: Found closing <!--/{close_type}--> without "
+                    f"a matching opening tag"
+                )
+
+            open_type, open_line = open_stack[-1]
+
+            if close_type != open_type:
+                raise ValueError(
+                    f"Line {line_num}: Closing <!--/{close_type}--> does not match "
+                    f"opening <!--{open_type}--> at line {open_line}. "
+                    f"Is there a typo in the closing tag? "
+                    f"Expected <!--/{open_type}-->"
+                )
+
+            open_stack.pop()
+
+    # Check for unclosed TEMPLATE placeholders
+    if open_stack:
+        errors = []
+        for ptype, line_num in open_stack:
+            errors.append(
+                f"Line {line_num}: Unclosed <!--{ptype}--> placeholder. "
+                f"Expected closing tag <!--/{ptype}-->"
+            )
+        raise ValueError('\n'.join(errors))
 
 
 def collect_set_variables(content: str, markdown_dir: Optional[str] = None) -> dict:
@@ -1802,7 +1953,17 @@ def collect_set_variables(content: str, markdown_dir: Optional[str] = None) -> d
     """
     import re as regex_module
 
+    # Validate placeholder structure FIRST, before any processing
+    _validate_placeholder_structure(content)
+
     variables = {}
+
+    # Initialize built-in patterns (like fm for front-matter)
+    # Users can define custom patterns with <!--SET pattern: ... -->
+    variables['pattern'] = {
+        'heading': r'^#+\s+([\d.]+)',      # Extract heading number (e.g., "1.5.8")
+        'version': r'v?(\d+\.\d+\.\d+)',   # Extract semantic version
+    }
 
     # Process variable source placeholders in order they appear
     # Find all SET, IMPORT, SLURP, SIP, SUP placeholders
@@ -1854,6 +2015,15 @@ def collect_set_variables(content: str, markdown_dir: Optional[str] = None) -> d
             if not config:
                 raise ValueError(f"Line {line_num}: SET placeholder has no variables defined")
 
+            # Handle special 'pattern' key for custom patterns
+            if 'pattern' in config:
+                pattern_dict = config.pop('pattern')  # Remove from config so it's not processed as a regular variable
+                if isinstance(pattern_dict, dict):
+                    # Merge custom patterns with built-in patterns
+                    variables['pattern'].update(pattern_dict)
+                else:
+                    raise ValueError(f"Line {line_num}: 'pattern' must be a dictionary of pattern definitions")
+
             # Check for variable redefinition
             for var_name, var_value in config.items():
                 if var_name in variables:
@@ -1892,7 +2062,7 @@ def collect_set_variables(content: str, markdown_dir: Optional[str] = None) -> d
 
         elif placeholder_type == "SUP":
             try:
-                sup_vars = _collect_sup_variables(config, content, match, line_num)
+                sup_vars = _collect_sup_variables(config, content, match, line_num, variables=variables)
                 variables = _merge_variables(variables, sup_vars, line_num)
             except ValueError as e:
                 # Re-raise with context if not already formatted
@@ -2334,7 +2504,7 @@ def _collect_slurp_variables(config: dict, line_num: int, markdown_dir: Optional
     return result
 
 
-def _collect_sup_variables(config: dict, content: str, match_obj, line_num: int) -> dict:
+def _collect_sup_variables(config: dict, content: str, match_obj, line_num: int, variables: Optional[dict] = None) -> dict:
     """Collect variables from a SUP placeholder configuration.
 
     SUP extracts a single value from the line following the placeholder
@@ -2345,6 +2515,7 @@ def _collect_sup_variables(config: dict, content: str, match_obj, line_num: int)
         content: Full markdown content (to find the next line)
         match_obj: The regex match object for the SUP placeholder
         line_num: Line number for error reporting
+        variables: Available variables (needed to resolve pattern references like @heading)
 
     Returns:
         Dict with variable name as key and extracted value
@@ -2362,6 +2533,15 @@ def _collect_sup_variables(config: dict, content: str, match_obj, line_num: int)
 
     var_name = config['name']
     pattern_str = config['pattern']
+
+    # If pattern starts with @, look it up in the pattern dictionary
+    if pattern_str.startswith('@'):
+        pattern_name = pattern_str[1:]  # Remove @ prefix
+        if variables and 'pattern' in variables and pattern_name in variables['pattern']:
+            pattern_str = variables['pattern'][pattern_name]
+        else:
+            available = list(variables['pattern'].keys()) if variables and 'pattern' in variables else []
+            raise ValueError(f"Line {line_num}: Pattern '{pattern_name}' not found. Available patterns: {available}")
 
     # Find the next line after the placeholder
     # Start from the end of the placeholder match

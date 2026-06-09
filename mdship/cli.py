@@ -319,9 +319,11 @@ def update(
     3. Variable references (replace $variable in document and included content)
        - Works in regular text, not in code blocks (between ```)
        - Included content variables are replaced here
-    4. <!--TOC--> placeholders (generate table of contents)
+    4. <!--TEMPLATE--> placeholders (substitute variables in templates, insert content)
+       - Useful for code blocks and formatted content with variables
+    5. <!--TOC--> placeholders (generate table of contents)
        - Can include headings from both original and included content
-    5. Other placeholders processed top-to-bottom
+    6. Other placeholders processed top-to-bottom
        - <!--MERMAID--> diagrams (with variable substitution)
 
     Configuration examples:
@@ -364,6 +366,14 @@ def update(
         range: "10..20"
         -->
 
+        <!--TEMPLATE
+        content: |
+          ```python
+          # Using $pattern variable
+          patterns = $pattern
+          ```
+        -->
+
         <!--TOC min-level: 2
         max-level: 3
         -->
@@ -380,7 +390,7 @@ def update(
         err.print(f"[red]Error:[/red] file not found: {file}")
         raise typer.Exit(1)
 
-    from mdship.markdown import collect_set_variables, replace_variables_in_document, insert_table_of_contents, update_includes, update_mermaid
+    from mdship.markdown import collect_set_variables, replace_variables_in_document, insert_table_of_contents, update_includes, update_mermaid, process_template
 
     content = file.read_text()
     markdown_dir = file.parent
@@ -409,7 +419,15 @@ def update(
         err.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)
 
-    # Step 4: Process TOC placeholders (generate table of contents)
+    # Step 4: Process TEMPLATE placeholders (substitute variables and insert content)
+    # TEMPLATE uses collected variables to process content blocks
+    try:
+        content = process_template(content, variables=variables)
+    except ValueError as e:
+        err.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1)
+
+    # Step 5: Process TOC placeholders (generate table of contents)
     # Can include headings from both original document and included content
     try:
         content = insert_table_of_contents(content)
@@ -417,7 +435,7 @@ def update(
         # No TOC placeholder found, which is fine - just skip
         pass
 
-    # Step 5: Process remaining placeholders (MERMAID diagrams, etc.)
+    # Step 6: Process remaining placeholders (MERMAID diagrams, etc.)
     # Diagrams can use variables defined in earlier steps
     try:
         content = update_mermaid(content, str(markdown_dir), variables=variables)

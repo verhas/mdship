@@ -10,11 +10,13 @@ from mdship.markdown import (
     fix_heading_levels,
     generate_table_of_contents,
     insert_table_of_contents,
+    process_template,
     remove_heading_numbers,
     reflow_paragraphs,
     replace_variables_in_document,
     shift_heading_levels,
     update_mermaid,
+    _validate_placeholder_structure,
 )
 
 
@@ -1033,6 +1035,435 @@ Title: <!--$doc_title<>-->placeholder<!---->
         variables = collect_set_variables(content)
         result = replace_variables_in_document(content, variables)
         assert "My Document" in result
+
+    def test_sup_with_builtin_heading_pattern(self):
+        """Test SUP using built-in @heading pattern."""
+        content = """<!--SUP
+name: "chapter_num"
+pattern: "@heading"
+-->
+# 2.3.5. Advanced Topics
+"""
+        variables = collect_set_variables(content)
+        assert variables["chapter_num"] == "2.3.5."
+
+    def test_sup_with_builtin_version_pattern(self):
+        """Test SUP using built-in @version pattern."""
+        content = """<!--SUP
+name: "app_version"
+pattern: "@version"
+-->
+v1.2.3 release
+"""
+        variables = collect_set_variables(content)
+        assert variables["app_version"] == "1.2.3"
+
+    def test_sup_with_custom_pattern(self):
+        """Test SUP with custom patterns defined in SET."""
+        content = r"""<!--SET
+pattern:
+  snapshot: '(\d+\.\d+\.\d+)-SNAPSHOT'
+-->
+
+<!--SUP
+name: "release_version"
+pattern: "@snapshot"
+-->
+myapp-1.0.0-SNAPSHOT
+"""
+        variables = collect_set_variables(content)
+        assert variables["release_version"] == "1.0.0"
+
+    def test_sup_multiple_custom_patterns(self):
+        """Test SUP with multiple custom patterns."""
+        content = r"""<!--SET
+pattern:
+  buildnum: 'build-(\d+)'
+  branch: 'branch:\s+(\w+)'
+-->
+
+<!--SUP
+name: "build_id"
+pattern: "@buildnum"
+-->
+build-42
+
+<!--SUP
+name: "git_branch"
+pattern: "@branch"
+-->
+branch: main
+"""
+        variables = collect_set_variables(content)
+        assert variables["build_id"] == "42"
+        assert variables["git_branch"] == "main"
+        # Check that patterns are available
+        assert "buildnum" in variables["pattern"]
+        assert "branch" in variables["pattern"]
+        assert "heading" in variables["pattern"]  # Built-in should still be there
+
+    def test_sup_pattern_error_undefined(self):
+        """Test SUP error when pattern is not defined."""
+        content = """<!--SUP
+name: "test"
+pattern: "@undefined"
+-->
+test value
+"""
+        with pytest.raises(ValueError, match="Pattern 'undefined' not found"):
+            collect_set_variables(content)
+
+    def test_pattern_dict_available_in_variables(self):
+        """Test that pattern dictionary is available in variables."""
+        content = r"""<!--SET
+pattern:
+  custom: 'test'
+-->"""
+        variables = collect_set_variables(content)
+        assert "pattern" in variables
+        assert isinstance(variables["pattern"], dict)
+        assert "heading" in variables["pattern"]  # Built-in
+        assert "version" in variables["pattern"]  # Built-in
+        assert "custom" in variables["pattern"]  # Custom
+
+    def test_variable_replacement_empty_placeholder(self):
+        """Test that variables are replaced even with empty placeholders."""
+        content = """<!--SET
+app_name: "MyApp"
+version: "1.0.0"
+-->
+
+Application: <!--$app_name<>--><!---->
+Version: <!--$version<>--><!---->
+"""
+        variables = collect_set_variables(content)
+        result = replace_variables_in_document(content, variables)
+
+        # Check that both empty placeholders were replaced
+        assert "<!--$app_name<>-->MyApp<!---->" in result
+        assert "<!--$version<>-->1.0.0<!---->" in result
+
+
+class TestPlaceholderValidation:
+    def test_valid_single_template(self):
+        """Test that valid TEMPLATE placeholder passes validation."""
+        content = """<!--TEMPLATE
+content: |
+  Test content
+-->
+old content
+<!--/TEMPLATE-->
+"""
+        # Should not raise
+        _validate_placeholder_structure(content)
+
+    def test_valid_multiple_placeholders(self):
+        """Test multiple placeholders (SET, TEMPLATE, SUP) together."""
+        content = """<!--SET
+app: "test"
+-->
+
+<!--TEMPLATE
+content: |
+  Test content
+-->
+old
+<!--/TEMPLATE-->
+
+<!--SUP
+name: "chapter"
+pattern: "@heading"
+-->
+# Title
+"""
+        # Should not raise
+        _validate_placeholder_structure(content)
+
+    def test_valid_set_without_closing(self):
+        """Test that SET placeholder without closing tag is valid."""
+        content = """<!--SET
+app: "test"
+-->
+Content here
+"""
+        # Should not raise - SET doesn't require closing tag
+        _validate_placeholder_structure(content)
+
+    def test_valid_mermaid_with_closing(self):
+        """Test that MERMAID with closing tag is valid."""
+        content = """<!--MERMAID
+file: "test.svg"
+diagram: |
+  graph TD
+    A --> B
+-->
+![diagram](test.svg)
+<!--/MERMAID-->"""
+        # Should not raise
+        _validate_placeholder_structure(content)
+
+    def test_valid_include_with_closing(self):
+        """Test that INCLUDE with closing tag is valid."""
+        content = """<!--INCLUDE
+from: "file.md"
+-->
+included content here
+<!--/INCLUDE-->"""
+        # Should not raise
+        _validate_placeholder_structure(content)
+
+    def test_valid_toc_with_closing(self):
+        """Test that TOC with closing tag is valid."""
+        content = """# Heading 1
+
+## Heading 2
+
+<!--TOC
+min-level: 1
+max-level: 2
+-->
+Table of contents here
+<!--/TOC-->"""
+        # Should not raise
+        _validate_placeholder_structure(content)
+
+    def test_error_mismatched_closing_tag(self):
+        """Test error when closing tag doesn't match opening."""
+        content = """<!--TEMPLATE
+content: |
+  Test
+-->
+content
+<!--/TEMPLATEE-->"""
+        with pytest.raises(ValueError, match="does not match.*Expected <!--/TEMPLATE-->"):
+            _validate_placeholder_structure(content)
+
+    def test_error_unclosed_template(self):
+        """Test error when TEMPLATE is not closed."""
+        content = """<!--TEMPLATE
+content: |
+  Test content
+-->
+Some content but no closing tag"""
+        with pytest.raises(ValueError, match="Unclosed <!--TEMPLATE--> placeholder"):
+            _validate_placeholder_structure(content)
+
+    def test_error_multiple_unclosed_templates(self):
+        """Test error reporting multiple unclosed TEMPLATE placeholders."""
+        content = """<!--TEMPLATE
+content: |
+  Test 1
+-->
+
+<!--TEMPLATE
+content: |
+  Test 2
+-->"""
+        with pytest.raises(ValueError, match="Unclosed"):
+            _validate_placeholder_structure(content)
+
+    def test_error_closing_without_opening(self):
+        """Test error when closing tag appears without opening."""
+        content = """Some content here
+<!--/TEMPLATE-->"""
+        with pytest.raises(ValueError, match="without a matching opening tag"):
+            _validate_placeholder_structure(content)
+
+    def test_error_typo_in_template_closing(self):
+        """Test error detection for typos in TEMPLATE closing tag."""
+        content = """<!--TEMPLATE
+content: |
+  Test
+-->
+content
+<!--/TEMPLATEE-->"""
+        with pytest.raises(ValueError, match="Closing <!--/TEMPLATEE--> does not match"):
+            _validate_placeholder_structure(content)
+
+    def test_error_unclosed_mermaid(self):
+        """Test error when MERMAID is not closed."""
+        content = """<!--MERMAID
+file: "test.svg"
+diagram: |
+  graph TD
+    A --> B
+-->
+![diagram](test.svg)"""
+        with pytest.raises(ValueError, match="Unclosed <!--MERMAID-->"):
+            _validate_placeholder_structure(content)
+
+    def test_error_mismatched_mermaid(self):
+        """Test error when MERMAID closing tag is wrong."""
+        content = """<!--MERMAID
+file: "test.svg"
+diagram: |
+  graph TD
+-->
+![diagram](test.svg)
+<!--/MERMAAID-->"""
+        with pytest.raises(ValueError, match="does not match.*Expected <!--/MERMAID-->"):
+            _validate_placeholder_structure(content)
+
+    def test_error_unclosed_include(self):
+        """Test error when INCLUDE is not closed."""
+        content = """<!--INCLUDE
+from: "file.md"
+-->
+included content"""
+        with pytest.raises(ValueError, match="Unclosed <!--INCLUDE-->"):
+            _validate_placeholder_structure(content)
+
+    def test_error_unclosed_toc(self):
+        """Test error when TOC is not closed."""
+        content = """<!--TOC
+min-level: 1
+-->
+Table of contents"""
+        with pytest.raises(ValueError, match="Unclosed <!--TOC-->"):
+            _validate_placeholder_structure(content)
+
+    def test_error_nested_different_types(self):
+        """Test error when placeholder types are interleaved."""
+        content = """<!--TEMPLATE
+content: |
+  Test
+-->
+  <!--MERMAID
+  file: "test.svg"
+  diagram: |
+    graph A --> B
+  -->
+  <!--/TEMPLATE-->
+<!--/MERMAID-->"""
+        with pytest.raises(ValueError, match="does not match"):
+            _validate_placeholder_structure(content)
+
+    def test_validation_called_on_collect_set_variables(self):
+        """Test that validation happens in collect_set_variables."""
+        content = """<!--TEMPLATE
+content: |
+  Test
+-->
+<!--/TEMPLATEE-->"""
+        with pytest.raises(ValueError, match="does not match"):
+            collect_set_variables(content)
+
+
+class TestTemplate:
+    def test_template_basic(self):
+        """Test basic TEMPLATE placeholder processing."""
+        variables = {"app": "MyApp", "version": "1.0.0"}
+        content = """Before
+
+<!--TEMPLATE
+content: |
+  Application: $app
+  Version: $version
+-->
+old content
+<!--/TEMPLATE-->
+
+After"""
+        result = process_template(content, variables=variables)
+        assert "Application: MyApp" in result
+        assert "Version: 1.0.0" in result
+        assert "old content" not in result
+
+    def test_template_with_code_block(self):
+        """Test TEMPLATE with code block containing variables."""
+        variables = {"language": "Python", "framework": "Django"}
+        content = """<!--TEMPLATE
+content: |
+  ```
+  # $language with $framework
+  print("Hello")
+  ```
+-->
+old code
+<!--/TEMPLATE-->"""
+        result = process_template(content, variables=variables)
+        assert "# Python with Django" in result
+        assert "```" in result
+        assert "old code" not in result
+
+    def test_template_with_nested_variables(self):
+        """Test TEMPLATE with nested variable access."""
+        variables = {"config": {"database": {"host": "localhost", "port": 5432}}}
+        content = """<!--TEMPLATE
+content: |
+  Database: $config.database.host
+  Port: $config.database.port
+-->
+old
+<!--/TEMPLATE-->"""
+        result = process_template(content, variables=variables)
+        assert "Database: localhost" in result
+        assert "Port: 5432" in result
+
+    def test_template_missing_content(self):
+        """Test TEMPLATE error when 'content' is missing."""
+        content = """<!--TEMPLATE
+name: "test"
+-->
+<!--/TEMPLATE-->"""
+        with pytest.raises(ValueError, match="requires 'content'"):
+            process_template(content)
+
+    def test_template_idempotent(self):
+        """Test that TEMPLATE processing is idempotent."""
+        variables = {"key": "value"}
+        content = """<!--TEMPLATE
+content: |
+  Key: $key
+-->
+old
+<!--/TEMPLATE-->"""
+        result1 = process_template(content, variables=variables)
+        result2 = process_template(result1, variables=variables)
+        # Second run should produce identical result
+        assert result1 == result2
+
+    def test_template_multiple_placeholders(self):
+        """Test multiple TEMPLATE placeholders in same document."""
+        variables = {"name": "Alice", "role": "Developer"}
+        content = """<!--TEMPLATE
+content: |
+  Name: $name
+-->
+old1
+<!--/TEMPLATE-->
+
+Middle
+
+<!--TEMPLATE
+content: |
+  Role: $role
+-->
+old2
+<!--/TEMPLATE-->"""
+        result = process_template(content, variables=variables)
+        assert "Name: Alice" in result
+        assert "Role: Developer" in result
+        assert "old1" not in result
+        assert "old2" not in result
+
+    def test_template_with_complex_object(self):
+        """Test TEMPLATE with complex variable objects."""
+        variables = {
+            "pattern": {
+                "heading": "^#+\\s+([\\d.]+)",
+                "version": "v?(\\d+\\.\\d+\\.\\d+)"
+            }
+        }
+        content = """<!--TEMPLATE
+content: |
+  Patterns: $pattern
+-->
+old
+<!--/TEMPLATE-->"""
+        result = process_template(content, variables=variables)
+        assert "heading" in result
+        assert "version" in result
 
     def test_collect_slurp_basic(self, tmp_path):
         """Test basic SLURP functionality with two capturing groups."""
