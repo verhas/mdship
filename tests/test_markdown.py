@@ -6,11 +6,13 @@ from mdship.markdown import (
     add_content_checksum,
     add_heading_numbers,
     check_content_checksum,
+    collect_set_variables,
     fix_heading_levels,
     generate_table_of_contents,
     insert_table_of_contents,
     remove_heading_numbers,
     reflow_paragraphs,
+    replace_variables_in_document,
     shift_heading_levels,
     update_mermaid,
 )
@@ -279,6 +281,356 @@ class TestCheckChecksum:
         with_checksum = add_content_checksum(content)
         is_valid, message = check_content_checksum(with_checksum)
         assert is_valid
+
+
+class TestVariableSources:
+    """Tests for SET, IMPORT, SLURP, and SIP placeholder functionality."""
+
+    def test_collect_set_variables_basic(self):
+        """Test collecting variables from SET placeholder."""
+        content = """
+<!--SET
+appName: "MyApp"
+version: "1.0.0"
+-->
+"""
+        variables = collect_set_variables(content)
+        assert variables["appName"] == "MyApp"
+        assert variables["version"] == "1.0.0"
+
+    def test_collect_set_variables_nested(self):
+        """Test collecting nested structures from SET placeholder."""
+        content = """
+<!--SET
+config:
+  theme: "dark"
+  maxItems: 100
+-->
+"""
+        variables = collect_set_variables(content)
+        assert variables["config"]["theme"] == "dark"
+        assert variables["config"]["maxItems"] == 100
+
+    def test_collect_sip_variables_basic(self, tmp_path):
+        """Test collecting variables from SIP placeholder."""
+        data_file = tmp_path / "data.txt"
+        data_file.write_text("version: 1.2.3\n")
+
+        content = f"""
+<!--SIP
+name: "app"
+from: "{tmp_path}"
+include: "data.txt"
+strategy: "first"
+vars:
+  version: 'version:\\s+([0-9.]+)'
+-->
+"""
+        variables = collect_set_variables(content)
+        assert variables["app"]["version"] == "1.2.3"
+
+    def test_collect_sip_variables_without_namespace(self, tmp_path):
+        """Test SIP variables at top level without namespace."""
+        data_file = tmp_path / "data.txt"
+        data_file.write_text("name: Alice\n")
+
+        content = f"""
+<!--SIP
+from: "{tmp_path}"
+include: "data.txt"
+strategy: "first"
+vars:
+  name: 'name:\\s+(\\w+)'
+-->
+"""
+        variables = collect_set_variables(content)
+        assert variables["name"] == "Alice"
+
+    def test_collect_sip_strategy_first(self, tmp_path):
+        """Test SIP with 'first' strategy."""
+        data_file = tmp_path / "data.txt"
+        data_file.write_text("value: 1\nvalue: 2\nvalue: 3\n")
+
+        content = f"""
+<!--SIP
+from: "{tmp_path}"
+include: "data.txt"
+strategy: "first"
+vars:
+  value: 'value:\\s+(\\d+)'
+-->
+"""
+        variables = collect_set_variables(content)
+        assert variables["value"] == "1"
+
+    def test_collect_sip_strategy_last(self, tmp_path):
+        """Test SIP with 'last' strategy."""
+        data_file = tmp_path / "data.txt"
+        data_file.write_text("value: 1\nvalue: 2\nvalue: 3\n")
+
+        content = f"""
+<!--SIP
+from: "{tmp_path}"
+include: "data.txt"
+strategy: "last"
+vars:
+  value: 'value:\\s+(\\d+)'
+-->
+"""
+        variables = collect_set_variables(content)
+        assert variables["value"] == "3"
+
+    def test_collect_sip_strategy_concatenate(self, tmp_path):
+        """Test SIP with 'concatenate' strategy."""
+        data_file = tmp_path / "data.txt"
+        data_file.write_text("item: apple\nitem: banana\nitem: cherry\n")
+
+        content = f"""
+<!--SIP
+from: "{tmp_path}"
+include: "data.txt"
+strategy: "concatenate"
+separator: ", "
+vars:
+  items: 'item:\\s+(\\w+)'
+-->
+"""
+        variables = collect_set_variables(content)
+        assert variables["items"] == "apple, banana, cherry"
+
+    def test_collect_sip_strategy_fail_single_match(self, tmp_path):
+        """Test SIP with 'fail' strategy on single match."""
+        data_file = tmp_path / "data.txt"
+        data_file.write_text("value: 42\n")
+
+        content = f"""
+<!--SIP
+from: "{tmp_path}"
+include: "data.txt"
+strategy: "fail"
+vars:
+  value: 'value:\\s+(\\d+)'
+-->
+"""
+        variables = collect_set_variables(content)
+        assert variables["value"] == "42"
+
+    def test_collect_sip_strategy_fail_multiple_matches(self, tmp_path):
+        """Test SIP with 'fail' strategy on multiple matches raises error."""
+        data_file = tmp_path / "data.txt"
+        data_file.write_text("value: 1\nvalue: 2\n")
+
+        content = f"""
+<!--SIP
+from: "{tmp_path}"
+include: "data.txt"
+strategy: "fail"
+vars:
+  value: 'value:\\s+(\\d+)'
+-->
+"""
+        with pytest.raises(ValueError, match="matches 2 times"):
+            collect_set_variables(content)
+
+    def test_collect_sip_multiple_variables(self, tmp_path):
+        """Test SIP with multiple variables."""
+        data_file = tmp_path / "config.txt"
+        data_file.write_text("host: localhost\nport: 8080\ndebug: true\n")
+
+        content = f"""
+<!--SIP
+name: "server"
+from: "{tmp_path}"
+include: "config.txt"
+strategy: "first"
+vars:
+  host: 'host:\\s+(\\w+)'
+  port: 'port:\\s+(\\d+)'
+  debug: 'debug:\\s+(\\w+)'
+-->
+"""
+        variables = collect_set_variables(content)
+        assert variables["server"]["host"] == "localhost"
+        assert variables["server"]["port"] == "8080"
+        assert variables["server"]["debug"] == "true"
+
+    def test_collect_sip_multiple_files(self, tmp_path):
+        """Test SIP processing multiple files."""
+        (tmp_path / "file1.txt").write_text("version: 1.0\n")
+        (tmp_path / "file2.txt").write_text("version: 2.0\n")
+
+        content = f"""
+<!--SIP
+from: "{tmp_path}"
+include: "file*.txt"
+strategy: "concatenate"
+separator: " | "
+vars:
+  version: 'version:\\s+([0-9.]+)'
+-->
+"""
+        variables = collect_set_variables(content)
+        assert "1.0" in variables["version"]
+        assert "2.0" in variables["version"]
+
+    def test_collect_sip_with_directory_recursion(self, tmp_path):
+        """Test SIP with recursive directory traversal."""
+        (tmp_path / "subdir").mkdir()
+        (tmp_path / "config1.txt").write_text("setting: value1\n")
+        (tmp_path / "subdir" / "config2.txt").write_text("setting: value2\n")
+
+        content = f"""
+<!--SIP
+from: "{tmp_path}"
+include: "*.txt"
+recurse: true
+strategy: "concatenate"
+separator: ","
+vars:
+  settings: 'setting:\\s+(\\w+)'
+-->
+"""
+        variables = collect_set_variables(content)
+        assert "value1" in variables["settings"]
+        assert "value2" in variables["settings"]
+
+    def test_collect_sip_variables_in_document(self, tmp_path):
+        """Test using SIP variables in document variable references."""
+        data_file = tmp_path / "meta.txt"
+        data_file.write_text("version: 3.14\n")
+
+        content = f"""
+<!--SIP
+name: "app"
+from: "{tmp_path}"
+include: "meta.txt"
+strategy: "first"
+vars:
+  version: 'version:\\s+([0-9.]+)'
+-->
+
+The version is <!--$app.version-->placeholder<!---->
+"""
+        variables = collect_set_variables(content)
+        result = replace_variables_in_document(content, variables)
+        assert "3.14" in result
+        assert "placeholder" not in result
+
+    def test_collect_sip_no_matches_non_fail_strategy(self, tmp_path):
+        """Test SIP with no matches doesn't fail for non-fail strategies."""
+        data_file = tmp_path / "empty.txt"
+        data_file.write_text("no match here\n")
+
+        content = f"""
+<!--SIP
+from: "{tmp_path}"
+include: "empty.txt"
+strategy: "concatenate"
+vars:
+  missing: 'nomatch:(\\w+)'
+-->
+"""
+        variables = collect_set_variables(content)
+        # Variable with no matches should not be included
+        assert "missing" not in variables
+
+    def test_collect_sip_error_invalid_group_count(self, tmp_path):
+        """Test SIP raises error for regex with wrong number of groups."""
+        data_file = tmp_path / "data.txt"
+        data_file.write_text("abc\n")
+
+        content = f"""
+<!--SIP
+from: "{tmp_path}"
+include: "data.txt"
+strategy: "first"
+vars:
+  bad: '(a)(b)(c)'
+-->
+"""
+        with pytest.raises(ValueError, match="capturing group"):
+            collect_set_variables(content)
+
+    def test_collect_sip_error_missing_vars(self, tmp_path):
+        """Test SIP raises error when 'vars' is missing."""
+        data_file = tmp_path / "data.txt"
+        data_file.write_text("content\n")
+
+        content = f"""
+<!--SIP
+from: "{tmp_path}"
+include: "data.txt"
+-->
+"""
+        with pytest.raises(ValueError, match="requires 'vars'"):
+            collect_set_variables(content)
+
+    def test_collect_sip_error_missing_from(self, tmp_path):
+        """Test SIP raises error when 'from' is missing."""
+        content = """
+<!--SIP
+strategy: "first"
+vars:
+  x: '.*'
+-->
+"""
+        with pytest.raises(ValueError, match="requires 'from'"):
+            collect_set_variables(content)
+
+    def test_sip_path_relative_to_markdown_dir(self, tmp_path):
+        """Test that SIP resolves paths relative to markdown directory."""
+        # Create subdirectory with markdown file
+        md_dir = tmp_path / "docs"
+        md_dir.mkdir()
+
+        # Create data file in parent directory
+        (tmp_path / "data.txt").write_text("value: 123\n")
+
+        content = """
+<!--SIP
+from: "../data.txt"
+strategy: "first"
+vars:
+  num: 'value:\\s+(\\d+)'
+-->
+"""
+        # Pass markdown_dir to resolve relative paths
+        variables = collect_set_variables(content, markdown_dir=str(md_dir))
+        assert variables["num"] == "123"
+
+    def test_variable_replacement_with_newline(self):
+        """Test that variables are replaced even when followed by newline."""
+        content = """<!--SET
+version: "2.0.0"
+-->
+
+Version: <!--$version-->
+Next line."""
+        variables = collect_set_variables(content)
+        result = replace_variables_in_document(content, variables)
+
+        # The variable should be replaced even though it's followed by a newline
+        assert "2.0.0" in result
+        # Check that the version value appears in the result
+        lines = result.split("\n")
+        version_line = [l for l in lines if "Version:" in l][0]
+        assert "2.0.0" in version_line
+        # The comment is preserved and followed by the value
+        assert "<!--$version-->2.0.0" in result
+
+    def test_variable_replacement_at_end_of_content(self):
+        """Test that variables are replaced even at the end of content."""
+        content = """<!--SET
+author: "John"
+-->
+
+Author: <!--$author-->"""
+        variables = collect_set_variables(content)
+        result = replace_variables_in_document(content, variables)
+
+        # The variable should be replaced even at the end of file
+        assert "John" in result
+        assert result.endswith("John")
 
 
 class TestMermaid:

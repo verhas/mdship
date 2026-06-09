@@ -2,6 +2,21 @@
 checksum: 70c60adc881eabc1887fe7f5513ca4bfa4ecccea94127c7c0f13b3ca1365c5e6
 checksum_algorithm: sha256
 ---
+<!--TOC-->
+- [Using variables in Markdown files](#using-variables-in-markdown-files)
+  - [Variable without space in value](#variable-without-space-in-value)
+  - [Variable with space in value](#variable-with-space-in-value)
+  - [Complex variables](#complex-variables)
+  - [Variables in MERMAID placeholders](#variables-in-mermaid-placeholders)
+  - [Variable sources](#variable-sources)
+    - [Front-matter](#front-matter)
+    - [Variable source placeholders and their processing](#variable-source-placeholders-and-their-processing)
+    - [Set a variable](#set-a-variable)
+    - [Import variables](#import-variables)
+    - [Slurp values](#slurp-values)
+    - [Sipping values](#sipping-values)
+<!--/TOC-->
+
 # Using variables in Markdown files
 
 `mdship` support variables in the markdown text.
@@ -228,6 +243,13 @@ rules:
 Values can also be sipped from files.
 It is similar to slurping, but the name of the variable is defined in the SIP placeholder and they do not come from the file.
 
+<!--SIP
+name: "project"
+from: "../pyproject.toml"
+vars:
+  version: '^\s*version\s+=\s+"(.*)"$'
+-->
+<!--$project.version-->1.0.1
 ```
 <!--SIP
 name: "myVar"

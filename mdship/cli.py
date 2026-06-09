@@ -352,7 +352,7 @@ def update(
 
     # Step 0: Collect variables from SET placeholders (must be first)
     try:
-        variables = collect_set_variables(content)
+        variables = collect_set_variables(content, markdown_dir=str(markdown_dir))
     except ValueError as e:
         err.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)

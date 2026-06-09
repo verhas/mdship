@@ -1711,7 +1711,9 @@ def replace_variables_in_document(content: str, variables: dict, file_path: Opti
                 marker_pattern = r'<!--(\$\{?)([a-zA-Z_][a-zA-Z0-9_\.\[\]]*)(\}?)<([^>]*)>-->(.+?)<!--\4-->'
                 part_content = regex_module.sub(marker_pattern, make_replace_with_marker(part_offset), part_content, flags=regex_module.DOTALL)
 
-                nomarker_pattern = r'<!--(\$\{?)([a-zA-Z_][a-zA-Z0-9_\.\[\]]*)(\}?)-->(\S+)'
+                # Pattern that matches variables with optional placeholder (or none)
+                # Matches: <!--$var-->anything  or  <!--$var--> (nothing after)
+                nomarker_pattern = r'<!--(\$\{?)([a-zA-Z_][a-zA-Z0-9_\.\[\]]*)(\}?)-->([^\n]*?)(?=\n|$)'
                 part_content = regex_module.sub(nomarker_pattern, make_replace_without_marker(part_offset), part_content)
 
             result.append(part_content)
@@ -1721,13 +1723,13 @@ def replace_variables_in_document(content: str, variables: dict, file_path: Opti
         raise
 
 
-def collect_set_variables(content: str) -> dict:
-    """Collect all variables defined by SET placeholders.
+def collect_set_variables(content: str, markdown_dir: Optional[str] = None) -> dict:
+    """Collect all variables defined by SET, IMPORT, SLURP, and SIP placeholders.
 
-    SET placeholders define variables that can be used throughout the document.
-    Multiple SET placeholders are processed in order, and their variables are merged.
+    Variable source placeholders define variables that can be used throughout the document.
+    Multiple placeholders are processed in order, and their variables are merged.
 
-    Configuration in the marker:
+    SET example:
     <!--SET
     variable1: value1
     variable2: value2
@@ -1736,29 +1738,60 @@ def collect_set_variables(content: str) -> dict:
       direction: "north"
     -->
 
+    SLURP example:
+    <!--SLURP
+    name: "myVar"
+    from: "file name or directory name"
+    include: "glob pattern"
+    exclude: "glob pattern"
+    recurse: true
+    strategy: "fail"|"first"|"last"|"concatenate"
+    separator: "separator string in the case strategy is concatenate. default is empty string"
+    rules:
+      - 'regular expression with exactly two gathering groups'
+      - 'other pattern...'
+    -->
+
+    SIP example:
+    <!--SIP
+    name: "myVar"
+    from: "file name or directory name"
+    include: "glob pattern"
+    exclude: "glob pattern"
+    recurse: true
+    strategy: "fail"|"first"|"last"|"concatenate"
+    separator: "separator string in the case strategy is concatenate. default is empty string"
+    vars:
+      variable1: 'regular expression with exactly one gathering groups'
+      variable2: 'other pattern...'
+      ...
+    -->
+
     Variables are made available for use by subsequent placeholders like MERMAID,
     and for variable references like <!--$variable--> in the document.
 
     Args:
         content: Markdown content
+        markdown_dir: Optional directory of the markdown file (for resolving relative paths in SIP/SLURP/IMPORT)
 
     Returns:
-        Dict of all collected variables from all SET placeholders
+        Dict of all collected variables from all SET, IMPORT, SLURP, and SIP placeholders
 
     Raises:
         ValueError: If a variable is redefined or other configuration errors occur
     """
     import re as regex_module
 
-    # Find all SET placeholders - match from <!--SET to the closing -->
-    # The optional closing <!--/SET--> (or custom name) is ignored
-    placeholder_pattern = r'<!--SET(.*?)-->'
-    all_matches = list(regex_module.finditer(placeholder_pattern, content, regex_module.DOTALL))
-
     variables = {}
+
+    # Process variable source placeholders in order they appear
+    # Find all SET, IMPORT, SLURP, SIP placeholders
+    placeholder_pattern = r'<!--(SET|IMPORT|SLURP|SIP)(.*?)-->'
+    all_matches = list(regex_module.finditer(placeholder_pattern, content, regex_module.DOTALL))
 
     for match_idx, match in enumerate(all_matches):
         match_pos = match.start()
+        placeholder_type = match.group(1)
 
         # Skip if in code block
         if _is_in_code_block(content, match_pos):
@@ -1774,7 +1807,7 @@ def collect_set_variables(content: str) -> dict:
         line_num = content[:match_pos].count('\n') + 1
 
         # Extract config text from the captured group
-        config_text = match.group(1).strip() if match.group(1) else ""
+        config_text = match.group(2).strip() if match.group(2) else ""
 
         # Parse YAML config
         config = {}
@@ -1794,17 +1827,31 @@ def collect_set_variables(content: str) -> dict:
                         key, value = line.split(':', 1)
                         config[key.strip()] = value.strip().strip('"\'')
 
-        if yaml_error:
-            raise ValueError(f"Line {line_num}: SET placeholder has YAML parsing error: {yaml_error}")
+        if placeholder_type == "SET":
+            if yaml_error:
+                raise ValueError(f"Line {line_num}: SET placeholder has YAML parsing error: {yaml_error}")
 
-        if not config:
-            raise ValueError(f"Line {line_num}: SET placeholder has no variables defined")
+            if not config:
+                raise ValueError(f"Line {line_num}: SET placeholder has no variables defined")
 
-        # Check for variable redefinition
-        for var_name, var_value in config.items():
-            if var_name in variables:
-                raise ValueError(f"Line {line_num}: Variable '{var_name}' is already defined")
-            variables[var_name] = var_value
+            # Check for variable redefinition
+            for var_name, var_value in config.items():
+                if var_name in variables:
+                    raise ValueError(f"Line {line_num}: Variable '{var_name}' is already defined")
+                variables[var_name] = var_value
+
+        elif placeholder_type == "SIP":
+            try:
+                sip_vars = _collect_sip_variables(config, line_num, markdown_dir=markdown_dir)
+                for var_name, var_value in sip_vars.items():
+                    if var_name in variables:
+                        raise ValueError(f"Line {line_num}: Variable '{var_name}' is already defined")
+                    variables[var_name] = var_value
+            except ValueError as e:
+                # Re-raise with context if not already formatted
+                if "Line " not in str(e):
+                    raise ValueError(f"Line {line_num}: {str(e)}")
+                raise
 
     # Add front-matter variables as $fm
     fm_dict = _extract_front_matter(content)
@@ -1812,6 +1859,174 @@ def collect_set_variables(content: str) -> dict:
         variables['fm'] = fm_dict
 
     return variables
+
+
+def _collect_sip_variables(config: dict, line_num: int, markdown_dir: Optional[str] = None) -> dict:
+    """Collect variables from a SIP placeholder configuration.
+
+    SIP scans files for values matching regular expressions with predefined variable names.
+
+    Args:
+        config: Parsed YAML configuration from SIP placeholder
+        line_num: Line number for error reporting
+        markdown_dir: Directory of the markdown file (for resolving relative paths)
+
+    Returns:
+        Dict of collected variables
+
+    Raises:
+        ValueError: If configuration is invalid or files cannot be read
+    """
+    import glob as glob_module
+    import re as regex_module
+
+    # Validate required fields
+    if 'from' not in config:
+        raise ValueError(f"Line {line_num}: SIP placeholder requires 'from' parameter")
+    if 'vars' not in config:
+        raise ValueError(f"Line {line_num}: SIP placeholder requires 'vars' parameter")
+
+    from_path = config['from']
+    vars_config = config['vars']
+
+    # Ensure vars_config is a dict
+    if not isinstance(vars_config, dict):
+        raise ValueError(f"Line {line_num}: SIP 'vars' must be a dict with variable names as keys")
+
+    # Get optional parameters
+    name = config.get('name')  # Optional namespace for variables
+    include_pattern = config.get('include', '*')
+    exclude_pattern = config.get('exclude')
+    recurse = config.get('recurse', False)
+    strategy = config.get('strategy', 'fail')
+    separator = config.get('separator', '')
+
+    if strategy not in ('fail', 'first', 'last', 'concatenate'):
+        raise ValueError(f"Line {line_num}: SIP strategy must be 'fail', 'first', 'last', or 'concatenate', got '{strategy}'")
+
+    # Resolve from_path relative to markdown directory if it's a relative path
+    if not from_path.startswith('/'):
+        if markdown_dir:
+            from_path = str(Path(markdown_dir) / from_path)
+        # else: use from_path as-is (relative to CWD)
+
+    # Collect files to process
+    files_to_process = _get_files_to_process(from_path, include_pattern, exclude_pattern, recurse)
+
+    if not files_to_process:
+        raise ValueError(f"Line {line_num}: No files found matching criteria in '{from_path}'")
+
+    # Process files and collect variables
+    collected = {}  # Dict of variable_name -> list of values
+
+    for var_name, pattern_str in vars_config.items():
+        collected[var_name] = []
+
+    for filepath in files_to_process:
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.rstrip('\n\r')
+
+                    for var_name, pattern_str in vars_config.items():
+                        try:
+                            pattern = regex_module.compile(pattern_str)
+                            match = pattern.search(line)
+                            if match:
+                                # Pattern must have exactly one capturing group
+                                groups = match.groups()
+                                if len(groups) != 1:
+                                    raise ValueError(
+                                        f"SIP regex for variable '{var_name}' must have exactly 1 capturing group, "
+                                        f"but got {len(groups)}"
+                                    )
+                                value = groups[0]
+                                collected[var_name].append(value)
+                        except regex_module.error as e:
+                            raise ValueError(f"SIP regex pattern for '{var_name}' is invalid: {e}")
+
+        except FileNotFoundError:
+            raise ValueError(f"File not found: {filepath}")
+        except Exception as e:
+            raise ValueError(f"Error reading file {filepath}: {e}")
+
+    # Apply strategy to handle multiple values
+    result = {}
+    for var_name, values in collected.items():
+        if not values:
+            # No matches found for this variable
+            if strategy == 'fail':
+                raise ValueError(f"SIP variable '{var_name}' found no matches in files")
+            # Other strategies: no value for this variable, skip it
+            continue
+
+        if strategy == 'first':
+            result[var_name] = values[0]
+        elif strategy == 'last':
+            result[var_name] = values[-1]
+        elif strategy == 'concatenate':
+            result[var_name] = separator.join(values)
+        else:  # fail
+            if len(values) > 1:
+                raise ValueError(f"SIP variable '{var_name}' matches {len(values)} times (strategy is 'fail')")
+            result[var_name] = values[0]
+
+    # If name is specified, namespace the variables
+    if name:
+        return {name: result}
+    else:
+        return result
+
+
+def _get_files_to_process(from_path: str, include_pattern: str, exclude_pattern: Optional[str], recurse: bool) -> list:
+    """Get list of files to process based on path, include/exclude patterns.
+
+    Args:
+        from_path: File or directory path
+        include_pattern: Glob pattern for files to include
+        exclude_pattern: Glob pattern for files to exclude (optional)
+        recurse: Whether to recurse into subdirectories
+
+    Returns:
+        List of file paths to process, sorted alphabetically (and depth-first for recurse)
+
+    Raises:
+        ValueError: If from_path doesn't exist
+    """
+    import glob as glob_module
+    from pathlib import Path
+
+    from_path_obj = Path(from_path)
+
+    if not from_path_obj.exists():
+        raise ValueError(f"Path not found: {from_path}")
+
+    if from_path_obj.is_file():
+        # Single file
+        return [str(from_path_obj)]
+
+    # Directory
+    files = []
+    if recurse:
+        # Recursive glob
+        pattern = str(from_path_obj / '**' / include_pattern)
+        matches = sorted(glob_module.glob(pattern, recursive=True))
+    else:
+        # Non-recursive glob
+        pattern = str(from_path_obj / include_pattern)
+        matches = sorted(glob_module.glob(pattern))
+
+    # Filter for files only (not directories)
+    for match in matches:
+        match_path = Path(match)
+        if match_path.is_file():
+            # Check exclude pattern
+            if exclude_pattern:
+                if match_path.match(exclude_pattern):
+                    continue
+            files.append(match)
+
+    return sorted(files)
 
 
 def insert_table_of_contents(content: str) -> str:
