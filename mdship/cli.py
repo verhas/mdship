@@ -306,20 +306,55 @@ def unnumber(
 def update(
     file: Annotated[Path, typer.Argument(help="Markdown file to process")],
 ) -> None:
-    """Update markdown placeholders (includes, TOC, diagrams, etc).
+    """Update markdown placeholders (variables, includes, TOC, diagrams, etc).
 
     Processing order:
-    1. <!--SET--> placeholders (collect variables for use in subsequent steps)
-    2. <!--INCLUDE--> placeholders (so included content is available for TOC)
-    3. <!--TOC--> placeholders (can now include headings from included content)
-    4. Other placeholders processed top-to-bottom
+    1. Variable source placeholders (collected in order they appear)
+       - <!--SET--> inline variable definitions with YAML values
+       - <!--IMPORT--> load from JSON/YAML/TOML/XML files
+       - <!--SLURP--> extract variable names and values from files (2 capturing groups)
+       - <!--SIP--> extract predefined variables from files (1 capturing group)
+       - <!--SUP--> extract single value from next document line
+    2. <!--INCLUDE--> placeholders (embed content from other files)
+    3. Variable references (replace $variable in document and included content)
+       - Works in regular text, not in code blocks (between ```)
+       - Included content variables are replaced here
+    4. <!--TOC--> placeholders (generate table of contents)
+       - Can include headings from both original and included content
+    5. Other placeholders processed top-to-bottom
        - <!--MERMAID--> diagrams (with variable substitution)
-       - Future placeholder types
 
-    Configuration is specified inside markers using YAML:
+    Configuration examples:
 
         <!--SET
-        myVar: "value"
+        appName: "MyApp"
+        version: "1.0.0"
+        -->
+
+        <!--IMPORT
+        name: "config"
+        from: "settings.json"
+        -->
+
+        <!--SLURP
+        name: "data"
+        from: "values.txt"
+        strategy: "first"
+        rules:
+          - '(\\w+)=(.+)'
+        -->
+
+        <!--SIP
+        name: "metadata"
+        from: "info.txt"
+        vars:
+          author: 'author:\\s+(.+)'
+          date: 'date:\\s+(.+)'
+        -->
+
+        <!--SUP
+        name: "title"
+        pattern: '^#+\\s+(.*?)\\s*$'
         -->
 
         <!--INCLUDE
@@ -338,7 +373,7 @@ def update(
         theme: "dark"
         diagram: |
           graph TD
-            A[Example]
+            A[Client] --> B[Server]
         -->
     """
     if not file.exists():
@@ -350,36 +385,40 @@ def update(
     content = file.read_text()
     markdown_dir = file.parent
 
-    # Step 0: Collect variables from SET placeholders (must be first)
+    # Step 1: Collect variables from all sources (SET, IMPORT, SLURP, SIP, SUP)
+    # Must be first so variables are available for subsequent steps
     try:
         variables = collect_set_variables(content, markdown_dir=str(markdown_dir))
     except ValueError as e:
         err.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)
 
-    # Step 0.5: Replace variable references in the document
-    try:
-        content = replace_variables_in_document(content, variables, file_path=str(file))
-    except ValueError as e:
-        err.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(1)
-
-    # Step 1: Process all INCLUDE placeholders (they may generate content for TOC)
+    # Step 2: Process INCLUDE placeholders (embed content from other files)
+    # Done before variable replacement so variables can be replaced in included content
     try:
         content = update_includes(content, str(markdown_dir))
     except ValueError as e:
         err.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)
 
-    # Step 2: Process TOC placeholders (can now include headings from included content)
+    # Step 3: Replace variable references ($var, $var.nested, etc.)
+    # Variables are replaced in both original and included content (but not in code blocks)
+    try:
+        content = replace_variables_in_document(content, variables, file_path=str(file))
+    except ValueError as e:
+        err.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1)
+
+    # Step 4: Process TOC placeholders (generate table of contents)
+    # Can include headings from both original document and included content
     try:
         content = insert_table_of_contents(content)
     except ValueError:
         # No TOC placeholder found, which is fine - just skip
         pass
 
-    # Step 3: Process remaining placeholders (MERMAID and others)
-    # This allows variables to be used by subsequent placeholders
+    # Step 5: Process remaining placeholders (MERMAID diagrams, etc.)
+    # Diagrams can use variables defined in earlier steps
     try:
         content = update_mermaid(content, str(markdown_dir), variables=variables)
     except ValueError as e:

@@ -1034,6 +1034,168 @@ Title: <!--$doc_title<>-->placeholder<!---->
         result = replace_variables_in_document(content, variables)
         assert "My Document" in result
 
+    def test_collect_slurp_basic(self, tmp_path):
+        """Test basic SLURP functionality with two capturing groups."""
+        data_file = tmp_path / "config.txt"
+        data_file.write_text("key1=value1\nkey2=value2\nkey3=value3\n")
+
+        content = f"""
+<!--SLURP
+from: "{data_file}"
+strategy: "first"
+rules:
+  - '(\\w+)=(\\w+)'
+-->
+"""
+        variables = collect_set_variables(content)
+        assert variables["key1"] == "value1"
+        assert variables["key2"] == "value2"
+        assert variables["key3"] == "value3"
+
+    def test_collect_slurp_with_namespace(self, tmp_path):
+        """Test SLURP with hierarchical names."""
+        data_file = tmp_path / "settings.txt"
+        data_file.write_text("timeout=30\nmax_retries=5\n")
+
+        content = f"""
+<!--SLURP
+name: "app.config"
+from: "{data_file}"
+strategy: "first"
+rules:
+  - '(\\w+)=(\\d+)'
+-->
+"""
+        variables = collect_set_variables(content)
+        assert variables["app"]["config"]["timeout"] == "30"
+        assert variables["app"]["config"]["max_retries"] == "5"
+
+    def test_collect_slurp_multiple_files(self, tmp_path):
+        """Test SLURP with multiple files."""
+        (tmp_path / "file1.txt").write_text("var1=a\n")
+        (tmp_path / "file2.txt").write_text("var1=b\n")
+
+        content = f"""
+<!--SLURP
+from: "{tmp_path}"
+include: "file*.txt"
+strategy: "concatenate"
+separator: ","
+rules:
+  - '(\\w+)=(\\w+)'
+-->
+"""
+        variables = collect_set_variables(content)
+        assert variables["var1"] == "a,b"
+
+    def test_collect_slurp_named_groups(self, tmp_path):
+        """Test SLURP with named capturing groups for value-name order."""
+        data_file = tmp_path / "reversed.txt"
+        # Value comes before name
+        data_file.write_text("valueX name_x\nvalueY name_y\n")
+
+        content = f"""
+<!--SLURP
+from: "{data_file}"
+strategy: "first"
+rules:
+  - '(?P<val>\\w+)\\s+(?P<var>\\w+)'
+-->
+"""
+        variables = collect_set_variables(content)
+        assert variables["name_x"] == "valueX"
+        assert variables["name_y"] == "valueY"
+
+    def test_collect_slurp_strategy_last(self, tmp_path):
+        """Test SLURP with 'last' strategy."""
+        data_file = tmp_path / "data.txt"
+        data_file.write_text("key=first\nkey=middle\nkey=last\n")
+
+        content = f"""
+<!--SLURP
+from: "{data_file}"
+strategy: "last"
+rules:
+  - '(\\w+)=(\\w+)'
+-->
+"""
+        variables = collect_set_variables(content)
+        assert variables["key"] == "last"
+
+    def test_collect_slurp_directory_recurse(self, tmp_path):
+        """Test SLURP with directory recursion."""
+        (tmp_path / "subdir").mkdir()
+        (tmp_path / "config1.txt").write_text("app=v1\n")
+        (tmp_path / "subdir" / "config2.txt").write_text("app=v2\n")
+
+        content = f"""
+<!--SLURP
+from: "{tmp_path}"
+include: "*.txt"
+recurse: true
+strategy: "concatenate"
+separator: "|"
+rules:
+  - '(\\w+)=(\\w+)'
+-->
+"""
+        variables = collect_set_variables(content)
+        assert variables["app"] == "v1|v2"
+
+    def test_collect_slurp_error_missing_from(self):
+        """Test SLURP raises error when 'from' is missing."""
+        content = """
+<!--SLURP
+rules:
+  - '(\\w+)=(\\w+)'
+-->
+"""
+        with pytest.raises(ValueError, match="requires 'from'"):
+            collect_set_variables(content)
+
+    def test_collect_slurp_error_missing_rules(self, tmp_path):
+        """Test SLURP raises error when 'rules' is missing."""
+        data_file = tmp_path / "data.txt"
+        data_file.write_text("key=value\n")
+
+        content = f"""
+<!--SLURP
+from: "{data_file}"
+-->
+"""
+        with pytest.raises(ValueError, match="requires 'rules'"):
+            collect_set_variables(content)
+
+    def test_collect_slurp_error_wrong_group_count(self, tmp_path):
+        """Test SLURP raises error for regex with wrong number of groups."""
+        data_file = tmp_path / "data.txt"
+        data_file.write_text("abc\n")
+
+        content = f"""
+<!--SLURP
+from: "{data_file}"
+rules:
+  - '(a)(b)(c)'
+-->
+"""
+        with pytest.raises(ValueError, match="must have exactly 2 capturing groups"):
+            collect_set_variables(content)
+
+    def test_collect_slurp_error_invalid_regex(self, tmp_path):
+        """Test SLURP raises error for invalid regex pattern."""
+        data_file = tmp_path / "data.txt"
+        data_file.write_text("test\n")
+
+        content = f"""
+<!--SLURP
+from: "{data_file}"
+rules:
+  - '[invalid('
+-->
+"""
+        with pytest.raises(ValueError, match="rule is invalid"):
+            collect_set_variables(content)
+
 
 class TestMermaid:
     def test_basic_svg_rendering(self, tmp_path):

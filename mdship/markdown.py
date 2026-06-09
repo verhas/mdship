@@ -1744,7 +1744,7 @@ def replace_variables_in_document(content: str, variables: dict, file_path: Opti
 
 
 def collect_set_variables(content: str, markdown_dir: Optional[str] = None) -> dict:
-    """Collect all variables defined by SET, IMPORT, SLURP, and SIP placeholders.
+    """Collect all variables defined by SET, IMPORT, SLURP, SUP, and SIP placeholders.
 
     Variable source placeholders define variables that can be used throughout the document.
     Multiple placeholders are processed in order, and their variables are merged.
@@ -1874,6 +1874,16 @@ def collect_set_variables(content: str, markdown_dir: Optional[str] = None) -> d
             try:
                 sip_vars = _collect_sip_variables(config, line_num, markdown_dir=markdown_dir)
                 variables = _merge_variables(variables, sip_vars, line_num)
+            except ValueError as e:
+                # Re-raise with context if not already formatted
+                if "Line " not in str(e):
+                    raise ValueError(f"Line {line_num}: {str(e)}")
+                raise
+
+        elif placeholder_type == "SLURP":
+            try:
+                slurp_vars = _collect_slurp_variables(config, line_num, markdown_dir=markdown_dir)
+                variables = _merge_variables(variables, slurp_vars, line_num)
             except ValueError as e:
                 # Re-raise with context if not already formatted
                 if "Line " not in str(e):
@@ -2187,6 +2197,140 @@ def _xml_to_dict(element) -> dict:
             return text
 
     return result if result else None
+
+
+def _collect_slurp_variables(config: dict, line_num: int, markdown_dir: Optional[str] = None) -> dict:
+    """Collect variables from a SLURP placeholder configuration.
+
+    SLURP scans files for patterns where the variable name and value are both
+    extracted from the file content using regex patterns with 2 capturing groups.
+
+    Args:
+        config: Parsed YAML configuration from SLURP placeholder
+        line_num: Line number for error reporting
+        markdown_dir: Directory of the markdown file (for resolving relative paths)
+
+    Returns:
+        Dict of collected variables
+
+    Raises:
+        ValueError: If configuration is invalid or files cannot be read
+    """
+    import glob as glob_module
+    import re as regex_module
+
+    # Validate required fields
+    if 'from' not in config:
+        raise ValueError(f"Line {line_num}: SLURP placeholder requires 'from' parameter")
+    if 'rules' not in config:
+        raise ValueError(f"Line {line_num}: SLURP placeholder requires 'rules' parameter")
+
+    from_path = config['from']
+    rules_config = config['rules']
+
+    # Ensure rules_config is a list
+    if not isinstance(rules_config, list):
+        raise ValueError(f"Line {line_num}: SLURP 'rules' must be a list of regex patterns")
+
+    # Get optional parameters
+    name = config.get('name')  # Optional namespace for variables
+    include_pattern = config.get('include', '*')
+    exclude_pattern = config.get('exclude')
+    recurse = config.get('recurse', False)
+    strategy = config.get('strategy', 'fail')
+    separator = config.get('separator', '')
+
+    if strategy not in ('fail', 'first', 'last', 'concatenate'):
+        raise ValueError(f"Line {line_num}: SLURP strategy must be 'fail', 'first', 'last', or 'concatenate', got '{strategy}'")
+
+    # Resolve path relative to markdown directory
+    if not from_path.startswith('/'):
+        if markdown_dir:
+            from_path = str(Path(markdown_dir) / from_path)
+
+    # Collect files to process
+    files_to_process = _get_files_to_process(from_path, include_pattern, exclude_pattern, recurse)
+
+    if not files_to_process:
+        raise ValueError(f"Line {line_num}: No files found matching criteria in '{from_path}'")
+
+    # Process files and collect variables
+    collected = {}  # Dict of variable_name -> list of values
+
+    for filepath in files_to_process:
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.rstrip('\n\r')
+
+                    for rule_str in rules_config:
+                        try:
+                            pattern = regex_module.compile(rule_str)
+                            match = pattern.search(line)
+                            if match:
+                                groups = match.groups()
+                                # Pattern must have exactly two capturing groups
+                                if len(groups) != 2:
+                                    raise ValueError(
+                                        f"SLURP rule must have exactly 2 capturing groups, "
+                                        f"but got {len(groups)}"
+                                    )
+
+                                # Check if we have named groups (var and val)
+                                groupdict = match.groupdict()
+                                if 'var' in groupdict and 'val' in groupdict:
+                                    # Named groups: use them in any order
+                                    var_name = groupdict['var']
+                                    var_value = groupdict['val']
+                                else:
+                                    # Positional groups: first is name, second is value
+                                    var_name = groups[0]
+                                    var_value = groups[1]
+
+                                # Store the value
+                                if var_name not in collected:
+                                    collected[var_name] = []
+                                collected[var_name].append(var_value)
+                        except regex_module.error as e:
+                            raise ValueError(f"SLURP rule is invalid: {e}")
+
+        except FileNotFoundError:
+            raise ValueError(f"File not found: {filepath}")
+        except Exception as e:
+            raise ValueError(f"Error reading file {filepath}: {e}")
+
+    # Apply strategy to handle multiple values and build result
+    result = {}
+    for var_name, values in collected.items():
+        if not values:
+            # No matches found for this variable
+            if strategy == 'fail':
+                raise ValueError(f"SLURP variable '{var_name}' found no matches in files")
+            # Other strategies: no value for this variable, skip it
+            continue
+
+        if strategy == 'first':
+            value = values[0]
+        elif strategy == 'last':
+            value = values[-1]
+        elif strategy == 'concatenate':
+            value = separator.join(values)
+        else:  # fail
+            if len(values) > 1:
+                raise ValueError(f"SLURP variable '{var_name}' matches {len(values)} times (strategy is 'fail')")
+            value = values[0]
+
+        # If name is specified, set under hierarchical path
+        if name:
+            full_path = f"{name}.{var_name}"
+            try:
+                _set_nested_value(result, full_path, value)
+            except ValueError as e:
+                raise ValueError(f"SLURP variable error: {e}")
+        else:
+            result[var_name] = value
+
+    return result
 
 
 def _collect_sup_variables(config: dict, content: str, match_obj, line_num: int) -> dict:

@@ -137,29 +137,72 @@ Inserts or replaces a table of contents between `<!--TOC-->` and `<!--/TOC-->` m
 
 **Status**: Full implementation with anchor generation
 
-### `collect_set_variables(content: str) -> dict`
+### `collect_set_variables(content: str, markdown_dir: Optional[str]) -> dict`
 
-Collects all variables defined by SET placeholders in a document.
+Collects variables from all variable source placeholders in a document: SET, IMPORT, SLURP, SIP, and SUP.
 
-SET placeholders allow defining variables with simple values or complex YAML structures:
+**Variable sources:**
 
-```
-<!--SET
-appName: "MyApp"
-version: "1.0.0"
-config:
-  theme: "dark"
-  maxItems: 100
--->
-```
+1. **SET**: Define variables with YAML values
+   ```
+   <!--SET
+   appName: "MyApp"
+   version: "1.0.0"
+   config:
+     theme: "dark"
+     maxItems: 100
+   -->
+   ```
 
-These variables can then be referenced in MERMAID diagrams and other placeholders using:
+2. **IMPORT**: Load data from JSON/YAML/TOML/XML files
+   ```
+   <!--IMPORT
+   name: "config"
+   from: "settings.json"
+   -->
+   ```
+
+3. **SLURP**: Extract variable names and values from files using regex (2 groups)
+   ```
+   <!--SLURP
+   name: "settings"
+   from: "data.txt"
+   strategy: "first"
+   rules:
+     - '(\w+)=(.+)'
+   -->
+   ```
+
+4. **SIP**: Extract predefined variables from files using regex (1 group)
+   ```
+   <!--SIP
+   name: "app"
+   from: "config.txt"
+   vars:
+     version: 'version:\s+([0-9.]+)'
+     author: 'author:\s+(\w+)'
+   -->
+   ```
+
+5. **SUP**: Extract a single value from the next line
+   ```
+   <!--SUP
+   name: "title"
+   pattern: '^#+\s+(.*?)\s*$'
+   -->
+   # Document Title
+   ```
+
+**Hierarchical names**: All placeholders support dot-notation for nested variable names:
+- `name: "app.database.host"` creates `{app: {database: {host: value}}}`
+
+Variables can be referenced using:
 - `$variableName` for simple references
 - `$structure.field` for nested access
 - `$array[0]` for array indexing
 - `${variable}` for bracketed syntax
 
-**Status**: Full implementation with YAML parsing and variable substitution
+**Status**: Full implementation with all 5 variable sources, hierarchical names, and YAML parsing
 
 ---
 
@@ -167,15 +210,28 @@ These variables can then be referenced in MERMAID diagrams and other placeholder
 
 The `mdship update` command processes placeholders in a specific order to ensure variables are available when needed:
 
-1. **SET placeholders** (must be first) - Define variables for use in subsequent placeholders
-2. **Variable replacement** - Replace variable references in the document (e.g., `<!--$variable-->`)
-3. **INCLUDE placeholders** - Insert content from external files
-4. **TOC placeholders** - Generate table of contents
+1. **Variable source placeholders** (collected in order they appear) - Define variables for use in subsequent placeholders
+   - SET: Define inline with YAML values
+   - IMPORT: Load from JSON/YAML/TOML/XML files
+   - SLURP: Extract names and values from files
+   - SIP: Extract predefined variables from files
+   - SUP: Extract from next document line
+
+2. **INCLUDE placeholders** - Insert content from external files
+   - Done before variable replacement so variables can be substituted in included content
+
+3. **Variable replacement** - Replace variable references in the document and included content (e.g., `<​!--$variable-->`)
+   - Variables are NOT replaced inside code blocks (between ``` markers)
+   - Safe for including code with `$var` notation
+
+4. **TOC placeholders** - Generate table of contents from headings
+   - Can include headings from both original and included content
+
 5. **MERMAID placeholders** - Render diagrams with variable substitution
 
 All placeholder types are self-contained: they may be followed by a closing `<!--/NAME-->` marker, but it's optional and ignored.
 
-**Variable availability**: Variables defined by SET placeholders are available throughout the document, even before their definition point. This allows using constants defined at the end of the document.
+**Variable availability**: Variables from all sources are available throughout the document, even before their definition point. This allows using constants defined at the end of the document.
 
 ### Variable References in Markdown
 
@@ -200,8 +256,8 @@ Example with empty marker:
 ```
 
 Variables support nested access and array indexing:
-- `<!--$config.language-->Python` or `<!--${config.language}-->Python`
-- `<!--$items[0]<>-->first item<!---->` or `<!--${items[0]}<>-->first item<!---->`
+- `<​!--$config.language-->Python` or `<​!--${config.language}-->Python`
+- `<​!--$items[0]<>-->first item<!---->` or `<​!--${items[0]}<>-->first item<!---->`
 
 **Note:** Variables in MERMAID diagram source are NOT replaced in the document itself. They are only substituted when the diagram is rendered.
 
@@ -232,7 +288,7 @@ mdship unnumber file.md                                    # Remove numbering
 mdship toc file.md                                         # Generate TOC between <!--TOC--> markers
 mdship toc file.md --max-level 2                           # Include only h1-h2
 mdship toc file.md --min-level 2                           # Start from h2
-mdship update file.md                                      # Update all placeholders (SET, INCLUDE, TOC, MERMAID)
+mdship update file.md                                      # Update all placeholders (SET, IMPORT, SLURP, SIP, SUP, INCLUDE, TOC, MERMAID)
 mdship mcp                                                 # Start MCP server on stdio
 
 # With --no-bak flag (prevents backup creation)
@@ -280,10 +336,20 @@ Configure in Claude's MCP settings:
 - Code blocks, headings, lists, and other block structures are preserved unchanged
 - Tests use `pytest`; use `pytest -v` for detailed output
 
-### Next Steps
+### Recent Implementations
 
-1. Enhance `fix_heading_levels` to properly normalize hierarchies
-2. Add support for different markdown flavors (GFM, CommonMark, etc.)
-3. Add recursive directory processing option
-4. Add dry-run mode to preview changes
-5. Improve inline formatting preservation during reflow
+1. ✅ **IMPORT placeholder** - Load data from JSON/YAML/TOML/XML files
+2. ✅ **SIP placeholder** - Extract predefined variables from files with simple patterns
+3. ✅ **SUP placeholder** - Extract values from document lines
+4. ✅ **SLURP placeholder** - Extract variable names and values from files
+5. ✅ **Hierarchical names** - Support dot-notation variable names (config.database.host)
+6. ✅ **Path resolution** - Resolve file paths relative to markdown directory
+7. ✅ **Variable replacement** - Fixed to handle newline-terminated placeholders
+
+### Future Enhancements
+
+1. Add support for different markdown flavors (GFM, CommonMark, etc.)
+2. Add recursive directory processing option
+3. Add dry-run mode to preview changes
+4. Improve inline formatting preservation during reflow
+5. Add more file format support (CSV, TSL, etc.)

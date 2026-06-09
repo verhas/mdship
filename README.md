@@ -13,16 +13,20 @@ A command-line and MCP tool for manipulating markdown files.
     - [1.3.4. Semantic Line Breaks](#134-semantic-line-breaks)
     - [1.3.5. Number Headings](#135-number-headings)
     - [1.3.6. Variables](#136-variables)
+      - [1.3.6.1. IMPORT: Load from External Files](#1361-import-load-from-external-files)
+      - [1.3.6.2. SLURP: Extract Names and Values from Files](#1362-slurp-extract-names-and-values-from-files)
+      - [1.3.6.3. SIP: Extract Predefined Variables from Files](#1363-sip-extract-predefined-variables-from-files)
+      - [1.3.6.4. SUP: Extract from Document Lines](#1364-sup-extract-from-document-lines)
     - [1.3.7. Placeholder Processing Order](#137-placeholder-processing-order)
-    - [1.3.7. Table of Contents](#137-table-of-contents)
-    - [1.3.8. Including Files](#138-including-files)
-    - [1.3.9. Rendering Mermaid Diagrams](#139-rendering-mermaid-diagrams)
-    - [1.3.10. Checksums](#1310-checksums)
-    - [1.3.11. Skipping Backups](#1311-skipping-backups)
-    - [1.3.12. MCP Server](#1312-mcp-server)
+    - [1.3.8. Table of Contents](#138-table-of-contents)
+    - [1.3.9. Including Files](#139-including-files)
+    - [1.3.10. Rendering Mermaid Diagrams](#1310-rendering-mermaid-diagrams)
+    - [1.3.11. Checksums](#1311-checksums)
+    - [1.3.12. Skipping Backups](#1312-skipping-backups)
+    - [1.3.13. MCP Server](#1313-mcp-server)
   - [1.4. Design](#14-design)
-    - [Dependencies](#dependencies)
-    - [Development Dependencies](#development-dependencies)
+    - [1.4.1. Dependencies](#141-dependencies)
+    - [1.4.2. Development Dependencies](#142-development-dependencies)
   - [1.5. Development](#15-development)
 <!--/TIC-->
 
@@ -36,7 +40,13 @@ A command-line and MCP tool for manipulating markdown files.
 - **Semantic line breaks**: Break lines at sentence/clause boundaries for better readability and diffs
 - **Number headings**: Add hierarchical numbering to headings (1. 1.1. 1.1.1.)
 - **Remove numbering**: Strip numbering from headings
-- **Variables**: Define and use variables throughout your document with SET placeholders
+- **Variables**: Define and use variables throughout your document with hierarchical support
+  - **SET**: Define variables with scalar or YAML values
+  - **IMPORT**: Load data from JSON, YAML, TOML, or XML files
+  - **SLURP**: Extract variable names and values from files using regex patterns
+  - **SIP**: Extract predefined variables from files with simpler patterns
+  - **SUP**: Extract a single value from the next line in the document
+- **Hierarchical names**: Support dot-notation variable naming (e.g., `config.database.host`)
 - **Table of contents**: Generate and insert a TOC with anchor links between markers
 - **Include files**: Embed code snippets and content from other files with flexible line selection
 - **Render Mermaid diagrams**: Generate SVG/PNG diagrams from Mermaid source code with variable substitution
@@ -52,18 +62,18 @@ uv run pip install -e .
 
 ### 1.3.1. Command Line
 
-Most commands modify the file in place and create a backup with a `.md.bak` extension:
+Most commands modify the file in place and create a backup with a `.md.bak` extension (use `--no-bak` to skip):
 
 ```bash
-mdship fix-headings file.md              # Creates file.md.bak
-mdship shift-headings file.md --levels 1 # Validates shift is safe, errors if invalid
+mdship fix-headings file.md              # Fix heading hierarchy
+mdship shift-headings file.md --levels 1 # Shift all headings down 1 level
 mdship sum file.md --algorithm sha256    # Add or update checksum
 mdship verify file.md                    # Verify checksum
-mdship reflow file.md --width 80
-mdship semantic-line-breaks file.md      # One sentence per line
-mdship number file.md                    # Add hierarchical numbering
-mdship unnumber file.md                  # Remove numbering
-mdship update file.md                    # Update placeholders (TOC, INCLUDE, MERMAID)
+mdship reflow file.md --width 80         # Reflow paragraphs to 80 characters
+mdship semantic-line-breaks file.md      # Break lines at sentence boundaries
+mdship number file.md                    # Add hierarchical numbering to headings
+mdship unnumber file.md                  # Remove numbering from headings
+mdship update file.md                    # Update all placeholders (variables, includes, TOC, diagrams)
 ```
 
 ### 1.3.2. Shift Validation
@@ -136,7 +146,7 @@ mdship unnumber file.md --lines 10:50  # Only lines 10-50
 
 ### 1.3.6. Variables
 
-Define and use variables throughout your document. Variables are defined using SET placeholders and can be referenced in two ways:
+Define and use variables throughout your document. Variables can come from multiple sources: SET placeholders (inline definitions), IMPORT (load from files), SLURP (extract names and values from files), SIP (extract predefined variable names), and SUP (extract from document lines). All variables support hierarchical names using dot notation.
 
 **Define variables with SET placeholder:**
 
@@ -191,35 +201,174 @@ Author: <!--$config.authors[0]<>-->Alice<!---->
 - Backtick-wrapped values are preserved: `` `value` `` becomes `` `newValue` ``
 - Error messages include file path and line number for easy debugging
 
+**Hierarchical variable names:**
+
+Variables support hierarchical naming using dot notation. Intermediate dictionaries are created automatically:
+
+```markdown
+<!--IMPORT
+name: "app.database.config"
+from: "settings.json"
+-->
+
+Host: <!--$app.database.config.host-->localhost<!---->
+Port: <!--$app.database.config.port-->5432<!---->
+```
+
+**Variable sources:**
+
+Variables can come from multiple sources, all processed together:
+
+- **SET**: Define inline with YAML values
+- **IMPORT**: Load complete data structures from JSON/YAML/TOML/XML files
+- **SLURP**: Extract variable names and values from files using regex patterns
+- **SIP**: Extract values using predefined variable names and regex patterns
+- **SUP**: Extract a single value from the next line in the document
+
+#### 1.3.6.1. IMPORT: Load from External Files
+
+Import complete data structures from JSON, YAML, TOML, or XML files:
+
+```markdown
+<!--IMPORT
+name: "config"
+from: "settings.json"
+-->
+
+Database: <!--$config.database.host-->unknown<!---->
+Port: <!--$config.database.port-->0<!---->
+```
+
+**Configuration:**
+
+- `name`: Variable name to store data under (required, supports hierarchical names like `app.db`)
+- `from`: File path relative to the markdown file (required)
+- `format`: File format (`json`, `yaml`, `toml`, `xml`). Auto-detected from extension if omitted
+
+**Supported formats:**
+- `.json`: JSON objects and arrays
+- `.yaml` / `.yml`: YAML structures
+- `.toml`: TOML configuration
+- `.xml`: XML with attribute support (use `@attribute` for attributes)
+
+#### 1.3.6.2. SLURP: Extract Names and Values from Files
+
+Extract both variable names and values from files using regex patterns with 2 capturing groups:
+
+```markdown
+<!--SLURP
+name: "config"
+from: "settings.txt"
+strategy: "first"
+rules:
+  - '(\w+)=(.+)'
+-->
+
+Host: <!--$config.host-->unknown<!---->
+Port: <!--$config.port-->0<!---->
+```
+
+**Configuration:**
+
+- `from`: File or directory path (required)
+- `rules`: List of regex patterns with exactly 2 capturing groups (required)
+  - First group = variable name
+  - Second group = variable value
+  - Supports named groups: `(?P<var>...)` and `(?P<val>...)` for value-name ordering
+- `name`: Optional namespace for variables (supports hierarchical names)
+- `include` / `exclude`: Glob patterns (directory only)
+- `recurse`: Recurse subdirectories (default: false)
+- `strategy`: Handle multiple matches: `fail`, `first`, `last`, `concatenate` (default: `fail`)
+- `separator`: String separator for concatenate strategy (default: empty)
+
+#### 1.3.6.3. SIP: Extract Predefined Variables from Files
+
+Extract values for predefined variables using regex patterns with 1 capturing group:
+
+```markdown
+<!--SIP
+name: "app"
+from: "config.txt"
+vars:
+  version: 'version:\s+([0-9.]+)'
+  author: 'author:\s+(\w+)'
+-->
+
+Version: <!--$app.version-->0.0.0<!---->
+Author: <!--$app.author-->unknown<!---->
+```
+
+**Configuration:**
+
+- `from`: File or directory path (required)
+- `vars`: Dictionary of variable names and regex patterns (required)
+  - Patterns must have exactly 1 capturing group (the value)
+- `name`: Optional namespace for variables (supports hierarchical names)
+- `include` / `exclude`: Glob patterns (directory only)
+- `recurse`: Recurse subdirectories (default: false)
+- `strategy`: Handle multiple matches: `fail`, `first`, `last`, `concatenate` (default: `fail`)
+- `separator`: String separator for concatenate strategy (default: empty)
+
+#### 1.3.6.4. SUP: Extract from Document Lines
+
+Extract a single value from the next non-empty line in the document:
+
+```markdown
+<!--SUP
+name: "doc.title"
+pattern: '^#+\s+(.*?)\s*$'
+-->
+# My Document Title
+
+Title: <!--$doc.title-->placeholder<!---->
+```
+
+**Configuration:**
+
+- `name`: Variable name (required, supports hierarchical names)
+- `pattern`: Regex pattern with exactly 1 capturing group (required)
+
+The pattern is matched against the first non-empty line following the placeholder, and the captured value is stored.
+
 ### 1.3.7. Placeholder Processing Order
 
 The `update` command processes placeholders in a specific order to enable powerful workflows:
 
-1. **<!--SET-->** placeholders first
-   - Collects all variables from the document
-   - Variables become available to all subsequent placeholders
+1. **Variable source placeholders** (collected in order they appear)
+   - **<!--SET-->**: Define variables with scalar or YAML values
+   - **<!--IMPORT-->**: Load data from JSON, YAML, TOML, or XML files
+   - **<!--SLURP-->**: Extract variable names and values from files using regex (2 capturing groups)
+   - **<!--SIP-->**: Extract predefined variables from files using regex (1 capturing group)
+   - **<!--SUP-->**: Extract a single value from the next line in the document
+   - All variables become available to subsequent placeholders
    - Front-matter YAML is automatically available as `$fm`
-2. **Variable references** 
-   - Replaces `<!​--$variable-->value` and `<!​--$variable<MARKER>-->value<!--MARKER-->` in the document
-   - Variables from SET placeholders are substituted
-3. **<!--INCLUDE-->** placeholders
+
+2. **<!--INCLUDE-->** placeholders
    - Embeds content from other files
-   - Included content becomes available for TOC generation
+   - Done before variable replacement so variables can be substituted in included content too
+
+3. **Variable references**
+   - Replaces `<​!--$variable-->value` and `<​!--$variable<MARKER>-->value<!--MARKER-->` in the document
+   - Variables are substituted in both original and included content
+   - Variables are NOT replaced inside code blocks (between ``` markers) — they are safe for code that uses `$var` notation
+   - Front-matter YAML is automatically available as `$fm`
+
 4. **<!--TOC-->** placeholders
    - Generates table of contents from headings
-   - Can now include headings from included content
+   - Can include headings from both original document and included content
+
 5. **Other placeholders (top-to-bottom)**
    - <!--MERMAID--> diagrams with variable substitution
-   - Additional placeholder types as they are implemented
    - Processed in document order
 
 This order allows:
-- Variables to be available to all placeholders that need them
-- INCLUDE to provide content for TOC
-- Subsequent placeholders to process in document order
-- Future placeholders to integrate seamlessly with the processing pipeline
+- Variables to be defined early and used everywhere in the document
+- INCLUDE content to be embedded before variables are replaced (so included content benefits from variable substitution)
+- TOC to include headings from included files
+- Subsequent placeholders to use variables defined anywhere in the document
+- Safe inclusion of code with `$var` notation since code blocks are skipped
 
-### 1.3.7. Table of Contents
+### 1.3.8. Table of Contents
 
 Generate and insert a table of contents between `<!--TOC-->` markers. Configuration is specified inside the marker using YAML. Also adds anchor links to headings:
 
@@ -300,7 +449,7 @@ max-level: 3
 ### Configuration
 ```
 
-### 1.3.8. Including Files
+### 1.3.9. Including Files
 
 Include content from other files between `<​!--INCLUDE-->` markers. Useful for embedding code examples, documentation snippets, or keeping content synchronized:
 
@@ -439,7 +588,7 @@ After running `mdship update`, the file contains:
 [included code from lines 5-7 of hello.py]
 ```
 
-### 1.3.9. Rendering Mermaid Diagrams
+### 1.3.10. Rendering Mermaid Diagrams
 
 Generate Mermaid diagrams and embed them as images between `<!--MERMAID-->` markers. Diagrams are rendered to SVG or PNG files:
 
@@ -551,7 +700,7 @@ Supported themes are `default`, `forest`, `dark`, and `neutral`. The theme affec
 
 **Note:** PNG rendering requires the `cairosvg` library. SVG rendering works out of the box.
 
-### 1.3.10. Checksums
+### 1.3.11. Checksums
 
 Use `sum` to add or update checksums, and `verify` to check them:
 
@@ -578,7 +727,7 @@ else
 fi
 ```
 
-### 1.3.11. Skipping Backups
+### 1.3.12. Skipping Backups
 
 To skip backup creation, use the `--no-bak` option:
 
@@ -589,7 +738,7 @@ mdship --no-bak shift-headings file.md --levels 1
 
 The `--no-bak` option can be used with any modifying command.
 
-### 1.3.12. MCP Server
+### 1.3.13. MCP Server
 
 Configure in your Claude settings:
 
@@ -615,7 +764,7 @@ Then use the available tools in Claude with markdown content.
 - Proper handling of inline formatting (bold, italic, links, etc.)
 - Reliable reflow operations that respect markdown semantics
 
-### Dependencies
+### 1.4.1. Dependencies
 
 Production dependencies used by mdship:
 
@@ -628,7 +777,7 @@ Production dependencies used by mdship:
 | pyyaml | >=6 | MIT | YAML parser and emitter for configuration |
 | merm | >=0.1 | WTFPL | Mermaid diagram rendering to SVG/PNG |
 
-### Development Dependencies
+### 1.4.2. Development Dependencies
 
 Testing and code quality tools (not included in distribution):
 
