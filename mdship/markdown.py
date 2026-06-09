@@ -10,6 +10,26 @@ try:
 except ImportError:
     yaml = None
 
+try:
+    import json
+except ImportError:
+    json = None
+
+try:
+    import tomllib
+except ImportError:
+    tomllib = None
+
+try:
+    import toml
+except ImportError:
+    toml = None
+
+try:
+    import xml.etree.ElementTree as ET
+except ImportError:
+    ET = None
+
 
 def _is_in_code_block(content: str, position: int) -> bool:
     """Check if a position in content is inside a code block (between ``` markers)."""
@@ -1785,8 +1805,8 @@ def collect_set_variables(content: str, markdown_dir: Optional[str] = None) -> d
     variables = {}
 
     # Process variable source placeholders in order they appear
-    # Find all SET, IMPORT, SLURP, SIP placeholders
-    placeholder_pattern = r'<!--(SET|IMPORT|SLURP|SIP)(.*?)-->'
+    # Find all SET, IMPORT, SLURP, SIP, SUP placeholders
+    placeholder_pattern = r'<!--(SET|IMPORT|SLURP|SIP|SUP)(.*?)-->'
     all_matches = list(regex_module.finditer(placeholder_pattern, content, regex_module.DOTALL))
 
     for match_idx, match in enumerate(all_matches):
@@ -1840,13 +1860,30 @@ def collect_set_variables(content: str, markdown_dir: Optional[str] = None) -> d
                     raise ValueError(f"Line {line_num}: Variable '{var_name}' is already defined")
                 variables[var_name] = var_value
 
+        elif placeholder_type == "IMPORT":
+            try:
+                import_vars = _collect_import_variables(config, line_num, markdown_dir=markdown_dir)
+                variables = _merge_variables(variables, import_vars, line_num)
+            except ValueError as e:
+                # Re-raise with context if not already formatted
+                if "Line " not in str(e):
+                    raise ValueError(f"Line {line_num}: {str(e)}")
+                raise
+
         elif placeholder_type == "SIP":
             try:
                 sip_vars = _collect_sip_variables(config, line_num, markdown_dir=markdown_dir)
-                for var_name, var_value in sip_vars.items():
-                    if var_name in variables:
-                        raise ValueError(f"Line {line_num}: Variable '{var_name}' is already defined")
-                    variables[var_name] = var_value
+                variables = _merge_variables(variables, sip_vars, line_num)
+            except ValueError as e:
+                # Re-raise with context if not already formatted
+                if "Line " not in str(e):
+                    raise ValueError(f"Line {line_num}: {str(e)}")
+                raise
+
+        elif placeholder_type == "SUP":
+            try:
+                sup_vars = _collect_sup_variables(config, content, match, line_num)
+                variables = _merge_variables(variables, sup_vars, line_num)
             except ValueError as e:
                 # Re-raise with context if not already formatted
                 if "Line " not in str(e):
@@ -1950,7 +1987,7 @@ def _collect_sip_variables(config: dict, line_num: int, markdown_dir: Optional[s
         except Exception as e:
             raise ValueError(f"Error reading file {filepath}: {e}")
 
-    # Apply strategy to handle multiple values
+    # Apply strategy to handle multiple values and build result
     result = {}
     for var_name, values in collected.items():
         if not values:
@@ -1961,21 +1998,286 @@ def _collect_sip_variables(config: dict, line_num: int, markdown_dir: Optional[s
             continue
 
         if strategy == 'first':
-            result[var_name] = values[0]
+            value = values[0]
         elif strategy == 'last':
-            result[var_name] = values[-1]
+            value = values[-1]
         elif strategy == 'concatenate':
-            result[var_name] = separator.join(values)
+            value = separator.join(values)
         else:  # fail
             if len(values) > 1:
                 raise ValueError(f"SIP variable '{var_name}' matches {len(values)} times (strategy is 'fail')")
-            result[var_name] = values[0]
+            value = values[0]
 
-    # If name is specified, namespace the variables
-    if name:
-        return {name: result}
+        # If name is specified, set under hierarchical path
+        if name:
+            full_path = f"{name}.{var_name}"
+            try:
+                _set_nested_value(result, full_path, value)
+            except ValueError as e:
+                raise ValueError(f"SIP variable error: {e}")
+        else:
+            result[var_name] = value
+
+    return result
+
+
+def _collect_import_variables(config: dict, line_num: int, markdown_dir: Optional[str] = None) -> dict:
+    """Collect variables from an IMPORT placeholder configuration.
+
+    IMPORT reads data from files in various formats (JSON, YAML, TOML, XML)
+    and loads it under a specified variable name.
+
+    Args:
+        config: Parsed YAML configuration from IMPORT placeholder
+        line_num: Line number for error reporting
+        markdown_dir: Directory of the markdown file (for resolving relative paths)
+
+    Returns:
+        Dict with single key being the variable name, value being the imported data
+
+    Raises:
+        ValueError: If configuration is invalid or file cannot be read
+    """
+    # Validate required fields
+    if 'name' not in config:
+        raise ValueError(f"Line {line_num}: IMPORT placeholder requires 'name' parameter")
+    if 'from' not in config:
+        raise ValueError(f"Line {line_num}: IMPORT placeholder requires 'from' parameter")
+
+    var_name = config['name']
+    from_path = config['from']
+    format_override = config.get('format')
+
+    # Resolve path relative to markdown directory if it's a relative path
+    if not from_path.startswith('/'):
+        if markdown_dir:
+            from_path = str(Path(markdown_dir) / from_path)
+
+    # Check if file exists
+    file_path = Path(from_path)
+    if not file_path.exists():
+        raise ValueError(f"Line {line_num}: File not found: {from_path}")
+
+    if not file_path.is_file():
+        raise ValueError(f"Line {line_num}: Path is not a file: {from_path}")
+
+    # Determine file format
+    if format_override:
+        file_format = format_override.lower()
     else:
-        return result
+        # Auto-detect from extension
+        ext = file_path.suffix.lower()
+        ext_to_format = {
+            '.json': 'json',
+            '.yaml': 'yaml',
+            '.yml': 'yaml',
+            '.toml': 'toml',
+            '.xml': 'xml',
+        }
+        file_format = ext_to_format.get(ext)
+        if not file_format:
+            raise ValueError(
+                f"Line {line_num}: Cannot determine file format from extension '{ext}'. "
+                f"Supported formats: .json, .yaml, .yml, .toml, .xml. "
+                f"Use 'format' parameter to specify explicitly."
+            )
+
+    # Load the file based on format
+    try:
+        data = _load_file_by_format(str(file_path), file_format)
+    except Exception as e:
+        raise ValueError(f"Line {line_num}: Error reading or parsing {from_path}: {e}")
+
+    # Handle hierarchical names (e.g., "config.database.host")
+    result = {}
+    try:
+        _set_nested_value(result, var_name, data)
+    except ValueError as e:
+        raise ValueError(f"Line {line_num}: IMPORT variable error: {e}")
+
+    return result
+
+
+def _load_file_by_format(filepath: str, file_format: str) -> any:
+    """Load a file and parse it based on the specified format.
+
+    Args:
+        filepath: Path to the file
+        file_format: Format of the file ('json', 'yaml', 'toml', 'xml')
+
+    Returns:
+        Parsed data from the file
+
+    Raises:
+        ValueError: If the format is unsupported or parsing fails
+    """
+    if file_format == 'json':
+        if not json:
+            raise ValueError("json module not available")
+        with open(filepath, 'r', encoding='utf-8') as f:
+            return json.load(f)
+
+    elif file_format == 'yaml':
+        if not yaml:
+            raise ValueError("yaml module not available")
+        with open(filepath, 'r', encoding='utf-8') as f:
+            return yaml.safe_load(f) or {}
+
+    elif file_format == 'toml':
+        # Try tomllib first (Python 3.11+), then fall back to toml package
+        if tomllib:
+            with open(filepath, 'rb') as f:
+                return tomllib.load(f)
+        elif toml:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                return toml.load(f)
+        else:
+            raise ValueError("toml module not available (install 'toml' package or use Python 3.11+)")
+
+    elif file_format == 'xml':
+        if not ET:
+            raise ValueError("xml module not available")
+        tree = ET.parse(filepath)
+        root = tree.getroot()
+        return _xml_to_dict(root)
+
+    else:
+        raise ValueError(f"Unsupported file format: {file_format}")
+
+
+def _xml_to_dict(element) -> dict:
+    """Convert an XML element tree to a dictionary.
+
+    Attributes are prefixed with '@', text content is under '_text' key.
+    Nested elements with same name are collected in a list.
+
+    Args:
+        element: XML element to convert
+
+    Returns:
+        Dictionary representation of the XML element
+    """
+    result = {}
+
+    # Add attributes with '@' prefix
+    for key, value in element.attrib.items():
+        result['@' + key] = value
+
+    # Add child elements
+    for child in element:
+        child_dict = _xml_to_dict(child)
+        if child.tag in result:
+            # Multiple children with same tag - convert to list
+            if not isinstance(result[child.tag], list):
+                result[child.tag] = [result[child.tag]]
+            result[child.tag].append(child_dict)
+        else:
+            result[child.tag] = child_dict
+
+    # Add text content if present
+    text = element.text.strip() if element.text else ""
+    tail = element.tail.strip() if element.tail else ""
+
+    if text:
+        # If there are also child elements or attributes, store text under '_text'
+        if result or element.attrib:
+            result['_text'] = text
+        else:
+            # If no children or attributes, just return the text
+            return text
+
+    return result if result else None
+
+
+def _collect_sup_variables(config: dict, content: str, match_obj, line_num: int) -> dict:
+    """Collect variables from a SUP placeholder configuration.
+
+    SUP extracts a single value from the line following the placeholder
+    in the markdown document using a regex pattern.
+
+    Args:
+        config: Parsed YAML configuration from SUP placeholder
+        content: Full markdown content (to find the next line)
+        match_obj: The regex match object for the SUP placeholder
+        line_num: Line number for error reporting
+
+    Returns:
+        Dict with variable name as key and extracted value
+
+    Raises:
+        ValueError: If configuration is invalid or pattern doesn't match
+    """
+    import re as regex_module
+
+    # Validate required fields
+    if 'name' not in config:
+        raise ValueError(f"Line {line_num}: SUP placeholder requires 'name' parameter")
+    if 'pattern' not in config:
+        raise ValueError(f"Line {line_num}: SUP placeholder requires 'pattern' parameter")
+
+    var_name = config['name']
+    pattern_str = config['pattern']
+
+    # Find the next line after the placeholder
+    # Start from the end of the placeholder match
+    match_end = match_obj.end()
+
+    # Skip to the end of the current line (find the next newline)
+    next_line_start = content.find('\n', match_end)
+    if next_line_start == -1:
+        # No newline found, we're at end of file
+        raise ValueError(f"Line {line_num}: SUP placeholder must have content on the following line")
+
+    next_line_start += 1  # Move past the newline
+
+    # Find the end of the next line
+    next_line_end = content.find('\n', next_line_start)
+    if next_line_end == -1:
+        next_line_end = len(content)
+
+    # Extract the next line
+    next_line = content[next_line_start:next_line_end]
+
+    # Skip empty lines and find the first non-empty line
+    while next_line.strip() == '':
+        next_line_start = next_line_end + 1
+        if next_line_start >= len(content):
+            raise ValueError(f"Line {line_num}: SUP placeholder must have non-empty content on a following line")
+        next_line_end = content.find('\n', next_line_start)
+        if next_line_end == -1:
+            next_line_end = len(content)
+        next_line = content[next_line_start:next_line_end]
+
+    # Match the pattern against the line
+    try:
+        pattern = regex_module.compile(pattern_str)
+    except regex_module.error as e:
+        raise ValueError(f"Line {line_num}: SUP pattern is invalid: {e}")
+
+    match = pattern.search(next_line)
+    if not match:
+        raise ValueError(
+            f"Line {line_num}: SUP pattern did not match the following line: {next_line}"
+        )
+
+    # Pattern must have exactly one capturing group
+    groups = match.groups()
+    if len(groups) != 1:
+        raise ValueError(
+            f"Line {line_num}: SUP pattern must have exactly 1 capturing group, "
+            f"but got {len(groups)}"
+        )
+
+    value = groups[0]
+
+    # Handle hierarchical names
+    result = {}
+    try:
+        _set_nested_value(result, var_name, value)
+    except ValueError as e:
+        raise ValueError(f"Line {line_num}: SUP variable error: {e}")
+
+    return result
 
 
 def _get_files_to_process(from_path: str, include_pattern: str, exclude_pattern: Optional[str], recurse: bool) -> list:
@@ -2111,6 +2413,105 @@ def _get_nested_value(obj: any, path: str) -> Optional[str]:
                 return None
 
     return str(current) if current is not None else None
+
+
+def _merge_variables(existing: dict, new_vars: dict, line_num: int) -> dict:
+    """Merge new variables into existing variables dict.
+
+    Handles hierarchical names properly, checking for conflicts.
+    Can merge dicts under existing dicts, but errors if trying to set
+    nested values on scalars or redefining exact same non-dict variable.
+
+    Args:
+        existing: Existing variables dict
+        new_vars: New variables to merge in
+        line_num: Line number (for error messages)
+
+    Returns:
+        Merged variables dict
+
+    Raises:
+        ValueError: If there's a conflict
+    """
+    def _recursive_merge(target: dict, source: dict, path: str = "") -> None:
+        """Recursively merge source dict into target dict."""
+        for key, value in source.items():
+            current_path = f"{path}.{key}" if path else key
+
+            if key in target:
+                if isinstance(target[key], dict) and isinstance(value, dict):
+                    # Both are dicts - merge recursively
+                    _recursive_merge(target[key], value, current_path)
+                elif isinstance(target[key], dict) or isinstance(value, dict):
+                    # One is dict, other is scalar - conflict
+                    if isinstance(target[key], dict):
+                        raise ValueError(
+                            f"Line {line_num}: Cannot set scalar at '{current_path}': "
+                            f"'{current_path}' already exists as a dictionary"
+                        )
+                    else:
+                        raise ValueError(
+                            f"Line {line_num}: Cannot set '{current_path}': "
+                            f"'{current_path}' already exists as a scalar value"
+                        )
+                else:
+                    # Both are scalars - redefinition error
+                    raise ValueError(f"Line {line_num}: Variable '{current_path}' is already defined")
+            else:
+                # Key doesn't exist - add it
+                target[key] = value
+
+    result = dict(existing)
+    try:
+        _recursive_merge(result, new_vars)
+    except ValueError:
+        raise
+    return result
+
+
+def _set_nested_value(obj: dict, path: str, value: any) -> None:
+    """Set a value in a nested dictionary using dot notation.
+
+    Creates intermediate dictionaries as needed. Raises error if any intermediate
+    level exists as a scalar value.
+
+    Examples:
+        _set_nested_value({}, "a.b.c", 42) -> {"a": {"b": {"c": 42}}}
+        _set_nested_value({"a": {"b": 1}}, "a.b.c", 42) -> Error (a.b is scalar)
+
+    Args:
+        obj: The dictionary to modify
+        path: Dot-separated path (e.g., "a.b.c")
+        value: Value to set at the leaf
+
+    Raises:
+        ValueError: If any intermediate level exists as a scalar value
+    """
+    if not path:
+        return
+
+    parts = path.split('.')
+    current = obj
+
+    # Navigate/create all but the last part
+    for part in parts[:-1]:
+        if part not in current:
+            current[part] = {}
+        elif not isinstance(current[part], dict):
+            raise ValueError(
+                f"Cannot set nested value at '{path}': "
+                f"'{part}' already exists as a scalar value, not a dictionary"
+            )
+        current = current[part]
+
+    # Set the final value
+    final_key = parts[-1]
+    if final_key in current and isinstance(current[final_key], dict):
+        raise ValueError(
+            f"Cannot set nested value at '{path}': "
+            f"'{final_key}' already exists as a dictionary"
+        )
+    current[final_key] = value
 
 
 def _substitute_variables(text: str, variables: dict) -> str:

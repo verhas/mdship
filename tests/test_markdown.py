@@ -632,6 +632,408 @@ Author: <!--$author-->"""
         assert "John" in result
         assert result.endswith("John")
 
+    def test_collect_import_variables_json(self, tmp_path):
+        """Test importing variables from JSON file."""
+        data_file = tmp_path / "data.json"
+        data_file.write_text('{"name": "Alice", "age": 30, "city": "NYC"}')
+
+        content = f"""
+<!--IMPORT
+name: "person"
+from: "{data_file}"
+-->
+"""
+        variables = collect_set_variables(content)
+        assert variables["person"]["name"] == "Alice"
+        assert variables["person"]["age"] == 30
+        assert variables["person"]["city"] == "NYC"
+
+    def test_collect_import_variables_yaml(self, tmp_path):
+        """Test importing variables from YAML file."""
+        data_file = tmp_path / "data.yaml"
+        data_file.write_text("""
+name: Bob
+age: 25
+address:
+  street: Main St
+  city: Boston
+""")
+
+        content = f"""
+<!--IMPORT
+name: "user"
+from: "{data_file}"
+-->
+"""
+        variables = collect_set_variables(content)
+        assert variables["user"]["name"] == "Bob"
+        assert variables["user"]["age"] == 25
+        assert variables["user"]["address"]["street"] == "Main St"
+        assert variables["user"]["address"]["city"] == "Boston"
+
+    def test_collect_import_variables_toml(self, tmp_path):
+        """Test importing variables from TOML file."""
+        data_file = tmp_path / "config.toml"
+        data_file.write_text("""
+title = "My Config"
+[database]
+host = "localhost"
+port = 5432
+""")
+
+        content = f"""
+<!--IMPORT
+name: "config"
+from: "{data_file}"
+-->
+"""
+        variables = collect_set_variables(content)
+        assert variables["config"]["title"] == "My Config"
+        assert variables["config"]["database"]["host"] == "localhost"
+        assert variables["config"]["database"]["port"] == 5432
+
+    def test_collect_import_variables_xml(self, tmp_path):
+        """Test importing variables from XML file."""
+        data_file = tmp_path / "data.xml"
+        data_file.write_text("""<?xml version="1.0"?>
+<root>
+  <person>
+    <name>Charlie</name>
+    <age>35</age>
+    <contact email="charlie@example.com">
+      <phone>555-1234</phone>
+    </contact>
+  </person>
+</root>
+""")
+
+        content = f"""
+<!--IMPORT
+name: "data"
+from: "{data_file}"
+-->
+"""
+        variables = collect_set_variables(content)
+        assert variables["data"]["person"]["name"] == "Charlie"
+        assert variables["data"]["person"]["age"] == "35"
+        assert variables["data"]["person"]["contact"]["@email"] == "charlie@example.com"
+        assert variables["data"]["person"]["contact"]["phone"] == "555-1234"
+
+    def test_collect_import_variables_explicit_format(self, tmp_path):
+        """Test IMPORT with explicit format specification."""
+        # Create a .txt file with JSON content
+        data_file = tmp_path / "data.txt"
+        data_file.write_text('{"key": "value"}')
+
+        content = f"""
+<!--IMPORT
+name: "data"
+from: "{data_file}"
+format: "json"
+-->
+"""
+        variables = collect_set_variables(content)
+        assert variables["data"]["key"] == "value"
+
+    def test_collect_import_relative_path(self, tmp_path):
+        """Test IMPORT with relative path from markdown directory."""
+        # Create subdirectory with markdown file
+        md_dir = tmp_path / "docs"
+        md_dir.mkdir()
+
+        # Create data file in parent directory
+        data_file = tmp_path / "data.json"
+        data_file.write_text('{"version": "1.0"}')
+
+        content = """
+<!--IMPORT
+name: "info"
+from: "../data.json"
+-->
+"""
+        variables = collect_set_variables(content, markdown_dir=str(md_dir))
+        assert variables["info"]["version"] == "1.0"
+
+    def test_collect_import_error_missing_name(self):
+        """Test IMPORT raises error when 'name' is missing."""
+        content = """
+<!--IMPORT
+from: "file.json"
+-->
+"""
+        with pytest.raises(ValueError, match="requires 'name'"):
+            collect_set_variables(content)
+
+    def test_collect_import_error_missing_from(self):
+        """Test IMPORT raises error when 'from' is missing."""
+        content = """
+<!--IMPORT
+name: "data"
+-->
+"""
+        with pytest.raises(ValueError, match="requires 'from'"):
+            collect_set_variables(content)
+
+    def test_collect_import_error_file_not_found(self, tmp_path):
+        """Test IMPORT raises error when file doesn't exist."""
+        content = f"""
+<!--IMPORT
+name: "data"
+from: "{tmp_path}/nonexistent.json"
+-->
+"""
+        with pytest.raises(ValueError, match="not found"):
+            collect_set_variables(content)
+
+    def test_collect_import_error_unsupported_format(self, tmp_path):
+        """Test IMPORT raises error for unsupported file format."""
+        data_file = tmp_path / "data.xyz"
+        data_file.write_text("content")
+
+        content = f"""
+<!--IMPORT
+name: "data"
+from: "{data_file}"
+-->
+"""
+        with pytest.raises(ValueError, match="Cannot determine file format"):
+            collect_set_variables(content)
+
+    def test_hierarchical_names_sip(self, tmp_path):
+        """Test SIP with hierarchical names (e.g., 'config.database.host')."""
+        data_file = tmp_path / "settings.txt"
+        data_file.write_text("port: 5432\nuser: admin\n")
+
+        content = f"""
+<!--SIP
+name: "config.database"
+from: "{data_file}"
+strategy: "first"
+vars:
+  port: 'port:\\s+(\\d+)'
+  user: 'user:\\s+(\\w+)'
+-->
+"""
+        variables = collect_set_variables(content)
+        assert variables["config"]["database"]["port"] == "5432"
+        assert variables["config"]["database"]["user"] == "admin"
+
+    def test_hierarchical_names_import(self, tmp_path):
+        """Test IMPORT with hierarchical names."""
+        data_file = tmp_path / "database.json"
+        data_file.write_text('{"host": "localhost", "port": 5432}')
+
+        content = f"""
+<!--IMPORT
+name: "app.database.settings"
+from: "{data_file}"
+-->
+"""
+        variables = collect_set_variables(content)
+        assert variables["app"]["database"]["settings"]["host"] == "localhost"
+        assert variables["app"]["database"]["settings"]["port"] == 5432
+
+    def test_hierarchical_names_with_existing_structure(self):
+        """Test hierarchical names when parent structure already exists."""
+        content = """
+<!--SET
+config:
+  timeout: 30
+-->
+<!--SIP
+name: "config.database"
+from: "file.txt"
+strategy: "first"
+vars:
+  host: 'host:\\s+(\\w+)'
+-->
+"""
+        # This should work - we're adding to an existing dict
+        data_file = "/tmp/test_hier.txt"
+        import os
+        with open(data_file, 'w') as f:
+            f.write("host: localhost\n")
+
+        try:
+            content_with_path = content.replace("file.txt", data_file)
+            variables = collect_set_variables(content_with_path)
+            assert variables["config"]["timeout"] == 30
+            assert variables["config"]["database"]["host"] == "localhost"
+        finally:
+            if os.path.exists(data_file):
+                os.remove(data_file)
+
+    def test_hierarchical_names_error_scalar_collision(self, tmp_path):
+        """Test that error is raised if trying to set nested value on a scalar."""
+        content = """
+<!--SET
+config: "simple_string"
+-->
+<!--SIP
+name: "config.database"
+from: "file.txt"
+strategy: "first"
+vars:
+  host: 'host:\\s+(\\w+)'
+-->
+"""
+        data_file = tmp_path / "file.txt"
+        data_file.write_text("host: localhost\n")
+
+        content_with_path = content.replace("file.txt", str(data_file))
+        with pytest.raises(ValueError, match="already exists as a scalar value"):
+            collect_set_variables(content_with_path)
+
+    def test_collect_sup_variables_basic(self):
+        """Test collecting variables from SUP placeholder."""
+        content = """<!--SUP
+name: "title"
+pattern: '^#+\\s+(.*?)\\s*$'
+-->
+## Introduction to Python
+"""
+        variables = collect_set_variables(content)
+        assert variables["title"] == "Introduction to Python"
+
+    def test_collect_sup_variables_hierarchical(self):
+        """Test SUP with hierarchical names."""
+        content = """<!--SUP
+name: "chapters.intro"
+pattern: '^#+\\s+(.*?)\\s*$'
+-->
+# Getting Started
+"""
+        variables = collect_set_variables(content)
+        assert variables["chapters"]["intro"] == "Getting Started"
+
+    def test_collect_sup_variables_complex_pattern(self):
+        """Test SUP with more complex regex patterns."""
+        content = ('<!--SUP\n'
+                   'name: "version"\n'
+                   'pattern: \'(\\d+\\.\\d+\\.\\d+)\'\n'
+                   '-->\n'
+                   'version = "1.2.3"\n')
+        variables = collect_set_variables(content)
+        assert variables["version"] == "1.2.3"
+
+    def test_collect_sup_variables_skip_empty_lines(self):
+        """Test that SUP skips empty lines to find content."""
+        content = """<!--SUP
+name: "section"
+pattern: '^#+\\s+(.*?)\\s*$'
+-->
+
+## Main Section
+"""
+        variables = collect_set_variables(content)
+        assert variables["section"] == "Main Section"
+
+    def test_collect_sup_variables_with_set(self):
+        """Test SUP combined with SET."""
+        content = """<!--SET
+prefix: "Chapter"
+-->
+<!--SUP
+name: "chapter_name"
+pattern: '^#\\s+(.*?)\\s*$'
+-->
+# Advanced Topics
+"""
+        variables = collect_set_variables(content)
+        assert variables["prefix"] == "Chapter"
+        assert variables["chapter_name"] == "Advanced Topics"
+
+    def test_collect_sup_error_missing_name(self):
+        """Test SUP raises error when 'name' is missing."""
+        content = """<!--SUP
+pattern: '^#+\\s+(.*?)\\s*$'
+-->
+## Test
+"""
+        with pytest.raises(ValueError, match="requires 'name'"):
+            collect_set_variables(content)
+
+    def test_collect_sup_error_missing_pattern(self):
+        """Test SUP raises error when 'pattern' is missing."""
+        content = """<!--SUP
+name: "test"
+-->
+## Test
+"""
+        with pytest.raises(ValueError, match="requires 'pattern'"):
+            collect_set_variables(content)
+
+    def test_collect_sup_error_no_following_content(self):
+        """Test SUP raises error when there's no following line."""
+        content = """<!--SUP
+name: "test"
+pattern: '^#+\\s+(.*?)\\s*$'
+-->"""
+        with pytest.raises(ValueError, match="must have content on the following line"):
+            collect_set_variables(content)
+
+    def test_collect_sup_error_pattern_no_match(self):
+        """Test SUP raises error when pattern doesn't match."""
+        content = """<!--SUP
+name: "test"
+pattern: '^version:\\s+(.*?)$'
+-->
+This does not match the pattern
+"""
+        with pytest.raises(ValueError, match="did not match"):
+            collect_set_variables(content)
+
+    def test_collect_sup_error_wrong_group_count(self):
+        """Test SUP raises error for regex with wrong number of groups."""
+        content = """<!--SUP
+name: "test"
+pattern: '(a)(b)(c)'
+-->
+abc
+"""
+        with pytest.raises(ValueError, match="must have exactly 1 capturing group"):
+            collect_set_variables(content)
+
+    def test_collect_sup_error_invalid_regex(self):
+        """Test SUP raises error for invalid regex pattern."""
+        content = """<!--SUP
+name: "test"
+pattern: '[invalid('
+-->
+test
+"""
+        with pytest.raises(ValueError, match="pattern is invalid"):
+            collect_set_variables(content)
+
+    def test_collect_sup_with_variable_replacement(self):
+        """Test SUP variables can be used in document."""
+        content = """<!--SUP
+name: "doc_title"
+pattern: '^#+\\s+(.*?)\\s*$'
+-->
+# MyDocument
+
+Title: <!--$doc_title-->placeholder<!---->
+"""
+        variables = collect_set_variables(content)
+        result = replace_variables_in_document(content, variables)
+        assert "MyDocument" in result
+        assert "placeholder" not in result
+
+    def test_collect_sup_with_marker_form(self):
+        """Test SUP variables with spaces using marker form."""
+        content = """<!--SUP
+name: "doc_title"
+pattern: '^#+\\s+(.*?)\\s*$'
+-->
+# My Document
+
+Title: <!--$doc_title<>-->placeholder<!---->
+"""
+        variables = collect_set_variables(content)
+        result = replace_variables_in_document(content, variables)
+        assert "My Document" in result
+
 
 class TestMermaid:
     def test_basic_svg_rendering(self, tmp_path):

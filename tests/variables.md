@@ -3,27 +3,29 @@ checksum: 70c60adc881eabc1887fe7f5513ca4bfa4ecccea94127c7c0f13b3ca1365c5e6
 checksum_algorithm: sha256
 ---
 <!--TOC-->
-- [Using variables in Markdown files](#using-variables-in-markdown-files)
-  - [Variable without space in value](#variable-without-space-in-value)
-  - [Variable with space in value](#variable-with-space-in-value)
-  - [Complex variables](#complex-variables)
-  - [Variables in MERMAID placeholders](#variables-in-mermaid-placeholders)
-  - [Variable sources](#variable-sources)
-    - [Front-matter](#front-matter)
-    - [Variable source placeholders and their processing](#variable-source-placeholders-and-their-processing)
-    - [Set a variable](#set-a-variable)
-    - [Import variables](#import-variables)
-    - [Slurp values](#slurp-values)
-    - [Sipping values](#sipping-values)
+- [1. Using variables in Markdown files](#1-using-variables-in-markdown-files)
+  - [1.1. Variable without space in value](#11-variable-without-space-in-value)
+  - [1.2. Variable with space in value](#12-variable-with-space-in-value)
+  - [1.3. Complex variables](#13-complex-variables)
+  - [1.4. Variables in MERMAID placeholders](#14-variables-in-mermaid-placeholders)
+  - [1.5. Variable sources](#15-variable-sources)
+    - [1.5.1. Front-matter](#151-front-matter)
+    - [1.5.2. Variable source placeholders and their processing](#152-variable-source-placeholders-and-their-processing)
+    - [1.5.3. Set a variable](#153-set-a-variable)
+    - [1.5.4. Import variables](#154-import-variables)
+    - [1.5.5. Sup one value](#155-sup-one-value)
+    - [1.5.6. Slurp values](#156-slurp-values)
+    - [1.5.7. Sipping values](#157-sipping-values)
+    - [1.5.8. Specifying names](#158-specifying-names)
 <!--/TOC-->
 
-# Using variables in Markdown files
+# 1. Using variables in Markdown files
 
 `mdship` support variables in the markdown text.
 A variable has a name and a string value.
 When a variable name is referenced in an HTML comment like
 
-## Variable without space in value
+## 1.1. Variable without space in value
 
 ```
 <!--$variable-->variable_value
@@ -33,7 +35,7 @@ the value following and adjacent to the comment `variable_value` are updated wit
 Such value MUST NOT contain space.
 If it does, then the variable replacement will stop and signal an error.
 
-## Variable with space in value
+## 1.2. Variable with space in value
 
 To use variables that have a value with space in it you can use the form:
 
@@ -62,11 +64,11 @@ In that case, the reference is like
 <!--$elements[6]<>-->The sixth element<!---->
 ```
 
-## Complex variables
+## 1.3. Complex variables
 
 Variables can be used with the `$name.sub1.sub2...` form or `${name.sub1.sub2}` form in comments.
 
-## Variables in MERMAID placeholders
+## 1.4. Variables in MERMAID placeholders
 
 As the MERMAID handling code already preprocesses every `--\>` similarly it also has to replace every `$var` and `$var...` as well as `${var}` variable references replacing them with their actual values at the location of the mermaid markup before passing the text to the mermaid processor.
 
@@ -74,14 +76,14 @@ The variables are NOT replaced by their values inside the Markdown document.
 The mermaid markup in the document remains as it is.
 
 
-## Variable sources
+## 1.5. Variable sources
 
 During the update command, the first thing update does is scanning the Markdown file for variable sources.
 The process creates a hierarchical dictionary of the variables.
 Later phases that depend on variables, like Mermaid processing or variable update use the values collected.
 
 >Since variable source processing is done before anything else, it also means that it does not matter where a variable is defined in the document.
-> Definition can be at the end of the document, and the variable can still be used at the start, preceeding the definition.
+> Definition can be at the end of the document, and the variable can still be used at the start, preceding the definition.
 > 
 > That way, one may argue that these things are more like constants than variables.
 > Their value is fixed during the processing of a single document, but they may have different values during different updates.
@@ -97,7 +99,7 @@ This is how a variable is defined in the operation.
 
 Even if strategy is defined in `SLURP` or `SIP` other than `fail` it is an error to define a variable that was already defined before the placeholder.
 
-### Front-matter
+### 1.5.1. Front-matter
 
 The YAML structure of the front matter is available as `$fm`.
 The variable name `fm` is reserved for this purpose.
@@ -108,7 +110,7 @@ Example:
 <!--$fm.checksum-->70c60adc881eabc1887fe7f5513ca4bfa4ecccea94127c7c0f13b3ca1365c5e6
 ```
 
-### Variable source placeholders and their processing
+### 1.5.2. Variable source placeholders and their processing
 
 Other variable sources are defined with placeholders.
 These are
@@ -122,7 +124,7 @@ These are
 > These placeholders are self-contained, and they do not generate output between the possible start and end marker comments.
 > If there is a following end marker command and text between, the processing does not alter them.
 
-### Set a variable
+### 1.5.3. Set a variable
 
 The placeholder SET can define one or more variables.
 
@@ -157,7 +159,7 @@ and then the variables can be referenced as `<!​--$myStructure.degree-​->3` 
 The `<!​--$otherVariable-​->fun` will also be a variable with the actual value.
 
 
-### Import variables
+### 1.5.4. Import variables
 
 ```
 <!--IMPORT
@@ -194,7 +196,27 @@ In this case `<!​--$myStructure.degree-​->3` is okay but `<!​--$myStructur
 That way, a tag may have an attribute and a sub tage with the same name and still possible to reference them both.
 In the implementation the `@` character simply becomes part of the name.
 
-### Slurp values
+<!--SUP
+name: "sup"
+pattern: '^#+(.*?)\s+'
+-->
+### 1.5.5. Sup one value
+
+A value can be supped from the document itself.
+The placeholder `SUP` should define a `name` and a `pattern`, like
+```
+<!--SUP
+name: "sup"
+pattern: '^#+(.*?)\s+'
+-->
+```
+
+The pattern must contain exactly one capturing group.
+The pattern must match part of the next line (not necessary the whole line).
+The value of the variable will be the substring captured by the group.
+The name gives the name of the variable.
+
+### 1.5.6. Slurp values
 
 Values can be slurped from files.
 Slurping is when the code scans the whole files and tries to find values on each line matching expressions.
@@ -238,7 +260,7 @@ rules:
   * `concatenate` definitions are appended one after the other
 
 
-### Sipping values
+### 1.5.7. Sipping values
 
 Values can also be sipped from files.
 It is similar to slurping, but the name of the variable is defined in the SIP placeholder and they do not come from the file.
@@ -270,5 +292,47 @@ vars:
 * Variables `variable1`, `variable2` and so on are defined by the regular expressions mathich the lines in the file or files.
   The regular expressions need only one capturing group since the line is only used to get the value for the variable.
 
+<!--SUP
+name: "chapter.names"
+pattern: '#+\s*([\d.]+)'
+-->
+### 1.5.8. Specifying names
 
+This chapter number is <!--$chapter.names-->1.5.8.
 
+Several placeholders use the field `name` to specify a variable or structure name.
+The general structure of such names is hierarchical as
+
+```
+x1.x2.x3. … .xN
+```
+
+The levels `x1 … x(N-1)` are automatically created if they do not exist yet.
+It is an error if any of the `x1 … x(N-1)` levels already exist with a scalar (not a dictionary) value. 
+
+For example
+
+```
+<!--SET
+chapters:
+  first: "Introduction"
+  second: "History of the subject"
+-->
+<!--SUP
+name: "chapters.first"
+pattern: '#+\s*(.*?)\s*'
+-->
+```
+will result an error because `chapters.first` is already defined.
+
+Also, 
+
+```
+<!--SUP
+name: "chapters.first.X"
+pattern: '#+\s*(.*?)\s*'
+-->
+```
+
+will result in error.
+Although `chapters.first.X` does not exist, but it cannot be created in `chapters.first` because it is not a dictionary/map.
