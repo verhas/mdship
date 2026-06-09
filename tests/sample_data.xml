@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<catalog >
+    <type publicNameOnRecord="sapele" catalog="wood directory"/>
+    <items>
+        <item serial="63512">
+            <name>walnut</name>
+            <color>brownish</color>
+        </item>
+        <item serial="63513">
+            <name>maple</name>
+            <color>whiteish</color>
+        </item>
+    </items>
+</catalog>

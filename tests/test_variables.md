@@ -105,6 +105,7 @@ For single-word values, use the format:
 The value text will be replaced with the actual variable value.
 
 Example in this document:
+
 - Application: <!--$appName-->`MyApplication`
 - Version: <!--$version-->2.5.1
 - License: <!--$projectConfig.license-->MIT
@@ -120,6 +121,7 @@ For values containing spaces, use a marker:
 The simplest form uses empty markers.
 
 Examples in this document:
+
 - Framework: <!--$projectConfig.framework<>-->``mdship``<!---->
 - Language: <!--$projectConfig.language<>-->Python<!---->
 - First author: <!--$projectConfig.authors[0]<>-->Alice<!---->
@@ -165,6 +167,7 @@ mdship update tests/test_variables.md
 ```
 
 This will:
+
 1. Collect all variables from SET placeholders
 2. Process any INCLUDE placeholders
 3. Generate table of contents (if TOC markers present)
@@ -195,6 +198,36 @@ features:
 ```
 
 Then you could reference:
+
 - `$deployment.production.host` → "api.example.com"
 - `$deployment.staging.region` → "us-west-2"
 - `$features[1]` → "caching"
+
+## XML import
+
+<!--IMPORT
+name: "wood_catalog"
+from: "sample_data.xml"
+-->
+<!--$wood_catalog.catalog.type.@publicNameOnRecord-->sapele
+<!--$wood_catalog.catalog.type.@catalog<>-->wood directory<!---->
+<!--$wood_catalog.catalog.items.item[0].name-->walnut
+<!--$wood_catalog.catalog.items.item[0].@serial-->63512
+
+## JSON import
+
+<!--IMPORT
+name: "project_data"
+from: "sample_data.json"
+-->
+
+|                       |                                                                                   |
+|:----------------------|:----------------------------------------------------------------------------------|
+| Project:              | <!--$project_data.project.name-->mdship                                           |
+| Version:              | <!--$project_data.project.version-->1.0.0                                         |
+| Description:          | <!--$project_data.project.description<😇>-->Markdown Mani Pulation Tool<!--😇-->  |
+| Team Lead:            | <!--$project_data.team.lead<>-->Alice Johnson<!---->                              |
+| First Developer:      | <!--$project_data.team.members[0].name<>-->Bob Smith<!---->                       |
+| First Developer Role: | <!--$project_data.team.members[0].role-->Deviloper                                |
+| Python Version:       | <!--$project_data.config.python_version-->3.11+                                   |
+

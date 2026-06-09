@@ -714,10 +714,10 @@ from: "{data_file}"
 -->
 """
         variables = collect_set_variables(content)
-        assert variables["data"]["person"]["name"] == "Charlie"
-        assert variables["data"]["person"]["age"] == "35"
-        assert variables["data"]["person"]["contact"]["@email"] == "charlie@example.com"
-        assert variables["data"]["person"]["contact"]["phone"] == "555-1234"
+        assert variables["data"]["root"]["person"]["name"] == "Charlie"
+        assert variables["data"]["root"]["person"]["age"] == "35"
+        assert variables["data"]["root"]["person"]["contact"]["@email"] == "charlie@example.com"
+        assert variables["data"]["root"]["person"]["contact"]["phone"] == "555-1234"
 
     def test_collect_import_variables_explicit_format(self, tmp_path):
         """Test IMPORT with explicit format specification."""

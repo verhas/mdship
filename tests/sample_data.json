@@ -1,0 +1,36 @@
+{
+  "project": {
+    "name": "mdship",
+    "version": "1.0.0",
+    "description": "Markdown Mani Pulation Tool",
+    "homepage": "https://github.com/verhas/mdship"
+  },
+  "team": {
+    "lead": "Alice Johnson",
+    "members": [
+      {
+        "name": "Bob Smith",
+        "role": "Deviloper",
+        "email": "bob@example.com"
+      },
+      {
+        "name": "Carol Davis",
+        "role": "QA Engineer",
+        "email": "carol@example.com"
+      },
+      {
+        "name": "David Wilson",
+        "role": "Documentarian",
+        "email": "david@example.com"
+      }
+    ]
+  },
+  "config": {
+    "python_version": "3.11+",
+    "license": "MIT",
+    "maintainers": [
+      "Alice Johnson",
+      "Bob Smith"
+    ]
+  }
+}

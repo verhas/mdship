@@ -2149,7 +2149,8 @@ def _load_file_by_format(filepath: str, file_format: str) -> any:
             raise ValueError("xml module not available")
         tree = ET.parse(filepath)
         root = tree.getroot()
-        return _xml_to_dict(root)
+        # Wrap the result with the root element name for consistency
+        return {root.tag: _xml_to_dict(root)}
 
     else:
         raise ValueError(f"Unsupported file format: {file_format}")
