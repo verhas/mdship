@@ -1,3 +1,8 @@
+---
+last-updated: '2026-06-10T11:37:48.418276'
+mdship-log: |
+  2026-06-10 11:37:48 - update: processed all placeholders
+---
 # 1. mdship
 
 A command-line and MCP tool for manipulating markdown files.
@@ -26,8 +31,9 @@ A command-line and MCP tool for manipulating markdown files.
     - [1.3.12. Checksums](#1312-checksums)
     - [1.3.13. Skipping Backups](#1313-skipping-backups)
     - [1.3.14. Tracking Changes](#1314-tracking-changes)
-    - [1.3.15. Placeholder Validation](#1315-placeholder-validation)
-    - [1.3.16. MCP Server](#1316-mcp-server)
+    - [1.3.15. Validating Links](#1315-validating-links)
+    - [1.3.16. Placeholder Validation](#1316-placeholder-validation)
+    - [1.3.17. MCP Server](#1317-mcp-server)
   - [1.4. Design](#14-design)
     - [1.4.1. Dependencies](#141-dependencies)
     - [1.4.2. Development Dependencies](#142-development-dependencies)
@@ -58,6 +64,7 @@ A command-line and MCP tool for manipulating markdown files.
 - **Pattern dictionary**: Built-in patterns for common extraction tasks (@heading, @version) and support for custom patterns
 - **Placeholder validation**: Early detection of mistyped closing tags and unclosed placeholders before processing
 - **Track changes**: Automatically maintain `last-updated` timestamp and operation logs in front-matter (use `--track` or `-t` flag)
+- **Validate links**: Check for broken anchor references, missing file references, and unused anchors
 
 ## 1.2. Installation
 
@@ -77,6 +84,7 @@ mdship fix-headings file.md              # Fix heading hierarchy
 mdship shift-headings file.md --levels 1 # Shift all headings down 1 level
 mdship sum file.md --algorithm sha256    # Add or update checksum
 mdship verify file.md                    # Verify checksum
+mdship validate file.md                  # Validate links and anchors
 mdship reflow file.md --width 80         # Reflow paragraphs to 80 characters
 mdship semantic-line-breaks file.md      # Break lines at sentence boundaries
 mdship number file.md                    # Add hierarchical numbering to headings
@@ -930,7 +938,61 @@ mdship --track --no-bak update file.md
 mdship -t --no-bak number file.md --style period
 ```
 
-### 1.3.15. Placeholder Validation
+### 1.3.15. Validating Links
+
+Use the `validate` command to check for broken links and unused anchors in your markdown document:
+
+```bash
+mdship validate file.md
+```
+
+**What it checks:**
+
+1. **Broken anchor references** - Links like `[text](#anchor)` where the anchor doesn't exist
+2. **Missing file references** - Links like `[text](file.md)` where the file doesn't exist (only local files, no HTTP/HTTPS checks)
+3. **Missing image files** - Images like `![alt](image.png)` where the image file doesn't exist (external URLs like https:// are ignored)
+4. **Unused anchors** - Headings that are not referenced by any internal links (warning only, they may be referenced from other documents)
+
+**Example output:**
+
+```
+✓ All links and anchors are valid
+```
+
+Or with issues:
+
+```
+✗ Broken anchor references (2):
+  Line 15: [learn more](#details) - anchor not found
+  Line 42: [FAQ](#faq) - anchor not found
+
+✗ Missing file references (1):
+  Line 28: [guide](../docs/setup.md) - file not found
+
+✗ Missing image files (1):
+  Line 35: ![hero banner](images/hero.png) - image not found
+
+⚠ Unused anchors (3) (may be referenced from other files):
+  #introduction
+  #legacy-section
+  #api-reference
+```
+
+**How anchors are generated:**
+
+Headings are automatically converted to anchor IDs using the same algorithm as GitHub:
+- `# Getting Started!` → `#getting-started`
+- `## API Reference` → `#api-reference`
+- Special characters are removed, spaces become hyphens, everything is lowercase
+
+**Use cases:**
+
+- Validate documentation before publishing
+- Check for broken internal links in README files
+- Ensure heading references in tables of contents are correct
+- Quality assurance checks in documentation workflows
+
+### 1.3.16. Placeholder Validation
 
 mdship automatically validates placeholder syntax before processing to prevent silent data corruption. All opening placeholders must have matching closing tags (where required).
 
@@ -1004,7 +1066,7 @@ mdship update myfile.md
 diff myfile.md.bak myfile.md  # See exactly what changed
 ```
 
-### 1.3.16. MCP Server
+### 1.3.17. MCP Server
 
 Configure in your Claude settings:
 

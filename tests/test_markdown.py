@@ -17,6 +17,7 @@ from mdship.markdown import (
     shift_heading_levels,
     update_mermaid,
     update_tracking,
+    validate_links,
     _validate_placeholder_structure,
 )
 
@@ -1883,3 +1884,142 @@ diagram: |
         svg_content = (tmp_path / "dark.svg").read_text()
         assert len(svg_content) > 0
         assert "svg" in svg_content.lower()
+
+
+class TestValidateLinks:
+    def test_valid_links(self):
+        """Test that valid links pass validation."""
+        content = """# Introduction
+
+This is a [valid anchor](#section-details) reference.
+
+[Back to intro](#introduction).
+
+## Section Details
+
+Content here.
+"""
+        is_valid, message = validate_links(content)
+        assert is_valid
+        assert "✓ All links and anchors are valid" in message
+
+    def test_broken_anchor(self):
+        """Test that broken anchor references are detected."""
+        content = """# Introduction
+
+This is a [broken anchor](#not-found) reference.
+"""
+        is_valid, message = validate_links(content)
+        assert not is_valid
+        assert "Broken anchor references" in message
+        assert "#not-found" in message
+
+    def test_unused_anchors(self):
+        """Test that unused anchors are detected as warnings."""
+        content = """# Introduction
+
+## Unused Section
+
+Content here.
+"""
+        is_valid, message = validate_links(content)
+        # Valid but has warnings
+        assert "Unused anchors" in message
+        assert "#unused-section" in message
+
+    def test_self_reference(self):
+        """Test that self-references within the document work."""
+        content = """# Introduction
+
+See [this section](#details) below.
+
+## Details
+
+Content here.
+"""
+        is_valid, message = validate_links(content)
+        assert is_valid
+
+    def test_multiple_broken_links(self):
+        """Test multiple broken links are all reported."""
+        content = """# Introduction
+
+[broken 1](#missing1) and [broken 2](#missing2).
+"""
+        is_valid, message = validate_links(content)
+        assert not is_valid
+        assert "Broken anchor references (2)" in message
+        assert "#missing1" in message
+        assert "#missing2" in message
+
+    def test_heading_with_special_chars(self):
+        """Test that headings with special characters generate proper anchors."""
+        content = """# Getting Started!
+
+See the [guide](#getting-started) above.
+"""
+        is_valid, message = validate_links(content)
+        assert is_valid
+
+    def test_valid_images(self, tmp_path):
+        """Test that valid image references pass validation."""
+        # Create test images
+        (tmp_path / "logo.png").write_text("fake")
+        (tmp_path / "banner.jpg").write_text("fake")
+
+        content = """# Page
+
+[reference](#page)
+
+![Logo](logo.png)
+
+![Banner](banner.jpg)
+"""
+        is_valid, message = validate_links(content, str(tmp_path))
+        assert is_valid
+        assert "✓ All links and anchors are valid" in message
+
+    def test_missing_images(self, tmp_path):
+        """Test that missing image files are detected."""
+        content = """# Page
+
+[link](#page)
+
+![missing 1](notfound.png)
+
+![missing 2](broken.jpg)
+"""
+        is_valid, message = validate_links(content, str(tmp_path))
+        assert not is_valid
+        assert "Missing image files (2)" in message
+        assert "notfound.png" in message
+        assert "broken.jpg" in message
+
+    def test_mixed_valid_and_broken_images(self, tmp_path):
+        """Test validation with both valid and broken images."""
+        (tmp_path / "valid.png").write_text("fake")
+
+        content = """# Page
+
+[link](#page)
+
+![Works](valid.png)
+
+![Broken](missing.png)
+"""
+        is_valid, message = validate_links(content, str(tmp_path))
+        assert not is_valid
+        assert "Missing image files (1)" in message
+        assert "missing.png" in message
+
+    def test_external_images_ignored(self):
+        """Test that external image URLs are not checked."""
+        content = """# Page
+
+![External](https://example.com/image.png)
+
+![External 2](http://cdn.example.com/pic.jpg)
+"""
+        is_valid, message = validate_links(content)
+        # Should be valid since external URLs are not checked
+        assert "Missing image files" not in message

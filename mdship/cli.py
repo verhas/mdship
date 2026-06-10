@@ -1,4 +1,3 @@
-import sys
 from importlib.metadata import version as _pkg_version
 from pathlib import Path
 from typing import Annotated
@@ -43,19 +42,11 @@ def _main(
 
 
 def _write_file(file: Path, content: str, operation: str = "") -> None:
-    """Write content to file, creating a backup if needed and updating tracking if enabled.
-
-    Args:
-        file: Path to the markdown file
-        content: New content to write
-        operation: Description of the operation for tracking (e.g., "fix-headings: fixed 3 issues")
-    """
     if not state.no_bak:
         backup_path = file.with_suffix(file.suffix + ".bak")
         original_content = file.read_text()
         backup_path.write_text(original_content)
 
-    # Update tracking in front-matter if enabled
     if state.track and operation:
         from mdship.markdown import update_tracking
         content = update_tracking(content, operation)
@@ -63,263 +54,272 @@ def _write_file(file: Path, content: str, operation: str = "") -> None:
     file.write_text(content)
 
 
-@app.command()
-def fix_headings(
-    file: Annotated[Path, typer.Argument(help="Markdown file to process")],
-) -> None:
-    """Fix heading levels to ensure consistent hierarchy."""
-    if not file.exists():
-        err.print(f"[red]Error:[/red] file not found: {file}")
+def _parse_line_range(lines: str) -> tuple[int | None, int | None]:
+    """Parse a line range string like '10:50', '10:', ':50' into (start, end)."""
+    parts = lines.split(":")
+    if len(parts) != 2:
+        raise ValueError("Line range must be in format 'START:END', 'START:', or ':END'")
+    start_str, end_str = parts
+    start_line = int(start_str) if start_str else None
+    end_line = int(end_str) if end_str else None
+    if start_line is not None and end_line is not None and start_line > end_line:
+        raise ValueError(f"start line ({start_line}) cannot be greater than end line ({end_line})")
+    return start_line, end_line
+
+
+def _exit_if_errors(errors: list[tuple[Path, str]]) -> None:
+    if errors:
         raise typer.Exit(1)
 
+
+@app.command()
+def fix_headings(
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")],
+) -> None:
+    """Fix heading levels to ensure consistent hierarchy."""
     from mdship.markdown import fix_heading_levels
 
-    content = file.read_text()
-    fixed_content = fix_heading_levels(content)
-    _write_file(file, fixed_content, "fix-headings: fixed heading hierarchy")
-    err.print(f"[green]✓[/green] Processed {file}")
+    errors = []
+    for file in files:
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+        content = file.read_text()
+        fixed_content = fix_heading_levels(content)
+        _write_file(file, fixed_content, "fix-headings: fixed heading hierarchy")
+        err.print(f"[green]✓[/green] Processed {file}")
+    _exit_if_errors(errors)
 
 
 @app.command()
 def shift_headings(
-    file: Annotated[Path, typer.Argument(help="Markdown file to process")],
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")],
     levels: Annotated[int, typer.Option("--levels", "-l", help="Number of levels to shift (positive=lower, negative=higher)")] = 1,
     lines: Annotated[str | None, typer.Option("--lines", help="Line range to process (e.g., '10:50', '10:', ':50')")] = None,
 ) -> None:
     """Shift all headings by the specified number of levels."""
-    if not file.exists():
-        err.print(f"[red]Error:[/red] file not found: {file}")
-        raise typer.Exit(1)
-
     from mdship.markdown import shift_heading_levels
 
-    # Parse line range
-    start_line = None
-    end_line = None
+    start_line = end_line = None
     if lines:
         try:
-            parts = lines.split(":")
-            if len(parts) != 2:
-                raise ValueError("Line range must be in format 'START:END', 'START:', or ':END'")
-
-            start_str, end_str = parts
-            if start_str:
-                start_line = int(start_str)
-            if end_str:
-                end_line = int(end_str)
-
-            if start_line is not None and end_line is not None and start_line > end_line:
-                err.print(f"[red]Error:[/red] start line ({start_line}) cannot be greater than end line ({end_line})")
-                raise typer.Exit(1)
+            start_line, end_line = _parse_line_range(lines)
         except ValueError as e:
-            err.print(f"[red]Error:[/red] invalid line range format: {e}")
+            err.print(f"[red]Error:[/red] invalid line range: {e}")
             raise typer.Exit(1)
 
-    content = file.read_text()
-    try:
-        shifted_content = shift_heading_levels(content, levels, start_line=start_line, end_line=end_line)
-    except ValueError as e:
-        err.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(1)
-
-    _write_file(file, shifted_content, f"shift-headings: shifted headings by {levels} level(s)")
-    err.print(f"[green]✓[/green] Processed {file}")
+    errors = []
+    for file in files:
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+        content = file.read_text()
+        try:
+            shifted_content = shift_heading_levels(content, levels, start_line=start_line, end_line=end_line)
+        except ValueError as e:
+            err.print(f"[red]Error:[/red] {file}: {e}")
+            errors.append((file, str(e)))
+            continue
+        _write_file(file, shifted_content, f"shift-headings: shifted headings by {levels} level(s)")
+        err.print(f"[green]✓[/green] Processed {file}")
+    _exit_if_errors(errors)
 
 
 @app.command()
 def sum(
-    file: Annotated[Path, typer.Argument(help="Markdown file to process")],
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")],
     algorithm: Annotated[str, typer.Option("--algorithm", "-a", help="Hash algorithm (md5, sha256, sha1)")] = "sha256",
 ) -> None:
     """Add or update checksum in front-matter."""
-    if not file.exists():
-        err.print(f"[red]Error:[/red] file not found: {file}")
-        raise typer.Exit(1)
-
     from mdship.markdown import add_content_checksum
 
-    content = file.read_text()
-    updated_content = add_content_checksum(content, algorithm)
-    _write_file(file, updated_content, f"add-checksum: added {algorithm} checksum")
-    err.print(f"[green]✓[/green] Processed {file}")
+    errors = []
+    for file in files:
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+        content = file.read_text()
+        updated_content = add_content_checksum(content, algorithm)
+        _write_file(file, updated_content, f"add-checksum: added {algorithm} checksum")
+        err.print(f"[green]✓[/green] Processed {file}")
+    _exit_if_errors(errors)
 
 
 @app.command()
 def verify(
-    file: Annotated[Path, typer.Argument(help="Markdown file to check")],
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to check")],
 ) -> None:
     """Verify the checksum in front-matter against the content."""
-    if not file.exists():
-        err.print(f"[red]Error:[/red] file not found: {file}")
+    if state.track:
+        err.print(f"[red]Error:[/red] --track option is not supported for read-only commands")
         raise typer.Exit(1)
 
     from mdship.markdown import check_content_checksum
 
-    content = file.read_text()
-    is_valid, message = check_content_checksum(content)
+    errors = []
+    for file in files:
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+        content = file.read_text()
+        is_valid, message = check_content_checksum(content)
+        if is_valid:
+            print(f"OK: {file}")
+        else:
+            err.print(f"[red]Error:[/red] {file}: {message}")
+            errors.append((file, message))
+    _exit_if_errors(errors)
 
-    if is_valid:
-        print("OK")
-        raise typer.Exit(0)
-    else:
-        err.print(f"[red]Error:[/red] {message}")
+
+@app.command()
+def validate(
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to validate")],
+) -> None:
+    """Validate links and anchors in the markdown file."""
+    if state.track:
+        err.print(f"[red]Error:[/red] --track option is not supported for read-only commands")
         raise typer.Exit(1)
+
+    from mdship.markdown import validate_links
+
+    errors = []
+    for file in files:
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+        content = file.read_text()
+        is_valid, message = validate_links(content, str(file.parent))
+        err.print(message)
+        if not is_valid:
+            errors.append((file, message))
+    _exit_if_errors(errors)
 
 
 @app.command()
 def reflow(
-    file: Annotated[Path, typer.Argument(help="Markdown file to process")],
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")],
     width: Annotated[int | None, typer.Option("--width", "-w", help="Line width (0 for one sentence per line)")] = None,
 ) -> None:
     """Reflow paragraphs to specified width or one sentence per line."""
-    if not file.exists():
-        err.print(f"[red]Error:[/red] file not found: {file}")
-        raise typer.Exit(1)
-
     from mdship.markdown import reflow_paragraphs
 
-    content = file.read_text()
-    reflowed_content = reflow_paragraphs(content, width)
-    _write_file(file, reflowed_content, f"reflow: reflowed paragraphs to {width} characters")
-    err.print(f"[green]✓[/green] Processed {file}")
+    errors = []
+    for file in files:
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+        content = file.read_text()
+        reflowed_content = reflow_paragraphs(content, width)
+        _write_file(file, reflowed_content, f"reflow: reflowed paragraphs to {width} characters")
+        err.print(f"[green]✓[/green] Processed {file}")
+    _exit_if_errors(errors)
 
 
 @app.command()
 def semantic_line_breaks(
-    file: Annotated[Path, typer.Argument(help="Markdown file to process")],
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")],
     lines: Annotated[str | None, typer.Option("--lines", help="Line range to process (e.g., '10:50', '10:', ':50')")] = None,
 ) -> None:
     """Break lines at semantic boundaries (sentences, clauses)."""
-    if not file.exists():
-        err.print(f"[red]Error:[/red] file not found: {file}")
-        raise typer.Exit(1)
-
     from mdship.markdown import reflow_paragraphs
 
-    # Parse line range
-    start_line = None
-    end_line = None
+    start_line = end_line = None
     if lines:
         try:
-            parts = lines.split(":")
-            if len(parts) != 2:
-                raise ValueError("Line range must be in format 'START:END', 'START:', or ':END'")
-
-            start_str, end_str = parts
-            if start_str:
-                start_line = int(start_str)
-            if end_str:
-                end_line = int(end_str)
-
-            if start_line is not None and end_line is not None and start_line > end_line:
-                err.print(f"[red]Error:[/red] start line ({start_line}) cannot be greater than end line ({end_line})")
-                raise typer.Exit(1)
+            start_line, end_line = _parse_line_range(lines)
         except ValueError as e:
-            err.print(f"[red]Error:[/red] invalid line range format: {e}")
+            err.print(f"[red]Error:[/red] invalid line range: {e}")
             raise typer.Exit(1)
 
-    content = file.read_text()
-    reflowed_content = reflow_paragraphs(content, width=0, start_line=start_line, end_line=end_line)
-    _write_file(file, reflowed_content, "semantic-line-breaks: split lines at sentence boundaries")
-    err.print(f"[green]✓[/green] Processed {file}")
+    errors = []
+    for file in files:
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+        content = file.read_text()
+        reflowed_content = reflow_paragraphs(content, width=0, start_line=start_line, end_line=end_line)
+        _write_file(file, reflowed_content, "semantic-line-breaks: split lines at sentence boundaries")
+        err.print(f"[green]✓[/green] Processed {file}")
+    _exit_if_errors(errors)
 
 
 @app.command()
 def number(
-    file: Annotated[Path, typer.Argument(help="Markdown file to process")],
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")],
     style: Annotated[str, typer.Option("--style", "-s", help="Numbering style: period (1.1.), space (1 1), parenthesis (1))")] = "period",
     lines: Annotated[str | None, typer.Option("--lines", help="Line range to process (e.g., '10:50', '10:', ':50')")] = None,
 ) -> None:
     """Add hierarchical numbering to headings."""
-    if not file.exists():
-        err.print(f"[red]Error:[/red] file not found: {file}")
-        raise typer.Exit(1)
-
     if style not in ("period", "space", "parenthesis"):
         err.print(f"[red]Error:[/red] invalid style '{style}'. Must be 'period', 'space', or 'parenthesis'")
         raise typer.Exit(1)
 
     from mdship.markdown import add_heading_numbers
 
-    # Parse line range
-    start_line = None
-    end_line = None
+    start_line = end_line = None
     if lines:
         try:
-            parts = lines.split(":")
-            if len(parts) != 2:
-                raise ValueError("Line range must be in format 'START:END', 'START:', or ':END'")
-
-            start_str, end_str = parts
-            if start_str:
-                start_line = int(start_str)
-            if end_str:
-                end_line = int(end_str)
-
-            if start_line is not None and end_line is not None and start_line > end_line:
-                err.print(f"[red]Error:[/red] start line ({start_line}) cannot be greater than end line ({end_line})")
-                raise typer.Exit(1)
+            start_line, end_line = _parse_line_range(lines)
         except ValueError as e:
-            err.print(f"[red]Error:[/red] invalid line range format: {e}")
+            err.print(f"[red]Error:[/red] invalid line range: {e}")
             raise typer.Exit(1)
 
-    content = file.read_text()
-    numbered_content = add_heading_numbers(content, style=style, start_line=start_line, end_line=end_line)
-    _write_file(file, numbered_content, f"number: added heading numbers with {style} style")
-    err.print(f"[green]✓[/green] Processed {file}")
-
-    # Warn if TOC placeholder exists
-    if "<!--TOC-->" in numbered_content:
-        err.print(f"[yellow]⚠[/yellow]  Document contains TOC placeholder. Update it with: mdship update {file}")
+    errors = []
+    for file in files:
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+        content = file.read_text()
+        numbered_content = add_heading_numbers(content, style=style, start_line=start_line, end_line=end_line)
+        _write_file(file, numbered_content, f"number: added heading numbers with {style} style")
+        err.print(f"[green]✓[/green] Processed {file}")
+        if "<!--TOC-->" in numbered_content:
+            err.print(f"[yellow]⚠[/yellow]  Document contains TOC placeholder. Update it with: mdship update {file}")
+    _exit_if_errors(errors)
 
 
 @app.command()
 def unnumber(
-    file: Annotated[Path, typer.Argument(help="Markdown file to process")],
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")],
     lines: Annotated[str | None, typer.Option("--lines", help="Line range to process (e.g., '10:50', '10:', ':50')")] = None,
 ) -> None:
     """Remove hierarchical numbering from headings."""
-    if not file.exists():
-        err.print(f"[red]Error:[/red] file not found: {file}")
-        raise typer.Exit(1)
-
     from mdship.markdown import remove_heading_numbers
 
-    # Parse line range
-    start_line = None
-    end_line = None
+    start_line = end_line = None
     if lines:
         try:
-            parts = lines.split(":")
-            if len(parts) != 2:
-                raise ValueError("Line range must be in format 'START:END', 'START:', or ':END'")
-
-            start_str, end_str = parts
-            if start_str:
-                start_line = int(start_str)
-            if end_str:
-                end_line = int(end_str)
-
-            if start_line is not None and end_line is not None and start_line > end_line:
-                err.print(f"[red]Error:[/red] start line ({start_line}) cannot be greater than end line ({end_line})")
-                raise typer.Exit(1)
+            start_line, end_line = _parse_line_range(lines)
         except ValueError as e:
-            err.print(f"[red]Error:[/red] invalid line range format: {e}")
+            err.print(f"[red]Error:[/red] invalid line range: {e}")
             raise typer.Exit(1)
 
-    content = file.read_text()
-    unnumbered_content = remove_heading_numbers(content, start_line=start_line, end_line=end_line)
-    _write_file(file, unnumbered_content, "unnumber: removed heading numbers")
-    err.print(f"[green]✓[/green] Processed {file}")
-
-    # Warn if TOC placeholder exists
-    if "<!--TOC-->" in unnumbered_content:
-        err.print(f"[yellow]⚠[/yellow]  Document contains TOC placeholder. Update it with: mdship update {file}")
+    errors = []
+    for file in files:
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+        content = file.read_text()
+        unnumbered_content = remove_heading_numbers(content, start_line=start_line, end_line=end_line)
+        _write_file(file, unnumbered_content, "unnumber: removed heading numbers")
+        err.print(f"[green]✓[/green] Processed {file}")
+        if "<!--TOC-->" in unnumbered_content:
+            err.print(f"[yellow]⚠[/yellow]  Document contains TOC placeholder. Update it with: mdship update {file}")
+    _exit_if_errors(errors)
 
 
 @app.command()
 def update(
-    file: Annotated[Path, typer.Argument(help="Markdown file to process")],
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")],
 ) -> None:
     """Update markdown placeholders (variables, includes, TOC, diagrams, etc).
 
@@ -401,65 +401,111 @@ def update(
             A[Client] --> B[Server]
         -->
     """
-    if not file.exists():
-        err.print(f"[red]Error:[/red] file not found: {file}")
-        raise typer.Exit(1)
-
     from mdship.markdown import collect_set_variables, replace_variables_in_document, insert_table_of_contents, update_includes, update_mermaid, process_template
 
-    content = file.read_text()
-    markdown_dir = file.parent
+    errors = []
+    for file in files:
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
 
-    # Step 1: Collect variables from all sources (SET, IMPORT, SLURP, SIP, SUP)
-    # Must be first so variables are available for subsequent steps
-    try:
-        variables = collect_set_variables(content, markdown_dir=str(markdown_dir))
-    except ValueError as e:
-        err.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(1)
+        content = file.read_text()
+        markdown_dir = file.parent
+        failed = False
 
-    # Step 2: Process INCLUDE placeholders (embed content from other files)
-    # Done before variable replacement so variables can be replaced in included content
-    try:
-        content = update_includes(content, str(markdown_dir))
-    except ValueError as e:
-        err.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(1)
+        try:
+            variables = collect_set_variables(content, markdown_dir=str(markdown_dir))
+        except ValueError as e:
+            err.print(f"[red]Error:[/red] {file}: {e}")
+            errors.append((file, str(e)))
+            continue
 
-    # Step 3: Replace variable references ($var, $var.nested, etc.)
-    # Variables are replaced in both original and included content (but not in code blocks)
-    try:
-        content = replace_variables_in_document(content, variables, file_path=str(file))
-    except ValueError as e:
-        err.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(1)
+        try:
+            content = update_includes(content, str(markdown_dir))
+        except ValueError as e:
+            err.print(f"[red]Error:[/red] {file}: {e}")
+            errors.append((file, str(e)))
+            continue
 
-    # Step 4: Process TEMPLATE placeholders (substitute variables and insert content)
-    # TEMPLATE uses collected variables to process content blocks
-    try:
-        content = process_template(content, variables=variables)
-    except ValueError as e:
-        err.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(1)
+        try:
+            content = replace_variables_in_document(content, variables, file_path=str(file))
+        except ValueError as e:
+            err.print(f"[red]Error:[/red] {file}: {e}")
+            errors.append((file, str(e)))
+            continue
 
-    # Step 5: Process TOC placeholders (generate table of contents)
-    # Can include headings from both original document and included content
-    try:
-        content = insert_table_of_contents(content)
-    except ValueError:
-        # No TOC placeholder found, which is fine - just skip
-        pass
+        try:
+            content = process_template(content, variables=variables)
+        except ValueError as e:
+            err.print(f"[red]Error:[/red] {file}: {e}")
+            errors.append((file, str(e)))
+            continue
 
-    # Step 6: Process remaining placeholders (MERMAID diagrams, etc.)
-    # Diagrams can use variables defined in earlier steps
-    try:
-        content = update_mermaid(content, str(markdown_dir), variables=variables)
-    except ValueError as e:
-        err.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(1)
+        try:
+            content = insert_table_of_contents(content)
+        except ValueError:
+            pass
 
-    _write_file(file, content, "update: processed all placeholders")
-    err.print(f"[green]✓[/green] Processed {file}")
+        try:
+            content = update_mermaid(content, str(markdown_dir), variables=variables)
+        except ValueError as e:
+            err.print(f"[red]Error:[/red] {file}: {e}")
+            errors.append((file, str(e)))
+            continue
+
+        _write_file(file, content, "update: processed all placeholders")
+        err.print(f"[green]✓[/green] Processed {file}")
+
+    _exit_if_errors(errors)
+
+
+@app.command()
+def init() -> None:
+    """Initialize mdship configuration in the current directory.
+
+    Creates .mcp.json, .claude/settings.local.json, and .claude/skills/ai-placeholder/SKILL.md
+    so that Claude Code picks up the mdship MCP server and AI placeholder skill.
+    """
+    import json
+    import importlib.resources as pkg_resources
+
+    cwd = Path.cwd()
+
+    # .mcp.json — register the mdship MCP server
+    mcp_json = cwd / ".mcp.json"
+    mcp_config = {"mcpServers": {"mdship": {"command": "mdship", "args": ["mcp"]}}}
+    mcp_json.write_text(json.dumps(mcp_config, indent=2) + "\n")
+    err.print(f"[green]✓[/green] Created {mcp_json}")
+
+    # .claude/ directory
+    claude_dir = cwd / ".claude"
+    claude_dir.mkdir(exist_ok=True)
+
+    # .claude/settings.local.json — enable the MCP server; merge if file exists
+    settings_file = claude_dir / "settings.local.json"
+    if settings_file.exists():
+        try:
+            settings = json.loads(settings_file.read_text())
+        except json.JSONDecodeError:
+            settings = {}
+    else:
+        settings = {}
+
+    enabled = settings.get("enabledMcpjsonServers", [])
+    if "mdship" not in enabled:
+        enabled.append("mdship")
+    settings["enabledMcpjsonServers"] = enabled
+    settings_file.write_text(json.dumps(settings, indent=2) + "\n")
+    err.print(f"[green]✓[/green] Updated {settings_file}")
+
+    # .claude/skills/ai-placeholder/SKILL.md — AI placeholder skill so Claude knows how to handle <!--AI-->
+    skill_content = pkg_resources.files("mdship").joinpath("SKILL.md").read_text(encoding="utf-8")
+    skill_dir = claude_dir / "skills" / "ai-placeholder"
+    skill_dir.mkdir(parents=True, exist_ok=True)
+    skill_file = skill_dir / "SKILL.md"
+    skill_file.write_text(skill_content)
+    err.print(f"[green]✓[/green] Created {skill_file}")
 
 
 @app.command()
