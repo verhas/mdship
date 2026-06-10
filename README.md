@@ -25,8 +25,9 @@ A command-line and MCP tool for manipulating markdown files.
     - [1.3.11. Rendering Mermaid Diagrams](#1311-rendering-mermaid-diagrams)
     - [1.3.12. Checksums](#1312-checksums)
     - [1.3.13. Skipping Backups](#1313-skipping-backups)
-    - [1.3.14. Placeholder Validation](#1314-placeholder-validation)
-    - [1.3.15. MCP Server](#1315-mcp-server)
+    - [1.3.14. Tracking Changes](#1314-tracking-changes)
+    - [1.3.15. Placeholder Validation](#1315-placeholder-validation)
+    - [1.3.16. MCP Server](#1316-mcp-server)
   - [1.4. Design](#14-design)
     - [1.4.1. Dependencies](#141-dependencies)
     - [1.4.2. Development Dependencies](#142-development-dependencies)
@@ -56,6 +57,7 @@ A command-line and MCP tool for manipulating markdown files.
 - **Template placeholders**: Insert dynamic content with variable substitution (useful for code blocks with dynamic values)
 - **Pattern dictionary**: Built-in patterns for common extraction tasks (@heading, @version) and support for custom patterns
 - **Placeholder validation**: Early detection of mistyped closing tags and unclosed placeholders before processing
+- **Track changes**: Automatically maintain `last-updated` timestamp and operation logs in front-matter (use `--track` or `-t` flag)
 
 ## 1.2. Installation
 
@@ -485,16 +487,16 @@ The `update` command processes placeholders in a specific order to enable powerf
    - Variables are NOT replaced inside code blocks (between ``` markers) — they are safe for code that uses `$var` notation
    - Front-matter YAML is automatically available as `$fm`
 
-4. **<!--TEMPLATE-->** placeholders
+4. **<!​--TEMPLATE-->** placeholders
    - Substitutes variables in template content and inserts between opening and closing markers
    - Useful for dynamic code blocks and formatted content with variables
 
-5. **<!--TOC-->** placeholders
+5. **<!​--TOC-->** placeholders
    - Generates table of contents from headings
    - Can include headings from both original document and included content
 
 6. **Other placeholders (top-to-bottom)**
-   - <!--MERMAID--> diagrams with variable substitution
+   - `<!​--MERMAID-->` diagrams with variable substitution
    - Processed in document order
 
 This order allows:
@@ -876,22 +878,74 @@ mdship --no-bak shift-headings file.md --levels 1
 
 The `--no-bak` option can be used with any modifying command.
 
-### 1.3.14. Placeholder Validation
+### 1.3.14. Tracking Changes
+
+Use the `--track` (or `-t`) option to automatically track changes in the document's front-matter:
+
+```bash
+mdship --track update file.md
+mdship -t fix-headings file.md
+mdship --track shift-headings file.md --levels 1
+```
+
+**What tracking does:**
+
+1. **Creates front-matter if missing** - Ensures the document has YAML front-matter
+2. **Adds `last-updated` timestamp** - Records when the document was last modified (ISO format)
+3. **Appends to `mdship-log`** - Maintains a log of all operations with timestamps
+
+**Example output:**
+
+```yaml
+---
+title: My Document
+author: Jane Doe
+last-updated: '2026-06-10T14:32:45.123456'
+mdship-log: |
+  2026-06-10 14:30:22 - fix-headings: fixed heading hierarchy
+  2026-06-10 14:31:15 - number: added heading numbers with period style
+  2026-06-10 14:32:45 - update: processed all placeholders
+---
+```
+
+**Features:**
+
+- ✅ Works with all modifying commands
+- ✅ Preserves existing front-matter fields
+- ✅ Uses YAML literal block style (`|`) for clean formatting
+- ✅ No empty lines between log entries
+- ✅ Short form `-t` available as alternative to `--track`
+
+**Use cases:**
+
+- Document version control and audit trails
+- Tracking when sections were last reviewed
+- Automation and workflow documentation
+- Compliance and record-keeping requirements
+
+The `--track` option can be combined with `--no-bak`:
+
+```bash
+mdship --track --no-bak update file.md
+mdship -t --no-bak number file.md --style period
+```
+
+### 1.3.15. Placeholder Validation
 
 mdship automatically validates placeholder syntax before processing to prevent silent data corruption. All opening placeholders must have matching closing tags (where required).
 
 **Placeholders that require closing tags:**
-- `<!--TEMPLATE ... -->...<!--/TEMPLATE-->`
-- `<!--MERMAID ... -->...<!--/MERMAID-->`
-- `<!--INCLUDE ... -->...<!--/INCLUDE-->`
-- `<!--TOC ... -->...<!--/TOC-->`
+- `<!​--TEMPLATE ... -->...<!--/TEMPLATE-->`
+- `<!​--MERMAID ... -->...<!--/MERMAID-->`
+- `<!​--INCLUDE ... -->...<!--/INCLUDE-->`
+- `<!​--TOC ... -->...<!--/TOC-->`
 
 **Placeholders without closing tags:**
-- `<!--SET ... -->`
-- `<!--IMPORT ... -->`
-- `<!--SLURP ... -->`
-- `<!--SIP ... -->`
-- `<!--SUP ... -->`
+- `<!​--SET ... -->`
+- `<!​--IMPORT ... -->`
+- `<!​--SLURP ... -->`
+- `<!​--SIP ... -->`
+- `<!​--SUP ... -->`
 
 **Error Detection:**
 
@@ -950,7 +1004,7 @@ mdship update myfile.md
 diff myfile.md.bak myfile.md  # See exactly what changed
 ```
 
-### 1.3.15. MCP Server
+### 1.3.16. MCP Server
 
 Configure in your Claude settings:
 
