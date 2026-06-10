@@ -16,6 +16,7 @@ from mdship.markdown import (
     replace_variables_in_document,
     shift_heading_levels,
     update_mermaid,
+    update_tracking,
     _validate_placeholder_structure,
 )
 
@@ -1347,6 +1348,61 @@ content: |
 <!--/TEMPLATEE-->"""
         with pytest.raises(ValueError, match="does not match"):
             collect_set_variables(content)
+
+
+class TestTracking:
+    def test_update_tracking_creates_front_matter(self):
+        """Test that update_tracking creates front-matter if missing."""
+        content = "# My Document\n\nContent here"
+        result = update_tracking(content, "test-operation: did something")
+
+        # Should have front-matter
+        assert result.startswith("---\n")
+        assert "last-updated:" in result
+        assert "test-operation: did something" in result
+        assert "mdship-log:" in result
+
+    def test_update_tracking_updates_existing_front_matter(self):
+        """Test that update_tracking updates existing front-matter."""
+        content = """---
+title: Test
+---
+# Content"""
+        result = update_tracking(content, "operation: test")
+
+        # Should preserve title
+        assert "title: Test" in result
+        # Should add tracking fields
+        assert "last-updated:" in result
+        assert "operation: test" in result
+        assert "mdship-log:" in result
+
+    def test_update_tracking_appends_to_log(self):
+        """Test that update_tracking appends to existing mdship-log."""
+        content = """---
+title: Test
+mdship-log: |
+  2026-06-10 10:00:00 - first: operation
+---
+Content"""
+        result = update_tracking(content, "second: operation")
+
+        # Both log entries should be present
+        assert "2026-06-10 10:00:00 - first: operation" in result
+        assert "second: operation" in result
+        # Should be formatted as YAML literal block
+        assert "mdship-log: |" in result
+
+    def test_update_tracking_timestamp_format(self):
+        """Test that update_tracking adds ISO format timestamp."""
+        content = "# Test"
+        result = update_tracking(content, "test: operation")
+
+        # Should have ISO format timestamp (YYYY-MM-DDTHH:MM:SS.ffffff)
+        assert "last-updated: '" in result
+        # Check for ISO format pattern
+        import re
+        assert re.search(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}', result)
 
 
 class TestTemplate:

@@ -23,6 +23,7 @@ def _version_callback(value: bool) -> None:
 
 class State:
     no_bak: bool = False
+    track: bool = False
 
 
 state = State()
@@ -35,16 +36,30 @@ def _main(
         typer.Option("--version", "-V", callback=_version_callback, is_eager=True, help="Show version and exit."),
     ] = None,
     no_bak: Annotated[bool, typer.Option("--no-bak", help="Do not create backup files")] = False,
+    track: Annotated[bool, typer.Option("--track", "-t", help="Track changes in front-matter (last-updated and mdship-log)")] = False,
 ) -> None:
     state.no_bak = no_bak
+    state.track = track
 
 
-def _write_file(file: Path, content: str) -> None:
-    """Write content to file, creating a backup if needed."""
+def _write_file(file: Path, content: str, operation: str = "") -> None:
+    """Write content to file, creating a backup if needed and updating tracking if enabled.
+
+    Args:
+        file: Path to the markdown file
+        content: New content to write
+        operation: Description of the operation for tracking (e.g., "fix-headings: fixed 3 issues")
+    """
     if not state.no_bak:
         backup_path = file.with_suffix(file.suffix + ".bak")
         original_content = file.read_text()
         backup_path.write_text(original_content)
+
+    # Update tracking in front-matter if enabled
+    if state.track and operation:
+        from mdship.markdown import update_tracking
+        content = update_tracking(content, operation)
+
     file.write_text(content)
 
 
@@ -61,7 +76,7 @@ def fix_headings(
 
     content = file.read_text()
     fixed_content = fix_heading_levels(content)
-    _write_file(file, fixed_content)
+    _write_file(file, fixed_content, "fix-headings: fixed heading hierarchy")
     err.print(f"[green]✓[/green] Processed {file}")
 
 
@@ -107,7 +122,7 @@ def shift_headings(
         err.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)
 
-    _write_file(file, shifted_content)
+    _write_file(file, shifted_content, f"shift-headings: shifted headings by {levels} level(s)")
     err.print(f"[green]✓[/green] Processed {file}")
 
 
@@ -125,7 +140,7 @@ def sum(
 
     content = file.read_text()
     updated_content = add_content_checksum(content, algorithm)
-    _write_file(file, updated_content)
+    _write_file(file, updated_content, f"add-checksum: added {algorithm} checksum")
     err.print(f"[green]✓[/green] Processed {file}")
 
 
@@ -165,7 +180,7 @@ def reflow(
 
     content = file.read_text()
     reflowed_content = reflow_paragraphs(content, width)
-    _write_file(file, reflowed_content)
+    _write_file(file, reflowed_content, f"reflow: reflowed paragraphs to {width} characters")
     err.print(f"[green]✓[/green] Processed {file}")
 
 
@@ -205,7 +220,7 @@ def semantic_line_breaks(
 
     content = file.read_text()
     reflowed_content = reflow_paragraphs(content, width=0, start_line=start_line, end_line=end_line)
-    _write_file(file, reflowed_content)
+    _write_file(file, reflowed_content, "semantic-line-breaks: split lines at sentence boundaries")
     err.print(f"[green]✓[/green] Processed {file}")
 
 
@@ -250,7 +265,7 @@ def number(
 
     content = file.read_text()
     numbered_content = add_heading_numbers(content, style=style, start_line=start_line, end_line=end_line)
-    _write_file(file, numbered_content)
+    _write_file(file, numbered_content, f"number: added heading numbers with {style} style")
     err.print(f"[green]✓[/green] Processed {file}")
 
     # Warn if TOC placeholder exists
@@ -294,7 +309,7 @@ def unnumber(
 
     content = file.read_text()
     unnumbered_content = remove_heading_numbers(content, start_line=start_line, end_line=end_line)
-    _write_file(file, unnumbered_content)
+    _write_file(file, unnumbered_content, "unnumber: removed heading numbers")
     err.print(f"[green]✓[/green] Processed {file}")
 
     # Warn if TOC placeholder exists
@@ -443,7 +458,7 @@ def update(
         err.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)
 
-    _write_file(file, content)
+    _write_file(file, content, "update: processed all placeholders")
     err.print(f"[green]✓[/green] Processed {file}")
 
 

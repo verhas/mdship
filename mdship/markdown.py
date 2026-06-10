@@ -572,6 +572,87 @@ def add_content_checksum(content: str, algorithm: str = "sha256") -> str:
     return "\n".join(result)
 
 
+def update_tracking(content: str, operation: str) -> str:
+    """Update front-matter with tracking information (last-updated and mdship-log).
+
+    Args:
+        content: Markdown content
+        operation: Description of the operation (e.g., "update: processed all placeholders")
+
+    Returns:
+        Content with updated front-matter
+    """
+    from datetime import datetime
+
+    if not yaml:
+        return content
+
+    lines = content.split("\n")
+
+    # Check if front-matter exists
+    if lines and lines[0] == "---":
+        end_idx = None
+        for i in range(1, len(lines)):
+            if lines[i] == "---":
+                end_idx = i
+                break
+
+        if end_idx is None:
+            # No closing ---, create front-matter
+            fm_lines = []
+        else:
+            fm_lines = lines[1:end_idx]
+    else:
+        # No front-matter, create it
+        fm_lines = []
+        end_idx = -1
+
+    # Parse existing front-matter
+    fm_text = "\n".join(fm_lines) if fm_lines else ""
+    try:
+        fm_dict = yaml.safe_load(fm_text) if fm_text.strip() else {}
+        if not isinstance(fm_dict, dict):
+            fm_dict = {}
+    except Exception:
+        fm_dict = {}
+
+    # Update last-updated timestamp
+    timestamp = datetime.now().isoformat()
+    fm_dict["last-updated"] = timestamp
+
+    # Append to mdship-log (extract it from dict for special formatting)
+    log_entry = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {operation}"
+    if "mdship-log" in fm_dict and fm_dict["mdship-log"]:
+        # Append to existing log without empty lines
+        current_log = str(fm_dict["mdship-log"]).rstrip()
+        mdship_log = f"{current_log}\n{log_entry}"
+    else:
+        # Create new log
+        mdship_log = log_entry
+
+    # Remove mdship-log from dict to serialize separately
+    fm_dict.pop("mdship-log", None)
+
+    # Serialize rest of front-matter to YAML
+    fm_yaml = yaml.dump(fm_dict, default_flow_style=False, sort_keys=False)
+    fm_lines = fm_yaml.rstrip().split("\n") if fm_yaml.strip() else []
+
+    # Add mdship-log with | literal block style (no quotes)
+    fm_lines.append("mdship-log: |")
+    for log_line in mdship_log.split("\n"):
+        fm_lines.append(f"  {log_line}")
+
+    # Reconstruct content
+    if end_idx == -1:
+        # No existing front-matter, create it
+        result = ["---"] + fm_lines + ["---"] + lines
+    else:
+        # Update existing front-matter
+        result = ["---"] + fm_lines + ["---"] + lines[end_idx + 1 :]
+
+    return "\n".join(result)
+
+
 def reflow_paragraphs(content: str, width: Optional[int] = None, start_line: Optional[int] = None, end_line: Optional[int] = None) -> str:
     """Reflow paragraphs to specified width or one sentence per line.
 
