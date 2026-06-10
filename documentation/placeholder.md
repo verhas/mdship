@@ -1,11 +1,11 @@
-# 1. Placeholders in Markdown
+# Placeholders in Markdown
 
 <!--TOC-->
-- [1. Placeholders in Markdown](#1-placeholders-in-markdown)
-  - [1.1. What are Placeholders?](#11-what-are-placeholders)
-    - [1.1.1. Why Use Placeholders?](#111-why-use-placeholders)
-    - [1.1.2. Placeholder Structure](#112-placeholder-structure)
-    - [1.1.3. Available Placeholders](#113-available-placeholders)
+
+- [Placeholders in Markdown](#placeholders-in-markdown)[What are Placeholders?](#what-are-placeholders)[Why Use Placeholders?](#why-use-placeholders)
+- [Placeholder Structure](#placeholder-structure)
+- [Available Placeholders](#available-placeholders)
+
 <!--/TOC-->
 
 <!--AI
@@ -22,13 +22,14 @@ prompt: |
     Mention the different placeholders briefly and have link to the description markdown file of each placeholder.
 -->
 
-## 1.1. What are Placeholders?
+## What are Placeholders?
 
 Placeholders in mdship are special HTML comments that mark regions in your markdown document for processing. They allow you to embed metadata, instructions, and parameters directly in your markdown without affecting the rendered output. Placeholders are recognized by the `mdship update` command, which processes them in a specific order to transform your document.
 
-### 1.1.1. Why Use Placeholders?
+### Why Use Placeholders?
 
 Placeholders enable you to:
+
 - **Define variables** that can be reused throughout your document
 - **Include external content** from other files dynamically
 - **Generate dynamic content** like tables of contents or mermaid diagrams
@@ -37,11 +38,12 @@ Placeholders enable you to:
 
 Since placeholders are HTML comments, they don't appear in the rendered markdown output, making them invisible to readers while remaining powerful tools for document generation and maintenance.
 
-### 1.1.2. Placeholder Structure
+### Placeholder Structure
 
 All placeholders follow a consistent structure:
 
 **Opening placeholder** (with parameters):
+
 ```html
 <!--PLACEHOLDER_TYPE
 param1: value1
@@ -50,6 +52,7 @@ param2: value2
 ```
 
 **Closing placeholder** (optional):
+
 ```html
 <!--/PLACEHOLDER_TYPE-->
 ```
@@ -64,7 +67,7 @@ Some placeholders that generate output content (like `INCLUDE`, `TOC`, and `MERM
 
 Other placeholders that only define or collect data (like `SET`, `IMPORT`, `SIP`, `SUP`, and `SLURP`) do not require a closing marker, as they don't generate visible output.
 
-### 1.1.3. Available Placeholders
+### Available Placeholders
 
 mdship supports the following placeholder types:
 

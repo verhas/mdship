@@ -1,4 +1,4 @@
-3# TEMPLATE Placeholder
+# TEMPLATE Placeholder
 
 <!--AI
 name: "template"

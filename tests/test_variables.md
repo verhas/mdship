@@ -5,11 +5,11 @@ checksum: 8c75d4856825b6e1397775a178f0934837230d5cd4add677023db6ad964e490d
 checksum_algorithm: sha256
 ---
 
-# Variables Feature Test
+# 1. Variables Feature Test
 
 This document demonstrates the SET placeholder functionality in mdship.
 
-## Variables Definition
+## 1.1. Variables Definition
 
 The following variables are defined at the start:
 
@@ -30,50 +30,50 @@ projectConfig:
     maxRetries: 3
 -->
 
-## Variable References
+## 1.2. Variable References
 
 Variables defined above can be referenced throughout the document.
 
-### Simple Variables
+### 1.2.1. Simple Variables
 
 - Application Name: `$appName` (should show: MyApplication)
 - Version: `$version` (should show: 2.5.1)
 - Author: `$author` (should show: Test Suite)
 
-### Nested Variables
+### 1.2.2. Nested Variables
 
 - Language: `$projectConfig.language` (should show: Python)
 - Framework: `$projectConfig.framework` (should show: mdship)
 - License: `$projectConfig.license` (should show: MIT)
 
-### Nested Structure Variables
+### 1.2.3. Nested Structure Variables
 
 - First author: `$projectConfig.authors[0]` (should show: Alice)
 - Second author: `$projectConfig.authors[1]` (should show: Bob)
 - Third author: `$projectConfig.authors[2]` (should show: Charlie)
 
-### Deep Nesting
+### 1.2.4. Deep Nesting
 
 - Debug enabled: `$projectConfig.settings.debug` (should show: true)
 - Max retries: `$projectConfig.settings.maxRetries` (should show: 3)
 
-## Variable Syntax Forms
+## 1.3. Variable Syntax Forms
 
 Variables support multiple syntax forms:
 
-### Dollar Sign Notation
+### 1.3.1. Dollar Sign Notation
 
 - Simple: `$appName`
 - Nested: `$projectConfig.language`
 - Array: `$projectConfig.authors[1]`
 
-### Bracketed Notation
+### 1.3.2. Bracketed Notation
 
 - Simple: `${appName}`
 - Nested: `${projectConfig.framework}`
 - Array: `${projectConfig.authors[0]}`
 
-## MERMAID with Variables
+## 1.4. MERMAID with Variables
 
 The following diagram uses variables for dynamic labels:
 
@@ -90,11 +90,11 @@ diagram: |
 ![diagram](_test_diagram.svg)
 <!--/MERMAID-->
 
-## Variable References in Markdown
+## 1.5. Variable References in Markdown
 
 Variables can also be directly referenced in the markdown document using special comment syntax.
 
-### Simple Variable Reference (No Spaces)
+### 1.5.1. Simple Variable Reference (No Spaces)
 
 For single-word values, use the format:
 
@@ -110,7 +110,7 @@ Example in this document:
 - Version: <!--$version-->2.5.1
 - License: <!--$projectConfig.license-->MIT
 
-### Variable Reference with Spaces
+### 1.5.2. Variable Reference with Spaces
 
 For values containing spaces, use a marker:
 
@@ -133,7 +133,7 @@ You can also use any arbitrary marker string:
 - Debug mode: <!--$projectConfig.settings.debug<DEBUG>-->True<!--DEBUG-->
 - Max retries: <!--$projectConfig.settings.maxRetries<RETRY>-->3<!--RETRY-->
 
-### Complex References
+### 1.5.3. Complex References
 
 Nested variables work the same way:
 
@@ -141,14 +141,14 @@ Nested variables work the same way:
 - Array element: <!--$projectConfig.authors[2]<>-->Charlie<!---->
 - Deep nesting: <!--$projectConfig.settings.maxRetries-->3
 
-### Important Notes
+### 1.5.4. Important Notes
 
 - Variable references are updated by `mdship update` command
 - They are NOT updated in MERMAID diagram source (MERMAID variables stay as-is in document)
 - Markers must match exactly: opening marker `<X>` must have closing marker `<!--X-->`
 - Without spaces form must have placeholder with no spaces
 
-## Documentation
+## 1.6. Documentation
 
 Variables are collected during the first phase of `mdship update` command processing.
 This allows:
@@ -158,7 +158,7 @@ This allows:
 - Complex nested structures with arrays and dictionaries
 - Multiple syntax forms for flexibility
 
-## Testing Notes
+## 1.7. Testing Notes
 
 To test this document, run:
 
@@ -175,7 +175,7 @@ This will:
 
 The resulting diagram file at `tests/_test_diagram.svg` should show the substituted values.
 
-## Additional Variables Example
+## 1.8. Additional Variables Example
 
 For reference, here's what a more complex SET placeholder looks like:
 
@@ -203,7 +203,7 @@ Then you could reference:
 - `$deployment.staging.region` → "us-west-2"
 - `$features[1]` → "caching"
 
-## XML import
+## 1.9. XML import
 
 <!--IMPORT
 name: "wood_catalog"
@@ -214,7 +214,7 @@ from: "sample_data.xml"
 <!--$wood_catalog.catalog.items.item[0].name-->walnut
 <!--$wood_catalog.catalog.items.item[0].@serial-->63512
 
-## JSON import
+## 1.10. JSON import
 
 <!--IMPORT
 name: "project_data"
@@ -223,11 +223,11 @@ from: "sample_data.json"
 
 |                       |                                                                                   |
 |:----------------------|:----------------------------------------------------------------------------------|
-| Project:              | <!--$project_data.project.name-->mdship                                           |
-| Version:              | <!--$project_data.project.version-->1.0.0                                         |
+| Project:              | <!--$project_data.project.name-->mdship
+| Version:              | <!--$project_data.project.version-->1.0.0
 | Description:          | <!--$project_data.project.description<😇>-->Markdown Mani Pulation Tool<!--😇-->  |
 | Team Lead:            | <!--$project_data.team.lead<>-->Alice Johnson<!---->                              |
 | First Developer:      | <!--$project_data.team.members[0].name<>-->Bob Smith<!---->                       |
-| First Developer Role: | <!--$project_data.team.members[0].role-->Deviloper                                |
-| Python Version:       | <!--$project_data.config.python_version-->3.11+                                   |
+| First Developer Role: | <!--$project_data.team.members[0].role-->Deviloper
+| Python Version:       | <!--$project_data.config.python_version-->3.11+
 

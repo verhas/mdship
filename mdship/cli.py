@@ -72,15 +72,60 @@ def _exit_if_errors(errors: list[tuple[Path, str]]) -> None:
         raise typer.Exit(1)
 
 
+def _find_mdship_dir() -> Path | None:
+    """Walk from cwd up to root looking for an existing .mdship directory."""
+    current = Path.cwd()
+    while True:
+        candidate = current / ".mdship"
+        if candidate.is_dir():
+            return candidate
+        parent = current.parent
+        if parent == current:
+            return None
+        current = parent
+
+
+def _save_last_files(files: list[Path]) -> None:
+    mdship = _find_mdship_dir()
+    if mdship is None:
+        return
+    (mdship / ".lastfiles").write_text("\n".join(str(f.resolve()) for f in files) + "\n")
+
+
+def _load_last_files() -> list[Path]:
+    mdship = _find_mdship_dir()
+    if mdship is None:
+        err.print("[red]Error:[/red] no files given and no .mdship directory found — run 'mdship init' in your project root first")
+        raise typer.Exit(1)
+    lastfiles = mdship / ".lastfiles"
+    if not lastfiles.exists():
+        err.print("[red]Error:[/red] no files given and .mdship/.lastfiles not found — run a command with explicit file arguments first")
+        raise typer.Exit(1)
+    paths = [Path(line) for line in lastfiles.read_text().splitlines() if line.strip()]
+    if not paths:
+        err.print("[red]Error:[/red] .mdship/.lastfiles is empty")
+        raise typer.Exit(1)
+    err.print(f"[dim]Using last files:[/dim] {', '.join(str(p) for p in paths)}")
+    return paths
+
+
+def _resolve_files(files: list[Path]) -> list[Path]:
+    """Return files as given, or load from .lastfiles if none provided. Save when given."""
+    if files:
+        _save_last_files(files)
+        return files
+    return _load_last_files()
+
+
 @app.command()
 def fix_headings(
-    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")],
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")] = [],
 ) -> None:
     """Fix heading levels to ensure consistent hierarchy."""
     from mdship.markdown import fix_heading_levels
 
     errors = []
-    for file in files:
+    for file in _resolve_files(files):
         if not file.exists():
             err.print(f"[red]Error:[/red] file not found: {file}")
             errors.append((file, "file not found"))
@@ -94,7 +139,7 @@ def fix_headings(
 
 @app.command()
 def shift_headings(
-    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")],
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")] = [],
     levels: Annotated[int, typer.Option("--levels", "-l", help="Number of levels to shift (positive=lower, negative=higher)")] = 1,
     lines: Annotated[str | None, typer.Option("--lines", help="Line range to process (e.g., '10:50', '10:', ':50')")] = None,
 ) -> None:
@@ -110,7 +155,7 @@ def shift_headings(
             raise typer.Exit(1)
 
     errors = []
-    for file in files:
+    for file in _resolve_files(files):
         if not file.exists():
             err.print(f"[red]Error:[/red] file not found: {file}")
             errors.append((file, "file not found"))
@@ -129,14 +174,14 @@ def shift_headings(
 
 @app.command()
 def sum(
-    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")],
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")] = [],
     algorithm: Annotated[str, typer.Option("--algorithm", "-a", help="Hash algorithm (md5, sha256, sha1)")] = "sha256",
 ) -> None:
     """Add or update checksum in front-matter."""
     from mdship.markdown import add_content_checksum
 
     errors = []
-    for file in files:
+    for file in _resolve_files(files):
         if not file.exists():
             err.print(f"[red]Error:[/red] file not found: {file}")
             errors.append((file, "file not found"))
@@ -150,7 +195,7 @@ def sum(
 
 @app.command()
 def verify(
-    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to check")],
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to check")] = [],
 ) -> None:
     """Verify the checksum in front-matter against the content."""
     if state.track:
@@ -160,7 +205,7 @@ def verify(
     from mdship.markdown import check_content_checksum
 
     errors = []
-    for file in files:
+    for file in _resolve_files(files):
         if not file.exists():
             err.print(f"[red]Error:[/red] file not found: {file}")
             errors.append((file, "file not found"))
@@ -177,7 +222,7 @@ def verify(
 
 @app.command()
 def validate(
-    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to validate")],
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to validate")] = [],
 ) -> None:
     """Validate links and anchors in the markdown file."""
     if state.track:
@@ -187,7 +232,7 @@ def validate(
     from mdship.markdown import validate_links
 
     errors = []
-    for file in files:
+    for file in _resolve_files(files):
         if not file.exists():
             err.print(f"[red]Error:[/red] file not found: {file}")
             errors.append((file, "file not found"))
@@ -202,14 +247,14 @@ def validate(
 
 @app.command()
 def reflow(
-    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")],
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")] = [],
     width: Annotated[int | None, typer.Option("--width", "-w", help="Line width (0 for one sentence per line)")] = None,
 ) -> None:
     """Reflow paragraphs to specified width or one sentence per line."""
     from mdship.markdown import reflow_paragraphs
 
     errors = []
-    for file in files:
+    for file in _resolve_files(files):
         if not file.exists():
             err.print(f"[red]Error:[/red] file not found: {file}")
             errors.append((file, "file not found"))
@@ -223,7 +268,7 @@ def reflow(
 
 @app.command()
 def semantic_line_breaks(
-    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")],
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")] = [],
     lines: Annotated[str | None, typer.Option("--lines", help="Line range to process (e.g., '10:50', '10:', ':50')")] = None,
 ) -> None:
     """Break lines at semantic boundaries (sentences, clauses)."""
@@ -238,7 +283,7 @@ def semantic_line_breaks(
             raise typer.Exit(1)
 
     errors = []
-    for file in files:
+    for file in _resolve_files(files):
         if not file.exists():
             err.print(f"[red]Error:[/red] file not found: {file}")
             errors.append((file, "file not found"))
@@ -252,7 +297,7 @@ def semantic_line_breaks(
 
 @app.command()
 def number(
-    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")],
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")] = [],
     style: Annotated[str, typer.Option("--style", "-s", help="Numbering style: period (1.1.), space (1 1), parenthesis (1))")] = "period",
     lines: Annotated[str | None, typer.Option("--lines", help="Line range to process (e.g., '10:50', '10:', ':50')")] = None,
 ) -> None:
@@ -272,7 +317,7 @@ def number(
             raise typer.Exit(1)
 
     errors = []
-    for file in files:
+    for file in _resolve_files(files):
         if not file.exists():
             err.print(f"[red]Error:[/red] file not found: {file}")
             errors.append((file, "file not found"))
@@ -288,7 +333,7 @@ def number(
 
 @app.command()
 def unnumber(
-    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")],
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")] = [],
     lines: Annotated[str | None, typer.Option("--lines", help="Line range to process (e.g., '10:50', '10:', ':50')")] = None,
 ) -> None:
     """Remove hierarchical numbering from headings."""
@@ -303,7 +348,7 @@ def unnumber(
             raise typer.Exit(1)
 
     errors = []
-    for file in files:
+    for file in _resolve_files(files):
         if not file.exists():
             err.print(f"[red]Error:[/red] file not found: {file}")
             errors.append((file, "file not found"))
@@ -319,7 +364,7 @@ def unnumber(
 
 @app.command()
 def update(
-    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")],
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")] = [],
 ) -> None:
     """Update markdown placeholders (variables, includes, TOC, diagrams, etc).
 
@@ -404,7 +449,7 @@ def update(
     from mdship.markdown import collect_set_variables, replace_variables_in_document, insert_table_of_contents, update_includes, update_mermaid, process_template
 
     errors = []
-    for file in files:
+    for file in _resolve_files(files):
         if not file.exists():
             err.print(f"[red]Error:[/red] file not found: {file}")
             errors.append((file, "file not found"))
@@ -412,7 +457,6 @@ def update(
 
         content = file.read_text()
         markdown_dir = file.parent
-        failed = False
 
         try:
             variables = collect_set_variables(content, markdown_dir=str(markdown_dir))
@@ -471,6 +515,11 @@ def init() -> None:
     import importlib.resources as pkg_resources
 
     cwd = Path.cwd()
+
+    # .mdship/ — state directory for last-used files etc.
+    mdship_dir = cwd / ".mdship"
+    mdship_dir.mkdir(exist_ok=True)
+    err.print(f"[green]✓[/green] Created {mdship_dir}")
 
     # .mcp.json — register the mdship MCP server
     mcp_json = cwd / ".mcp.json"
