@@ -38,4 +38,91 @@ prompt: |
     [SUP](SUP.md), [INCLUDE](INCLUDE.md), [TOC](TOC.md), [MERMAID](MERMAID.md)
 -->
 
+## What TEMPLATE Does
+
+The `TEMPLATE` placeholder takes a content string written inline in the placeholder, substitutes `$variable` references in it, and replaces the region between the opening and closing markers with the rendered result.
+
+The closing `<!--/TEMPLATE-->` (or a custom terminator) is required.
+
+## Why TEMPLATE Exists
+
+Normal variable substitution (`<!--$var-->value`) is deliberately **skipped inside fenced code blocks** (between ` ``` ` markers). This protects code examples that genuinely use `$variable` notation. TEMPLATE is the solution when you need variable values to appear inside a code block: the template content lives in the placeholder's YAML body — outside any code fence — and the rendered output (including the code fence) is inserted between the markers.
+
+## Syntax
+
+````markdown
+<!--TEMPLATE
+content: |
+  ```python
+  app = "$appName"
+  version = "$version"
+  ```
+-->
+(old content is replaced here)
+<!--/TEMPLATE-->
+````
+
+## Configuration Parameters
+
+- `content` *(required)*: The template string as a YAML literal block. All `$var`, `${var}`, `$nested.field`, and `$array[0]` references are substituted before insertion.
+- `_terminate_` *(optional)*: Custom closing marker name.
+
+## Example
+
+```markdown
+<!--SET
+appName: "MyApp"
+config:
+  debug: true
+  port: 8000
+-->
+
+<!--TEMPLATE
+content: |
+  Application Configuration
+  =======================
+  - Name: $appName
+  - Debug: $config.debug
+  - Port: $config.port
+-->
+old documentation
+<!--/TEMPLATE-->
+```
+
+After `mdship update`:
+
+```markdown
+<!--TEMPLATE
+content: |
+  Application Configuration
+  =======================
+  - Name: $appName
+  - Debug: $config.debug
+  - Port: $config.port
+-->
+Application Configuration
+=======================
+- Name: MyApp
+- Debug: true
+- Port: 8000
+<!--/TEMPLATE-->
+```
+
+Running `mdship update` again produces the same result — TEMPLATE is idempotent.
+
+## See Also
+
+**When to choose TEMPLATE:** use TEMPLATE specifically when you need variable values rendered inside a fenced code block, or in any content region where HTML comment markers would interfere. It is the only placeholder that carries its template inline as a YAML field rather than reading from an external file.
+
+| Placeholder | Role | Relationship to TEMPLATE |
+|---|---|---|
+| [SET](SET.md) | Defines variables | TEMPLATE *consumes* what SET defines |
+| [IMPORT](IMPORT.md) | Loads variables from a file | TEMPLATE *consumes* what IMPORT loads |
+| [SLURP](SLURP.md) | Extracts key/value pairs from a file | TEMPLATE *consumes* what SLURP extracts |
+| [SIP](SIP.md) | Extracts predefined variables from a file | TEMPLATE *consumes* what SIP extracts |
+| [SUP](SUP.md) | Captures a value from the document | TEMPLATE *consumes* what SUP captures |
+| [INCLUDE](INCLUDE.md) | Embeds an external file as text | INCLUDE inserts raw content; TEMPLATE renders an inline template |
+| [MERMAID](MERMAID.md) | Renders a diagram with variable substitution | MERMAID substitutes variables in diagram source specifically |
+| [TOC](TOC.md) | Generates a table of contents | Unrelated |
+
 <!--/AI-->

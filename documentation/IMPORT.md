@@ -24,4 +24,106 @@ prompt: |
     [INCLUDE](INCLUDE.md), [TOC](TOC.md), [MERMAID](MERMAID.md)
 -->
 
+## What IMPORT Does
+
+The `IMPORT` placeholder loads a complete data structure from an external file and makes it available as a named variable. The loaded data can be a nested object, an array, or any structure supported by the file format.
+
+IMPORT requires no closing tag.
+
+## Syntax
+
+```markdown
+<!--IMPORT
+name: "config"
+from: "settings.json"
+-->
+```
+
+The file path in `from` is resolved relative to the markdown file's directory.
+
+## Configuration Parameters
+
+- `name` *(required)*: The variable name under which the loaded data is stored. Supports hierarchical dot-notation (e.g. `app.database.config`).
+- `from` *(required)*: Path to the file, relative to the markdown file.
+- `format` *(optional)*: File format — `json`, `yaml`, `toml`, or `xml`. Auto-detected from the file extension if omitted.
+
+## Supported File Formats
+
+| Extension | Format |
+|---|---|
+| `.json` | JSON objects and arrays |
+| `.yaml` / `.yml` | YAML structures |
+| `.toml` | TOML configuration |
+| `.xml` | XML with attribute support (`@attribute` for attributes) |
+
+## Accessing Loaded Data
+
+Once imported, data is accessed using the same dot-notation and array indexing as any other variable:
+
+```markdown
+<!--IMPORT
+name: "config"
+from: "settings.json"
+-->
+
+Host: <!--$config.database.host-->localhost<!---->
+Port: <!--$config.database.port-->5432<!---->
+```
+
+Hierarchical names let you organise imports cleanly:
+
+```markdown
+<!--IMPORT
+name: "app.database.config"
+from: "db-settings.json"
+-->
+
+Host: <!--$app.database.config.host-->localhost<!---->
+```
+
+## Example
+
+Given `settings.json`:
+```json
+{
+  "database": {
+    "host": "db.example.com",
+    "port": 5432
+  },
+  "appName": "MyApp"
+}
+```
+
+Markdown:
+```markdown
+<!--IMPORT
+name: "cfg"
+from: "settings.json"
+-->
+
+App: <!--$cfg.appName-->placeholder<!---->
+DB host: <!--$cfg.database.host-->placeholder<!---->
+```
+
+After `mdship update`:
+```markdown
+App: <!--$cfg.appName-->MyApp<!---->
+DB host: <!--$cfg.database.host-->db.example.com<!---->
+```
+
+## See Also
+
+**When to choose IMPORT:** use IMPORT when your variable data lives in a structured external file (configuration, build output, data files) and you want to load the whole structure at once without writing regex patterns.
+
+| Placeholder | Use when |
+|---|---|
+| [SET](SET.md) | Values are defined inline in the document |
+| [SLURP](SLURP.md) | Variable names and values are extracted from a text file by regex |
+| [SIP](SIP.md) | Variable names are fixed; only values are extracted from a file by regex |
+| [SUP](SUP.md) | The value is already on the next line in the document |
+| [INCLUDE](INCLUDE.md) | You want to embed file content as text, not load it as variables |
+| [TEMPLATE](TEMPLATE.md) | You want to render variables inside a code block |
+| [TOC](TOC.md) | You want to generate a table of contents |
+| [MERMAID](MERMAID.md) | You want to render a diagram |
+
 <!--/AI-->
