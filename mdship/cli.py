@@ -548,13 +548,19 @@ def init() -> None:
     settings_file.write_text(json.dumps(settings, indent=2) + "\n")
     err.print(f"[green]✓[/green] Updated {settings_file}")
 
-    # .claude/skills/ai-placeholder/SKILL.md — AI placeholder skill so Claude knows how to handle <!--AI-->
-    skill_content = pkg_resources.files("mdship").joinpath("SKILL.md").read_text(encoding="utf-8")
-    skill_dir = claude_dir / "skills" / "ai-placeholder"
-    skill_dir.mkdir(parents=True, exist_ok=True)
-    skill_file = skill_dir / "SKILL.md"
-    skill_file.write_text(skill_content)
-    err.print(f"[green]✓[/green] Created {skill_file}")
+    # .claude/skills/*/ — install all bundled skills
+    skills_pkg = pkg_resources.files("mdship").joinpath("skills")
+    for skill_entry in skills_pkg.iterdir():
+        skill_md = skill_entry.joinpath("SKILL.md")
+        try:
+            content = skill_md.read_text(encoding="utf-8")
+        except (FileNotFoundError, TypeError):
+            continue
+        dest_dir = claude_dir / "skills" / skill_entry.name
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest_file = dest_dir / "SKILL.md"
+        dest_file.write_text(content)
+        err.print(f"[green]✓[/green] Created {dest_file}")
 
 
 @app.command()

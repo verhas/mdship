@@ -111,6 +111,35 @@ prompt: |
 /ai-placeholder file.md             ← updates both in order
 ```
 
+## Inline Review Comments: `//AI:`
+
+The `//AI:` prefix is a convention defined in this project for inline review annotations — a lightweight way for Claude to annotate a document with suggestions without changing its content.
+
+### `/ai-review` — annotate without editing
+
+`/ai-review` reads a document and inserts `//AI:` comment lines wherever it has a suggestion. Each comment states the specific change and the reasoning:
+
+```markdown
+//AI: Replace "substituted" with "updated" — the operation replaces only the value
+//AI: portion of the marker; "substitution" implies the whole expression is replaced.
+Variable references are substituted by `mdship update`.
+```
+
+The actual content is untouched. The author can read, agree, edit, or delete any comment before proceeding.
+
+### `/ai-fix` — apply the comments
+
+`/ai-fix` reads every `//AI:` comment in the file, applies each suggestion to the surrounding content, and removes the comment line. The result is a clean document with all accepted suggestions incorporated.
+
+### The workflow
+
+```
+/ai-review file.md        ← Claude annotates; author reviews
+/ai-fix file.md           ← Claude applies what remains
+```
+
+Comments the author deletes before running `/ai-fix` are simply skipped. This keeps the author in control between the two steps.
+
 ## Difference from Other Placeholders
 
 All other mdship placeholders are processed by `mdship update` automatically. The `AI` placeholder requires Claude — it is not something a program can resolve on its own. Use it to maintain sections of a document that require judgment, summarisation, or prose generation from source material.
