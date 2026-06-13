@@ -365,6 +365,7 @@ def unnumber(
 @app.command()
 def update(
     files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")] = [],
+    force: Annotated[bool, typer.Option("--force", "-f", help="Ignore managed content hash checks and regenerate all placeholders.")] = False,
 ) -> None:
     """Update markdown placeholders (variables, includes, TOC, diagrams, etc).
 
@@ -459,14 +460,14 @@ def update(
         markdown_dir = file.parent
 
         try:
-            variables = collect_set_variables(content, markdown_dir=str(markdown_dir))
+            variables = collect_set_variables(content, markdown_dir=str(markdown_dir), force=force)
         except ValueError as e:
             err.print(f"[red]Error:[/red] {file}: {e}")
             errors.append((file, str(e)))
             continue
 
         try:
-            content = update_includes(content, str(markdown_dir))
+            content = update_includes(content, str(markdown_dir), force=force)
         except ValueError as e:
             err.print(f"[red]Error:[/red] {file}: {e}")
             errors.append((file, str(e)))
@@ -480,14 +481,14 @@ def update(
             continue
 
         try:
-            content = process_template(content, variables=variables)
+            content = process_template(content, variables=variables, force=force)
         except ValueError as e:
             err.print(f"[red]Error:[/red] {file}: {e}")
             errors.append((file, str(e)))
             continue
 
         try:
-            content = insert_table_of_contents(content)
+            content = insert_table_of_contents(content, force=force)
         except ValueError as e:
             if str(e).startswith("Opening marker"):
                 pass  # No TOC placeholder in file — that's fine
@@ -497,7 +498,7 @@ def update(
                 continue
 
         try:
-            content = update_mermaid(content, str(markdown_dir), variables=variables)
+            content = update_mermaid(content, str(markdown_dir), variables=variables, force=force)
         except ValueError as e:
             err.print(f"[red]Error:[/red] {file}: {e}")
             errors.append((file, str(e)))

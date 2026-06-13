@@ -2072,15 +2072,24 @@ class TestContentGeneratedHash:
         result2 = insert_table_of_contents(result1)
         assert result1 == result2
 
-    def test_toc_hash_mismatch_raises(self):
-        """Manually edited content causes ValueError on next run."""
+    def test_toc_length_mismatch_raises(self):
+        """Adding content changes length so closing tag is not at expected position."""
         content = "# Title\n\n<!--TOC-->\n<!--/TOC-->\n\n## Section\n"
         result = insert_table_of_contents(content)
-        # Tamper with the managed content between markers
         tampered = result.replace(
             "- [Title](#title)",
             "- [Title](#title)\n- [Injected](#injected)"
         )
+        with pytest.raises(ValueError, match="integrity compromised"):
+            insert_table_of_contents(tampered)
+
+    def test_toc_hash_mismatch_raises(self):
+        """Same-length content edit: closing tag is at the right position but hash differs."""
+        content = "# Title\n\n<!--TOC-->\n<!--/TOC-->\n\n## Section\n"
+        result = insert_table_of_contents(content)
+        # Replace one character with another (keeps length identical)
+        assert "- [Title](#title)" in result
+        tampered = result.replace("- [Title](#title)", "- [TitleX#title)]", 1)
         with pytest.raises(ValueError, match="manually edited"):
             insert_table_of_contents(tampered)
 
@@ -2133,7 +2142,7 @@ class TestContentGeneratedHash:
         content = f"<!--INCLUDE\nfrom: \"{src}\"\n-->\n<!--/INCLUDE-->\n"
         result = update_includes(content, str(tmp_path))
         tampered = result.replace("Hello world", "Hello TAMPERED world")
-        with pytest.raises(ValueError, match="manually edited"):
+        with pytest.raises(ValueError, match="integrity compromised"):
             update_includes(tampered, str(tmp_path))
 
     def test_include_delete_hash_overrides(self, tmp_path):

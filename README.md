@@ -7,7 +7,11 @@ mdship-log: |
 
 A command-line and MCP tool for manipulating markdown files.
 
-<!--TOC _terminate_: "TIC" -->
+<!--TOC _terminate_: "TIC" 
+_content_generated_: 1840:md5:77782b81984df2fce357d190509fb0b4
+# ⚠️ MANAGED CONTENT: Edits will be lost.
+# danger zone: Delete _content_generated_ to override.
+-->
 - [1. mdship](#1-mdship)
   - [1.1. Features](#11-features)
   - [1.2. Installation](#12-installation)
@@ -33,7 +37,8 @@ A command-line and MCP tool for manipulating markdown files.
     - [1.3.14. Tracking Changes](#1314-tracking-changes)
     - [1.3.15. Validating Links](#1315-validating-links)
     - [1.3.16. Placeholder Validation](#1316-placeholder-validation)
-    - [1.3.17. MCP Server](#1317-mcp-server)
+    - [1.3.17. Managed Content Integrity](#1317-managed-content-integrity)
+    - [1.3.18. MCP Server](#1318-mcp-server)
   - [1.4. Design](#14-design)
     - [1.4.1. Dependencies](#141-dependencies)
     - [1.4.2. Development Dependencies](#142-development-dependencies)
@@ -63,6 +68,7 @@ A command-line and MCP tool for manipulating markdown files.
 - **Template placeholders**: Insert dynamic content with variable substitution (useful for code blocks with dynamic values)
 - **Pattern dictionary**: Built-in patterns for common extraction tasks (@heading, @version) and support for custom patterns
 - **Placeholder validation**: Early detection of mistyped closing tags and unclosed placeholders before processing
+- **Managed content integrity**: Hash-based protection against accidental manual edits inside managed blocks (TOC, INCLUDE, MERMAID)
 - **Track changes**: Automatically maintain `last-updated` timestamp and operation logs in front-matter (use `--track` or `-t` flag)
 - **Validate links**: Check for broken anchor references, missing file references, and unused anchors
 
@@ -90,6 +96,7 @@ mdship semantic-line-breaks file.md      # Break lines at sentence boundaries
 mdship number file.md                    # Add hierarchical numbering to headings
 mdship unnumber file.md                  # Remove numbering from headings
 mdship update file.md                    # Update all placeholders (variables, includes, TOC, diagrams)
+mdship update --force file.md            # Update and skip managed-content hash checks (-f for short)
 ```
 
 ### 1.3.2. Shift Validation
@@ -1066,7 +1073,71 @@ mdship update myfile.md
 diff myfile.md.bak myfile.md  # See exactly what changed
 ```
 
-### 1.3.17. MCP Server
+### 1.3.17. Managed Content Integrity
+
+When `mdship update` writes content between placeholder markers (TOC, INCLUDE, MERMAID), it automatically records a hash of that content inside the opening marker. On every subsequent run it verifies the hash before overwriting the block. If the hash does not match — meaning the content was edited manually — mdship refuses to continue and prints an error.
+
+This prevents accidentally losing hand-written edits that were made inside a managed block.
+
+**Applies to:** `<!--TOC-->`, `<!--INCLUDE-->`, `<!--MERMAID-->`, `<!--TEMPLATE-->` — all built-in placeholders that have a closing tag. Each placeholder processor must explicitly wire in the hash check; it is not applied automatically to new placeholders.
+
+**What it looks like after the first run:**
+
+```markdown
+<!--TOC
+_content_generated_: 312:md5:a3f1c8b2e94d7056...
+# ⚠️ MANAGED CONTENT: Edits will be lost.
+# danger zone: Delete _content_generated_ to override.
+-->
+- [Introduction](#introduction)
+- [Getting Started](#getting-started)
+<!--/TOC-->
+```
+
+The `_content_generated_` line stores the character count and MD5 hash of the managed block. The two comment lines below it are a human-readable warning — they are plain YAML comments and are ignored by the parser.
+
+**Three scenarios:**
+
+1. **First run** — `_content_generated_` is absent. mdship generates the content, computes the hash, and inserts the `_content_generated_` line plus the warning comments into the opening marker.
+
+2. **Subsequent runs** — `_content_generated_` is present. mdship first checks that the closing tag is at exactly the stored character offset (catching insertions or deletions that shift the closing tag), then verifies the MD5 hash of the current content. If both checks pass, it regenerates the content and updates the hash.
+
+3. **User override (manual)** — delete the `_content_generated_` line from the opening marker. The next run treats the placeholder as new (first-run behaviour) and overwrites whatever is between the markers without complaint.
+
+4. **User override (command-line)** — pass `--force` / `-f` to `mdship update`:
+
+```bash
+mdship update --force file.md
+mdship update -f file.md
+```
+
+With `--force`, all hash checks are skipped. If the stored length is present and the closing tag is at the expected position, length-based positioning is still used (so resilience against closing-tag strings in generated content is preserved). If the closing tag is not at the expected position, mdship falls back to a regex scan to find it, just as if there were no `_content_generated_` at all. Either way, the hash is recomputed and written back after the update.
+
+> **Note:** When the content length has changed, `--force` falls back to a regex scan to locate the closing tag. If the managed content itself contains a string that looks like a closing placeholder tag (e.g. `<!--/INCLUDE-->`), the regex scan will stop at that false match rather than the real closing tag, and the update will produce incorrect output. In that case, `--force` cannot help. The safe recovery is to delete the managed content (everything between the opening `-->` and the "real" closing tag) manually, leaving the markers in place, and then run `mdship update` with or without `--force`. With no content and no `_content_generated_` key, mdship treats the placeholder as new and regenerates it cleanly.
+
+**Error messages:**
+
+If the closing tag is not at the expected position (content length changed):
+```
+ERROR: Placeholder TOC document integrity compromised.
+Closing tag not found at expected position.
+Delete _content_generated_ line to override and accept data loss.
+```
+
+If the closing tag is in the right place but the content hash differs (same-length edit):
+```
+ERROR: Placeholder TOC content was manually edited.
+Hash mismatch detected.
+Delete _content_generated_ line to override and accept data loss.
+```
+
+**Notes:**
+
+- The hash is computed on the exact bytes between the opening `-->` and the closing tag, including surrounding newlines.
+- The length-based check makes the parser resilient to generated content that itself contains a closing-tag-like string (e.g. an INCLUDE that pulls in a file mentioning `<!--/INCLUDE-->`).
+- You can freely edit the YAML configuration keys inside the opening marker (e.g. `min-level`, `from`, `file`) — those are outside the managed block and are never overwritten.
+
+### 1.3.18. MCP Server
 
 Configure in your Claude settings:
 

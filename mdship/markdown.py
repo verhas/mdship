@@ -36,6 +36,18 @@ _WARNING_LINE_1 = "# ⚠️ MANAGED CONTENT: Edits will be lost."
 _WARNING_LINE_2 = "# danger zone: Delete _content_generated_ to override."
 
 
+def _parse_stored_length(entry) -> Optional[int]:
+    """Extract integer character-length from a stored entry '<length>:md5:<hex>'."""
+    s = str(entry)
+    idx = s.find(':md5:')
+    if idx >= 0:
+        try:
+            return int(s[:idx].strip())
+        except ValueError:
+            return None
+    return None
+
+
 def _is_in_code_block(content: str, position: int) -> bool:
     """Check if a position in content is inside a code block (between ``` markers)."""
     in_code = False
@@ -49,7 +61,7 @@ def _is_in_code_block(content: str, position: int) -> bool:
     return in_code
 
 
-def _parse_placeholder(content: str, placeholder_name: str, self_contained: bool = False) -> dict:
+def _parse_placeholder(content: str, placeholder_name: str, self_contained: bool = False, force: bool = False) -> dict:
     """Parse a placeholder comment block with YAML configuration.
 
     Finds <!--PLACEHOLDER_NAME [YAML config]--> and optionally <!--/PLACEHOLDER_NAME-->
@@ -120,22 +132,47 @@ def _parse_placeholder(content: str, placeholder_name: str, self_contained: bool
                     config[key.strip()] = value.strip().strip('"\'')
 
     # Handle closing marker based on self_contained flag
+    terminate = config.get('_terminate_', placeholder_name)
     if self_contained:
         # For self-contained placeholders, no closing marker required
         # end_pos equals start_pos (no content between markers)
         end_pos = start_pos
         close_marker = ""
     else:
-        # Determine closing marker
-        terminate = config.get('_terminate_', placeholder_name)
-        close_pattern = rf"<!--/{re.escape(terminate)}-->"
-        close_match = re.search(close_pattern, content[start_pos:])
+        expected_close = f"<!--/{terminate}-->"
+        stored_entry = config.get(_CONTENT_GENERATED_KEY)
+        stored_length = _parse_stored_length(stored_entry) if stored_entry is not None else None
 
-        if not close_match:
-            raise ValueError(f"Closing marker <!--/{terminate}--> not found in content")
+        if stored_length is not None:
+            # Length-based: closing tag must start exactly stored_length chars after start_pos
+            end_pos = start_pos + stored_length
+            actual = content[end_pos:end_pos + len(expected_close)]
+            if actual == expected_close:
+                close_marker = expected_close
+            elif force:
+                # Force mode: fall back to regex when closing tag not at expected position
+                close_pattern = rf"<!--/{re.escape(terminate)}-->"
+                close_match = re.search(close_pattern, content[start_pos:])
+                if not close_match:
+                    raise ValueError(f"Closing marker <!--/{terminate}--> not found in content")
+                end_pos = start_pos + close_match.start()
+                close_marker = close_match.group(0)
+            else:
+                raise ValueError(
+                    f"ERROR: Placeholder {placeholder_name} document integrity compromised. "
+                    "Closing tag not found at expected position. "
+                    "Delete _content_generated_ line to override and accept data loss."
+                )
+        else:
+            # Regex-based: find the first closing tag after start_pos
+            close_pattern = rf"<!--/{re.escape(terminate)}-->"
+            close_match = re.search(close_pattern, content[start_pos:])
 
-        end_pos = start_pos + close_match.start()  # Position BEFORE the closing marker
-        close_marker = close_match.group(0)
+            if not close_match:
+                raise ValueError(f"Closing marker <!--/{terminate}--> not found in content")
+
+            end_pos = start_pos + close_match.start()
+            close_marker = close_match.group(0)
 
     return {
         'config': config,
@@ -147,7 +184,7 @@ def _parse_placeholder(content: str, placeholder_name: str, self_contained: bool
 
 
 def _update_placeholder(content: str, placeholder_name: str,
-                       update_func: Callable[[dict], str]) -> str:
+                       update_func: Callable[[dict], str], force: bool = False) -> str:
     """Update a placeholder with new content generated from config.
 
     Args:
@@ -158,10 +195,10 @@ def _update_placeholder(content: str, placeholder_name: str,
     Returns:
         Updated content with placeholder content replaced
     """
-    info = _parse_placeholder(content, placeholder_name)
+    info = _parse_placeholder(content, placeholder_name, force=force)
 
     current_body = content[info['start_pos']:info['end_pos']]
-    _check_content_hash(placeholder_name, info['open_marker'], info['config'], current_body)
+    _check_content_hash(placeholder_name, info['open_marker'], info['config'], current_body, force=force)
 
     new_content = update_func(info['config'])
     new_body = "\n" + new_content + "\n"
@@ -192,8 +229,10 @@ def _parse_stored_hash(entry) -> Optional[str]:
 
 
 def _check_content_hash(placeholder_name: str, open_marker: str,
-                        config: dict, current_body: str) -> None:
+                        config: dict, current_body: str, force: bool = False) -> None:
     """Raise ValueError if _content_generated_ hash is present and does not match current_body."""
+    if force:
+        return
     stored_entry = config.get(_CONTENT_GENERATED_KEY)
     if stored_entry is None:
         return
@@ -314,10 +353,18 @@ def _extract_lines_from_file(filepath: str, config: dict) -> list:
             if len(parts) != 2:
                 raise ValueError(f"Invalid range format: {range_str}, expected 'x..y'")
             start_line = int(parts[0].strip()) - 1  # Convert to 0-based
-            end_line = int(parts[1].strip())  # Keep inclusive end
+            end_line = int(parts[1].strip())  # Keep the end inclusive
 
-            if start_line < 0 or end_line > len(lines) or start_line >= end_line:
-                raise ValueError(f"Invalid range: {range_str}")
+            if start_line < 0:
+                raise ValueError(f"Invalid range: {range_str} negative start")
+            if end_line < 1:
+                raise ValueError(f"Invalid range: {range_str} negative or zero end")
+            if start_line >= len(lines):
+                raise ValueError(f"Invalid range: {range_str} start beyond file end")
+            if end_line > len(lines):
+                raise ValueError(f"Invalid range: {range_str} end beyond file end")
+            if start_line >= end_line:
+                raise ValueError(f"Invalid range: {range_str} start beyond end")
 
             extracted = lines[start_line:end_line]
         except ValueError as e:
@@ -1418,7 +1465,7 @@ def _remove_trailing_spaces_from_headings(content: str) -> str:
     return "\n".join(result)
 
 
-def update_includes(content: str, markdown_dir: str) -> str:
+def update_includes(content: str, markdown_dir: str, force: bool = False) -> str:
     """Update INCLUDE placeholders by reading content from other files.
 
     Configuration in the marker:
@@ -1546,17 +1593,37 @@ def update_includes(content: str, markdown_dir: str) -> str:
         if postfix:
             included_content += '\n' + postfix
 
-        # Find the position to insert content (after opening marker, before closing marker)
-        close_pattern = r'<!--/[^>]*?-->'
-        close_match = regex_module.search(close_pattern, match_text)
-
         # Calculate positions relative to the full content
         opening_end = match_start + open_match.end()
-        closing_start = match_start + (close_match.start() if close_match else len(match_text))
-
         original_open_marker = open_match.group(0)
+
+        # Determine closing position: use stored length when available
+        terminate = config.get('_terminate_', 'INCLUDE')
+        expected_close = f"<!--/{terminate}-->"
+        stored_entry = config.get(_CONTENT_GENERATED_KEY)
+        stored_length = _parse_stored_length(stored_entry) if stored_entry is not None else None
+
+        if stored_length is not None:
+            closing_start = opening_end + stored_length
+            actual = content[closing_start:closing_start + len(expected_close)]
+            if actual != expected_close:
+                if force:
+                    close_pattern = r'<!--/[^>]*?-->'
+                    close_match = regex_module.search(close_pattern, match_text)
+                    closing_start = match_start + (close_match.start() if close_match else len(match_text))
+                else:
+                    raise ValueError(
+                        f"Line {line_num}: INCLUDE placeholder document integrity compromised. "
+                        "Closing tag not found at expected position. "
+                        "Delete _content_generated_ line to override and accept data loss."
+                    )
+        else:
+            close_pattern = r'<!--/[^>]*?-->'
+            close_match = regex_module.search(close_pattern, match_text)
+            closing_start = match_start + (close_match.start() if close_match else len(match_text))
+
         current_body = content[opening_end:closing_start]
-        _check_content_hash('INCLUDE', original_open_marker, config, current_body)
+        _check_content_hash('INCLUDE', original_open_marker, config, current_body, force=force)
 
         new_body = '\n' + included_content + '\n'
         new_open_marker = _apply_content_hash(original_open_marker, new_body)
@@ -1571,7 +1638,7 @@ def update_includes(content: str, markdown_dir: str) -> str:
     return content
 
 
-def process_template(content: str, variables: Optional[dict] = None) -> str:
+def process_template(content: str, variables: Optional[dict] = None, force: bool = False) -> str:
     """Process TEMPLATE placeholders by substituting variables in content.
 
     Configuration in the marker:
@@ -1647,22 +1714,46 @@ def process_template(content: str, variables: Optional[dict] = None) -> str:
 
         processed_content = regex_module.sub(var_pattern, replace_var, processed_content)
 
-        # Replace the entire placeholder including markers and old content
-        opening_marker = match.group(0)[:match.group(0).find('-->') + 3]  # Everything up to and including -->
-        new_content = (
-            content[:match.start()] +
-            opening_marker +
-            '\n' + processed_content + '\n' +
-            '<!--/TEMPLATE-->' +
-            content[match.end():]
-        )
+        opening_marker = match.group(0)[:match.group(0).find('-->') + 3]
+        opening_end = match.start() + len(opening_marker)
+        closing_start = match.end() - len('<!--/TEMPLATE-->')
 
-        content = new_content
+        terminate = config.get('_terminate_', 'TEMPLATE')
+        expected_close = f"<!--/{terminate}-->"
+        stored_entry = config.get(_CONTENT_GENERATED_KEY)
+        stored_length = _parse_stored_length(stored_entry) if stored_entry is not None else None
+
+        if stored_length is not None:
+            closing_start = opening_end + stored_length
+            actual = content[closing_start:closing_start + len(expected_close)]
+            if actual != expected_close:
+                if force:
+                    # Fall back: regex already found closing_start via the placeholder_pattern match
+                    closing_start = match.end() - len('<!--/TEMPLATE-->')
+                else:
+                    raise ValueError(
+                        f"Line {line_num}: TEMPLATE placeholder document integrity compromised. "
+                        "Closing tag not found at expected position. "
+                        "Delete _content_generated_ line to override and accept data loss."
+                    )
+
+        current_body = content[opening_end:closing_start]
+        _check_content_hash('TEMPLATE', opening_marker, config, current_body, force=force)
+
+        new_body = '\n' + processed_content + '\n'
+        new_open_marker = _apply_content_hash(opening_marker, new_body)
+
+        content = (
+            content[:match.start()] +
+            new_open_marker +
+            new_body +
+            content[closing_start:]
+        )
 
     return content
 
 
-def update_mermaid(content: str, markdown_dir: str, variables: Optional[dict] = None) -> str:
+def update_mermaid(content: str, markdown_dir: str, variables: Optional[dict] = None, force: bool = False) -> str:
     """Update MERMAID placeholders by rendering diagram source to files.
 
     Configuration in the marker:
@@ -1795,17 +1886,37 @@ def update_mermaid(content: str, markdown_dir: str, variables: Optional[dict] = 
         relative_file_path = config['file']
         image_markdown = f"![diagram]({relative_file_path})"
 
-        # Find the position to insert content (after opening marker, before closing marker)
-        close_pattern = r'<!--/[^>]*?-->'
-        close_match = regex_module.search(close_pattern, match_text)
-
         # Calculate positions relative to the full content
         opening_end = match_start + open_match.end()
-        closing_start = match_start + (close_match.start() if close_match else len(match_text))
-
         original_open_marker = open_match.group(0)
+
+        # Determine closing position: use stored length when available
+        terminate = config.get('_terminate_', 'MERMAID')
+        expected_close = f"<!--/{terminate}-->"
+        stored_entry = config.get(_CONTENT_GENERATED_KEY)
+        stored_length = _parse_stored_length(stored_entry) if stored_entry is not None else None
+
+        if stored_length is not None:
+            closing_start = opening_end + stored_length
+            actual = content[closing_start:closing_start + len(expected_close)]
+            if actual != expected_close:
+                if force:
+                    close_pattern = r'<!--/[^>]*?-->'
+                    close_match = regex_module.search(close_pattern, match_text)
+                    closing_start = match_start + (close_match.start() if close_match else len(match_text))
+                else:
+                    raise ValueError(
+                        f"Line {line_num}: MERMAID placeholder document integrity compromised. "
+                        "Closing tag not found at expected position. "
+                        "Delete _content_generated_ line to override and accept data loss."
+                    )
+        else:
+            close_pattern = r'<!--/[^>]*?-->'
+            close_match = regex_module.search(close_pattern, match_text)
+            closing_start = match_start + (close_match.start() if close_match else len(match_text))
+
         current_body = content[opening_end:closing_start]
-        _check_content_hash('MERMAID', original_open_marker, config, current_body)
+        _check_content_hash('MERMAID', original_open_marker, config, current_body, force=force)
 
         new_body = '\n' + image_markdown + '\n'
         new_open_marker = _apply_content_hash(original_open_marker, new_body)
@@ -2027,7 +2138,7 @@ def replace_variables_in_document(content: str, variables: dict, file_path: Opti
         raise
 
 
-def _validate_placeholder_structure(content: str) -> None:
+def _validate_placeholder_structure(content: str, force: bool = False) -> None:
     """Validate that all placeholders have matching open/close tags.
 
     Checks for:
@@ -2056,37 +2167,118 @@ def _validate_placeholder_structure(content: str) -> None:
         return
 
     lines = content.split('\n')
-    open_stack = []  # Stack of (type, line_num) - only for placeholders that need closing
-    in_code_block = False  # Track if we're inside a code block
+
+    # Pre-compute the character offset of the start of each line so we can do
+    # position-based checks without re-scanning the string.
+    line_starts = [0]
+    for ln in lines[:-1]:
+        line_starts.append(line_starts[-1] + len(ln) + 1)
+
+    open_stack = []   # Stack of (ptype, terminator, line_num)
+    in_code_block = False
+    pending_open = None   # (ptype, open_line_num, accumulated_text)
+    # When a length-validated placeholder is found, skip all lines whose start
+    # falls before this offset (they are inside managed content).
+    skip_until_offset = -1
 
     for line_num, line in enumerate(lines, 1):
+        line_start = line_starts[line_num - 1]
+
+        # Skip lines that lie inside a length-validated managed content block.
+        if line_start < skip_until_offset:
+            continue
+
         # Skip lines inside code blocks or with backticks
-        # Check BEFORE toggling code block state
         if in_code_block or '`' in line:
-            # But still track code block state even when skipping
             if '```' in line:
                 in_code_block = not in_code_block
             continue
 
-        # Track code blocks (``` marks the start/end) for lines NOT being skipped
         if '```' in line:
             in_code_block = not in_code_block
 
         stripped = line.lstrip()
 
-        # Check for opening tags that require closing
-        # Only if the comment is at or very near the start of the line
+        # --- Accumulate lines for a multi-line opening tag until --> ---
+        if pending_open is not None:
+            ptype, open_line_num, accumulated = pending_open
+            accumulated += '\n' + line
+            if '-->' in line:
+                terminate_match = regex_module.search(
+                    r'_terminate_\s*:\s*["\']?(\w+)["\']?', accumulated
+                )
+                terminator = terminate_match.group(1) if terminate_match else ptype
+
+                # Check for stored length; if present, validate position and skip managed content.
+                open_tag_end = line_start + line.find('-->') + 3
+                cg_match = regex_module.search(
+                    r'_content_generated_\s*:\s*(\S+)', accumulated
+                )
+                stored_length = _parse_stored_length(cg_match.group(1)) if cg_match else None
+
+                if stored_length is not None:
+                    expected_close = f"<!--/{terminator}-->"
+                    close_pos = open_tag_end + stored_length
+                    actual = content[close_pos:close_pos + len(expected_close)]
+                    if actual == expected_close:
+                        skip_until_offset = close_pos + len(expected_close)
+                        # Closing tag validated by position — no stack entry needed.
+                    elif force:
+                        open_stack.append((ptype, terminator, open_line_num))
+                    else:
+                        raise ValueError(
+                            f"Line {open_line_num}: {ptype} placeholder document integrity "
+                            "compromised. Closing tag not found at expected position. "
+                            "Delete _content_generated_ line to override and accept data loss."
+                        )
+                else:
+                    open_stack.append((ptype, terminator, open_line_num))
+
+                pending_open = None
+            else:
+                pending_open = (ptype, open_line_num, accumulated)
+            continue
+
+        # --- Opening tags ---
         if stripped.startswith('<!--'):
             if match := regex_module.search(r'<!--(TEMPLATE|MERMAID|INCLUDE|TOC)(?:\s|-->|$)', line):
                 ptype = match.group(1)
 
-                # Extract _terminate_ parameter if present
-                terminate_match = regex_module.search(r'_terminate_\s*:\s*["\']?(\w+)["\']?', line)
-                terminator = terminate_match.group(1) if terminate_match else ptype
+                if '-->' in line:
+                    # Single-line opening tag
+                    terminate_match = regex_module.search(
+                        r'_terminate_\s*:\s*["\']?(\w+)["\']?', line
+                    )
+                    terminator = terminate_match.group(1) if terminate_match else ptype
 
-                open_stack.append((ptype, terminator, line_num))
+                    open_tag_end = line_start + line.find('-->') + 3
+                    cg_match = regex_module.search(
+                        r'_content_generated_\s*:\s*(\S+)', line
+                    )
+                    stored_length = _parse_stored_length(cg_match.group(1)) if cg_match else None
 
-        # Check for closing tags - only at line start
+                    if stored_length is not None:
+                        expected_close = f"<!--/{terminator}-->"
+                        close_pos = open_tag_end + stored_length
+                        actual = content[close_pos:close_pos + len(expected_close)]
+                        if actual == expected_close:
+                            skip_until_offset = close_pos + len(expected_close)
+                        elif force:
+                            open_stack.append((ptype, terminator, line_num))
+                        else:
+                            raise ValueError(
+                                f"Line {line_num}: {ptype} placeholder document integrity "
+                                "compromised. Closing tag not found at expected position. "
+                                "Delete _content_generated_ line to override and accept data loss."
+                            )
+                    else:
+                        open_stack.append((ptype, terminator, line_num))
+                else:
+                    # Multi-line opening tag — accumulate until -->
+                    pending_open = (ptype, line_num, line)
+                continue
+
+        # --- Closing tags ---
         if stripped.startswith('<!--/'):
             if match := regex_module.search(r'<!--/(\w+)-->', line):
                 close_type = match.group(1)
@@ -2103,17 +2295,22 @@ def _validate_placeholder_structure(content: str) -> None:
 
                 open_type, expected_terminator, open_line = open_stack[-1]
 
-                # Check if the closing tag matches the opening type or its terminator
                 if close_type == expected_terminator or close_type == open_type:
                     open_stack.pop()
                 else:
-                    # Type doesn't match - either typo or interleaved placeholders
                     raise ValueError(
                         f"Line {line_num}: Closing <!--/{close_type}--> does not match "
                         f"opening <!--{open_type}--> at line {open_line}. "
                         f"Is there a typo in the closing tag? "
                         f"Expected <!--/{expected_terminator}-->"
                     )
+
+    # Check for an opening tag whose --> was never found
+    if pending_open is not None:
+        ptype, open_line_num, _ = pending_open
+        raise ValueError(
+            f"Line {open_line_num}: Opening <!--{ptype}--> comment tag is never closed with -->."
+        )
 
     # Check for unclosed placeholders
     if open_stack:
@@ -2126,7 +2323,7 @@ def _validate_placeholder_structure(content: str) -> None:
         raise ValueError('\n'.join(errors))
 
 
-def collect_set_variables(content: str, markdown_dir: Optional[str] = None) -> dict:
+def collect_set_variables(content: str, markdown_dir: Optional[str] = None, force: bool = False) -> dict:
     """Collect all variables defined by SET, IMPORT, SLURP, SUP, and SIP placeholders.
 
     Variable source placeholders define variables that can be used throughout the document.
@@ -2186,7 +2383,7 @@ def collect_set_variables(content: str, markdown_dir: Optional[str] = None) -> d
     import re as regex_module
 
     # Validate placeholder structure FIRST, before any processing
-    _validate_placeholder_structure(content)
+    _validate_placeholder_structure(content, force=force)
 
     variables = {}
 
@@ -2888,7 +3085,7 @@ def _get_files_to_process(from_path: str, include_pattern: str, exclude_pattern:
     return sorted(files)
 
 
-def insert_table_of_contents(content: str) -> str:
+def insert_table_of_contents(content: str, force: bool = False) -> str:
     """Insert or replace table of contents between <!--TOC--> markers.
 
     Configuration is read from YAML inside the marker:
@@ -2928,7 +3125,7 @@ def insert_table_of_contents(content: str) -> str:
 
         return generate_table_of_contents(content, min_level=effective_min, max_level=effective_max)
 
-    return _update_placeholder(content, 'TOC', generate_toc_content)
+    return _update_placeholder(content, 'TOC', generate_toc_content, force=force)
 
 
 def _get_nested_value(obj: any, path: str) -> Optional[str]:
