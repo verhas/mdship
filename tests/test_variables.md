@@ -5,6 +5,32 @@ checksum: 8c75d4856825b6e1397775a178f0934837230d5cd4add677023db6ad964e490d
 checksum_algorithm: sha256
 ---
 
+<!--TOC
+# this is comment
+-->
+- [1. Variables Feature Test](#1-variables-feature-test)
+  - [1.1. Variables Definition](#11-variables-definition)
+  - [1.2. Variable References](#12-variable-references)
+    - [1.2.1. Simple Variables](#121-simple-variables)
+    - [1.2.2. Nested Variables](#122-nested-variables)
+    - [1.2.3. Nested Structure Variables](#123-nested-structure-variables)
+    - [1.2.4. Deep Nesting](#124-deep-nesting)
+  - [1.3. Variable Syntax Forms](#13-variable-syntax-forms)
+    - [1.3.1. Dollar Sign Notation](#131-dollar-sign-notation)
+    - [1.3.2. Bracketed Notation](#132-bracketed-notation)
+  - [1.4. MERMAID with Variables](#14-mermaid-with-variables)
+  - [1.5. Variable References in Markdown](#15-variable-references-in-markdown)
+    - [1.5.1. Simple Variable Reference (No Spaces)](#151-simple-variable-reference-no-spaces)
+    - [1.5.2. Variable Reference with Spaces](#152-variable-reference-with-spaces)
+    - [1.5.3. Complex References](#153-complex-references)
+    - [1.5.4. Important Notes](#154-important-notes)
+  - [1.6. Documentation](#16-documentation)
+  - [1.7. Testing Notes](#17-testing-notes)
+  - [1.8. Additional Variables Example](#18-additional-variables-example)
+  - [1.9. XML import](#19-xml-import)
+  - [1.10. JSON import](#110-json-import)
+<!--/TOC-->
+
 # 1. Variables Feature Test
 
 This document demonstrates the SET placeholder functionality in mdship.
@@ -15,7 +41,9 @@ The following variables are defined at the start:
 
 <!--SET
 appName: "MyApplication"
+# this is the application version
 version: "2.5.1"
+# this is a comment in the YAML meta-data of the placeholder
 author: "Test Suite"
 projectConfig:
   language: "Python"
