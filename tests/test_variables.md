@@ -7,6 +7,9 @@ checksum_algorithm: sha256
 
 <!--TOC
 # this is comment
+_content_generated_: 1260:md5:4983287d99127d07b05f86c131e8042a
+# ⚠️ MANAGED CONTENT: Edits will be lost.
+# danger zone: Delete _content_generated_ to override.
 -->
 - [1. Variables Feature Test](#1-variables-feature-test)
   - [1.1. Variables Definition](#11-variables-definition)
@@ -114,6 +117,9 @@ diagram: |
     C --\> D["License: $projectConfig.license"]
     D --\> E["Author 1: $projectConfig.authors[0]"]
     E --\> F["Debug: $projectConfig.settings.debug"]
+_content_generated_: 31:md5:f8f8aede57a29a432723042ba9aed83c
+# ⚠️ MANAGED CONTENT: Edits will be lost.
+# danger zone: Delete _content_generated_ to override.
 -->
 ![diagram](_test_diagram.svg)
 <!--/MERMAID-->

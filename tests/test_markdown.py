@@ -2,6 +2,8 @@
 
 import pytest
 
+import hashlib
+
 from mdship.markdown import (
     add_content_checksum,
     add_heading_numbers,
@@ -15,6 +17,7 @@ from mdship.markdown import (
     reflow_paragraphs,
     replace_variables_in_document,
     shift_heading_levels,
+    update_includes,
     update_mermaid,
     update_tracking,
     validate_links,
@@ -239,8 +242,9 @@ class TestTableOfContents:
     def test_insert_toc_with_markers(self):
         content = "# Intro\n\n<!--TOC-->\n<!--/TOC-->\n\n## Section\n### Subsection"
         result = insert_table_of_contents(content)
-        assert "<!--TOC-->" in result
+        assert "<!--TOC" in result
         assert "<!--/TOC-->" in result
+        assert "_content_generated_" in result
         assert "[Intro]" in result
         assert "[Section]" in result
 
@@ -2023,3 +2027,132 @@ See the [guide](#getting-started) above.
         is_valid, message = validate_links(content)
         # Should be valid since external URLs are not checked
         assert "Missing image files" not in message
+
+
+class TestContentGeneratedHash:
+    """Tests for _content_generated_ hash integrity checking."""
+
+    # ------------------------------------------------------------------
+    # TOC placeholder (uses _update_placeholder)
+    # ------------------------------------------------------------------
+
+    def test_toc_first_run_inserts_hash(self):
+        """First run: hash and warning are added to the opening marker."""
+        content = "# Title\n\n<!--TOC-->\n<!--/TOC-->\n\n## Section\n"
+        result = insert_table_of_contents(content)
+        assert "_content_generated_:" in result
+        assert "# ⚠️ MANAGED CONTENT: Edits will be lost." in result
+        assert "# danger zone: Delete _content_generated_ to override." in result
+
+    def test_toc_hash_format(self):
+        """Hash entry must follow <length>:md5:<hex> format."""
+        content = "# Title\n\n<!--TOC-->\n<!--/TOC-->\n\n## Section\n"
+        result = insert_table_of_contents(content)
+        import re
+        match = re.search(r'_content_generated_:\s*(\d+):md5:([0-9a-f]{32})', result)
+        assert match is not None, f"Hash format not found in: {result}"
+
+    def test_toc_subsequent_run_updates_hash(self):
+        """Second run with unchanged content updates hash without error."""
+        content = "# Title\n\n<!--TOC-->\n<!--/TOC-->\n\n## Section\n"
+        result1 = insert_table_of_contents(content)
+        # Run again on the result — content between markers unchanged
+        result2 = insert_table_of_contents(result1)
+        assert "_content_generated_:" in result2
+        # TOC content should be the same
+        import re
+        toc1 = re.search(r'<!--/TOC-->', result1)
+        toc2 = re.search(r'<!--/TOC-->', result2)
+        assert toc1 and toc2
+
+    def test_toc_idempotent_hash(self):
+        """Running twice produces identical output (hash is stable)."""
+        content = "# Title\n\n<!--TOC-->\n<!--/TOC-->\n\n## Section\n"
+        result1 = insert_table_of_contents(content)
+        result2 = insert_table_of_contents(result1)
+        assert result1 == result2
+
+    def test_toc_hash_mismatch_raises(self):
+        """Manually edited content causes ValueError on next run."""
+        content = "# Title\n\n<!--TOC-->\n<!--/TOC-->\n\n## Section\n"
+        result = insert_table_of_contents(content)
+        # Tamper with the managed content between markers
+        tampered = result.replace(
+            "- [Title](#title)",
+            "- [Title](#title)\n- [Injected](#injected)"
+        )
+        with pytest.raises(ValueError, match="manually edited"):
+            insert_table_of_contents(tampered)
+
+    def test_toc_delete_hash_overrides(self):
+        """Deleting the _content_generated_ line allows update after manual edit."""
+        content = "# Title\n\n<!--TOC-->\n<!--/TOC-->\n\n## Section\n"
+        result = insert_table_of_contents(content)
+        # Tamper content and remove the hash line
+        import re
+        tampered = result.replace(
+            "- [Title](#title)",
+            "- [Title](#title)\n- [Injected](#injected)"
+        )
+        tampered = re.sub(r'_content_generated_:.*\n', '', tampered)
+        # Should succeed (treated as first run)
+        result2 = insert_table_of_contents(tampered)
+        assert "_content_generated_:" in result2
+
+    def test_toc_yaml_embedded_hash_raises(self):
+        """_content_generated_ embedded in YAML flow mapping raises ValueError."""
+        # Manually craft a marker where _content_generated_ is in YAML but not standalone
+        body = "\n- [Section](#section)\n"
+        body_hash = hashlib.md5(body.encode()).hexdigest()
+        content = (
+            f"<!--TOC\n"
+            f"{{_content_generated_: {len(body)}:md5:{body_hash}}}\n"
+            f"-->"
+            f"{body}<!--/TOC-->\n\n# Section\n"
+        )
+        with pytest.raises(ValueError, match="not as a standalone line"):
+            insert_table_of_contents(content)
+
+    # ------------------------------------------------------------------
+    # INCLUDE placeholder
+    # ------------------------------------------------------------------
+
+    def test_include_first_run_inserts_hash(self, tmp_path):
+        """First run on INCLUDE placeholder adds hash and warning."""
+        src = tmp_path / "snippet.md"
+        src.write_text("Hello world\n")
+        content = f"<!--INCLUDE\nfrom: \"{src}\"\n-->\n<!--/INCLUDE-->\n"
+        result = update_includes(content, str(tmp_path))
+        assert "_content_generated_:" in result
+        assert "Hello world" in result
+
+    def test_include_hash_mismatch_raises(self, tmp_path):
+        """Manually edited INCLUDE content causes ValueError on next run."""
+        src = tmp_path / "snippet.md"
+        src.write_text("Hello world\n")
+        content = f"<!--INCLUDE\nfrom: \"{src}\"\n-->\n<!--/INCLUDE-->\n"
+        result = update_includes(content, str(tmp_path))
+        tampered = result.replace("Hello world", "Hello TAMPERED world")
+        with pytest.raises(ValueError, match="manually edited"):
+            update_includes(tampered, str(tmp_path))
+
+    def test_include_delete_hash_overrides(self, tmp_path):
+        """Deleting hash line from INCLUDE allows re-run after manual edit."""
+        import re
+        src = tmp_path / "snippet.md"
+        src.write_text("Hello world\n")
+        content = f"<!--INCLUDE\nfrom: \"{src}\"\n-->\n<!--/INCLUDE-->\n"
+        result = update_includes(content, str(tmp_path))
+        tampered = result.replace("Hello world", "Hello TAMPERED world")
+        tampered = re.sub(r'_content_generated_:.*\n', '', tampered)
+        result2 = update_includes(tampered, str(tmp_path))
+        assert "_content_generated_:" in result2
+
+    def test_include_idempotent(self, tmp_path):
+        """Running INCLUDE update twice produces identical output."""
+        src = tmp_path / "snippet.md"
+        src.write_text("Hello world\n")
+        content = f"<!--INCLUDE\nfrom: \"{src}\"\n-->\n<!--/INCLUDE-->\n"
+        result1 = update_includes(content, str(tmp_path))
+        result2 = update_includes(result1, str(tmp_path))
+        assert result1 == result2

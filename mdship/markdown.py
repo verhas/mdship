@@ -31,6 +31,11 @@ except ImportError:
     ET = None
 
 
+_CONTENT_GENERATED_KEY = "_content_generated_"
+_WARNING_LINE_1 = "# ⚠️ MANAGED CONTENT: Edits will be lost."
+_WARNING_LINE_2 = "# danger zone: Delete _content_generated_ to override."
+
+
 def _is_in_code_block(content: str, position: int) -> bool:
     """Check if a position in content is inside a code block (between ``` markers)."""
     in_code = False
@@ -154,15 +159,108 @@ def _update_placeholder(content: str, placeholder_name: str,
         Updated content with placeholder content replaced
     """
     info = _parse_placeholder(content, placeholder_name)
-    new_content = update_func(info['config'])
 
-    result = (
-        content[:info['start_pos']] +
-        "\n" + new_content + "\n" +
+    current_body = content[info['start_pos']:info['end_pos']]
+    _check_content_hash(placeholder_name, info['open_marker'], info['config'], current_body)
+
+    new_content = update_func(info['config'])
+    new_body = "\n" + new_content + "\n"
+
+    new_open_marker = _apply_content_hash(info['open_marker'], new_body)
+    open_marker_start = info['start_pos'] - len(info['open_marker'])
+
+    return (
+        content[:open_marker_start] +
+        new_open_marker +
+        new_body +
         content[info['end_pos']:]
     )
 
-    return result
+
+def _compute_content_hash(text: str) -> tuple:
+    """Compute character length and MD5 hex of text. Returns (length, hex_str)."""
+    return len(text), hashlib.md5(text.encode('utf-8')).hexdigest()
+
+
+def _parse_stored_hash(entry) -> Optional[str]:
+    """Extract MD5 hex from stored entry of form '<length>:md5:<hex>'."""
+    s = str(entry)
+    idx = s.find(':md5:')
+    if idx >= 0:
+        return s[idx + 5:].strip()
+    return None
+
+
+def _check_content_hash(placeholder_name: str, open_marker: str,
+                        config: dict, current_body: str) -> None:
+    """Raise ValueError if _content_generated_ hash is present and does not match current_body."""
+    stored_entry = config.get(_CONTENT_GENERATED_KEY)
+    if stored_entry is None:
+        return
+
+    # Verify the key appears as a standalone line (not embedded in a flow mapping etc.)
+    if not any(line.strip().startswith(f"{_CONTENT_GENERATED_KEY}:")
+               for line in open_marker.split('\n')):
+        raise ValueError(
+            f"ERROR: Placeholder {placeholder_name}: {_CONTENT_GENERATED_KEY} found in YAML "
+            "but not as a standalone line. "
+            "Delete _content_generated_ line to override and accept data loss."
+        )
+
+    stored_hash = _parse_stored_hash(stored_entry)
+    if stored_hash is not None:
+        _, current_hash = _compute_content_hash(current_body)
+        if current_hash != stored_hash:
+            raise ValueError(
+                f"ERROR: Placeholder {placeholder_name} content was manually edited. "
+                "Hash mismatch detected. "
+                "Delete _content_generated_ line to override and accept data loss."
+            )
+
+
+def _apply_content_hash(open_marker: str, new_body: str) -> str:
+    """Return open_marker with _content_generated_ updated to reflect new_body."""
+    length, hash_hex = _compute_content_hash(new_body)
+    new_entry_line = f"{_CONTENT_GENERATED_KEY}: {length}:md5:{hash_hex}"
+
+    lines = open_marker.split('\n')
+
+    # Remove any existing _content_generated_ line
+    lines = [l for l in lines if not l.strip().startswith(f"{_CONTENT_GENERATED_KEY}:")]
+
+    # Ensure the --> closing tag is on its own line (normalise single-line markers)
+    marker = '\n'.join(lines)
+    if not marker.endswith('\n-->'):
+        close_idx_str = marker.rfind('-->')
+        if close_idx_str >= 0:
+            before = marker[:close_idx_str]
+            if before and not before.endswith('\n'):
+                marker = before + '\n-->'
+            else:
+                marker = before + '-->'
+    lines = marker.split('\n')
+
+    # Locate the --> closing line (search from end)
+    close_line_idx = next(
+        (i for i in range(len(lines) - 1, -1, -1) if lines[i].strip() == '-->'),
+        len(lines),
+    )
+
+    # Locate first warning line (if present), searching before -->
+    warn_line_idx = next(
+        (i for i in range(close_line_idx) if _WARNING_LINE_1.rstrip() in lines[i]),
+        None,
+    )
+
+    if warn_line_idx is not None:
+        lines.insert(warn_line_idx, new_entry_line)
+    else:
+        # Insert hash line + warning lines before -->
+        lines.insert(close_line_idx, _WARNING_LINE_2)
+        lines.insert(close_line_idx, _WARNING_LINE_1)
+        lines.insert(close_line_idx, new_entry_line)
+
+    return '\n'.join(lines)
 
 
 def _load_file_lines(filepath: str) -> list:
@@ -1456,10 +1554,17 @@ def update_includes(content: str, markdown_dir: str) -> str:
         opening_end = match_start + open_match.end()
         closing_start = match_start + (close_match.start() if close_match else len(match_text))
 
-        # Replace content between markers (preserve markers)
+        original_open_marker = open_match.group(0)
+        current_body = content[opening_end:closing_start]
+        _check_content_hash('INCLUDE', original_open_marker, config, current_body)
+
+        new_body = '\n' + included_content + '\n'
+        new_open_marker = _apply_content_hash(original_open_marker, new_body)
+
         content = (
-            content[:opening_end] +
-            '\n' + included_content + '\n' +
+            content[:match_start] +
+            new_open_marker +
+            new_body +
             content[closing_start:]
         )
 
@@ -1698,10 +1803,17 @@ def update_mermaid(content: str, markdown_dir: str, variables: Optional[dict] = 
         opening_end = match_start + open_match.end()
         closing_start = match_start + (close_match.start() if close_match else len(match_text))
 
-        # Replace content between markers (preserve markers)
+        original_open_marker = open_match.group(0)
+        current_body = content[opening_end:closing_start]
+        _check_content_hash('MERMAID', original_open_marker, config, current_body)
+
+        new_body = '\n' + image_markdown + '\n'
+        new_open_marker = _apply_content_hash(original_open_marker, new_body)
+
         content = (
-            content[:opening_end] +
-            '\n' + image_markdown + '\n' +
+            content[:match_start] +
+            new_open_marker +
+            new_body +
             content[closing_start:]
         )
 

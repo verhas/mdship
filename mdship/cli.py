@@ -488,8 +488,13 @@ def update(
 
         try:
             content = insert_table_of_contents(content)
-        except ValueError:
-            pass
+        except ValueError as e:
+            if str(e).startswith("Opening marker"):
+                pass  # No TOC placeholder in file — that's fine
+            else:
+                err.print(f"[red]Error:[/red] {file}: {e}")
+                errors.append((file, str(e)))
+                continue
 
         try:
             content = update_mermaid(content, str(markdown_dir), variables=variables)
