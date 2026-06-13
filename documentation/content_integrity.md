@@ -29,7 +29,7 @@ prompt: |
     - The checking directed by the skill file and mention it uses mcp
 
     At the end, add a "See Also" section that mentiones the placeholders that use this feature.
-_content_generated_: 8795:md5:6306920150b35e450f805828a0988498
+_content_generated_: 9602:md5:8b7eb1a9ccd491ba615e518d9c5fb0b7
 # ⚠️ MANAGED CONTENT: Edits will be lost.
 # danger zone: Delete _content_generated_ to override.
 -->
@@ -173,11 +173,17 @@ Exits 0 if all hashed placeholders are intact. Exits 1 and prints errors for any
 
 The intended workflow when Claude updates an AI placeholder:
 
-1. `ai-check` — verify the existing content has not been manually edited since the last writing. If it has, stop and report to the user before overwriting.
-2. Generate and write new content.
+1. `ai-check` — verify the existing content has not been manually edited since the last write. If it has, stop and report to the user before overwriting.
+2. Generate and write the new content.
 3. `ai-fix` — record the new hash so future checks can detect further manual edits.
 
 This mirrors exactly what `mdship update` does for its own placeholders: check before overwriting, update the hash after.
+
+### How the `/ai-placeholder` skill enforces this
+
+When you invoke the `/ai-placeholder` skill in Claude Code, the skill file instructs Claude to call `mcp__mdship__ai_check` via the mdship MCP server before writing anything. If the server returns a `MODIFIED:` response, Claude stops and reports the conflict to you rather than silently overwriting your edits. After writing, the skill instructs Claude to call `mcp__mdship__ai_fix` via MCP to record the new hash.
+
+This means the check-write-fix cycle is not something Claude has to remember to do — it is encoded directly in the skill definition and enforced automatically on every `/ai-placeholder` invocation. The MCP calls are the machine-readable equivalent of the `_content_generated_` guard that `mdship update` applies to its own placeholders.
 
 
 ## See Also

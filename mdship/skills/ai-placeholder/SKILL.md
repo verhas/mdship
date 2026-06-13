@@ -55,7 +55,7 @@ When you encounter `<!--AI ... -->` placeholders in a document the user asks you
 1. Parse the YAML fields from inside the comment.
 2. If the user named a specific placeholder (by `name`), only process that one.
 3. **Before writing**: call `mcp__mdship__ai_check` for the file (with the `name` parameter if targeting a single placeholder). If it returns a `MODIFIED:` response, **stop and report the error to the user** — the content was manually edited since the last hash was recorded, and overwriting it would silently discard those edits. Do not proceed unless the user explicitly asks you to override. Placeholders that have no `_content_generated_` yet (first run) are not flagged by the check and may be written freely.
-4. Read the existing content in the section as context — it may be partially correct or useful as a starting point.
+4. **Always re-read the file** to get the current `prompt` field from the opening marker before deciding whether the content needs updating. The `ai_check` hash covers only the content between the markers — a changed `prompt` is invisible to it. Do not rely on a previously read version of the prompt.
 5. Generate content based on the `prompt`, the document's surrounding context, style, and heading level.
 6. Replace only what needs changing. Preserve wording, structure, or examples from the existing content where they are still accurate and fit the prompt — avoid rewriting for its own sake.
 7. Write the result between the opening placeholder and the closing marker, replacing the old content, leaving both markers unchanged.
