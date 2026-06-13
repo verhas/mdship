@@ -511,6 +511,86 @@ def update(
 
 
 @app.command()
+def ai_fix(
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")] = [],
+    name: Annotated[str | None, typer.Option("--name", "-n", help="Only fix the AI placeholder with this name.")] = None,
+) -> None:
+    """Record content hash for AI placeholders to protect against accidental edits.
+
+    Computes the character count and MD5 hash of the content between each
+    <!--AI ... --> and <!--/AI--> marker pair and writes _content_generated_
+    into the opening marker, exactly as mdship does for TOC, INCLUDE, MERMAID
+    and TEMPLATE placeholders.
+
+    Run this after writing or updating an AI placeholder section so that
+    subsequent ai-check calls can detect unintended manual edits.
+    """
+    from mdship.markdown import ai_fix_placeholders
+
+    errors = []
+    for file in _resolve_files(files):
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+
+        content = file.read_text()
+        try:
+            new_content, count = ai_fix_placeholders(content, name=name)
+        except Exception as e:
+            err.print(f"[red]Error:[/red] {file}: {e}")
+            errors.append((file, str(e)))
+            continue
+
+        if count == 0:
+            scope = f"named '{name}'" if name else "(none found)"
+            err.print(f"[yellow]⚠[/yellow]  {file}: no AI placeholders {scope}")
+        else:
+            _write_file(file, new_content, f"ai-fix: recorded hash for {count} AI placeholder(s)")
+            err.print(f"[green]✓[/green] {file}: recorded hash for {count} AI placeholder(s)")
+
+    _exit_if_errors(errors)
+
+
+@app.command()
+def ai_check(
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to check")] = [],
+    name: Annotated[str | None, typer.Option("--name", "-n", help="Only check the AI placeholder with this name.")] = None,
+) -> None:
+    """Verify that AI placeholder content matches the recorded hash.
+
+    Exits with code 0 if all hashed placeholders are intact.
+    Exits with code 1 and prints errors for any that differ.
+    Placeholders without a _content_generated_ entry are not checked.
+    """
+    from mdship.markdown import ai_check_placeholders
+
+    errors = []
+    for file in _resolve_files(files):
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+
+        content = file.read_text()
+        try:
+            issues = ai_check_placeholders(content, name=name)
+        except Exception as e:
+            err.print(f"[red]Error:[/red] {file}: {e}")
+            errors.append((file, str(e)))
+            continue
+
+        if issues:
+            for issue in issues:
+                err.print(f"[red]Error:[/red] {file}: {issue}")
+            errors.append((file, issues[0]))
+        else:
+            err.print(f"[green]✓[/green] {file}: AI placeholder content OK")
+
+    _exit_if_errors(errors)
+
+
+@app.command()
 def init() -> None:
     """Initialize mdship configuration in the current directory.
 

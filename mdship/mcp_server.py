@@ -245,4 +245,45 @@ def main() -> None:
         _write(p, content, backup)
         return f"OK: processed {path}"
 
+    @server.tool()
+    def ai_fix(path: str, name: str | None = None, backup: bool = True) -> str:
+        """Record content hash for AI placeholders to protect against accidental edits.
+
+        Computes _content_generated_ (character count + MD5) for each <!--AI-->
+        placeholder and writes it into the opening marker. Call this after writing
+        or updating an AI placeholder section.
+
+        Args:
+            path: Path to the markdown file
+            name: If given, only fix the AI placeholder with this name field
+            backup: Create a .bak backup before modifying (default: True)
+        """
+        from mdship.markdown import ai_fix_placeholders
+        p, content = _read(path)
+        new_content, count = ai_fix_placeholders(content, name=name)
+        if count == 0:
+            scope = f"named '{name}'" if name else "(none found)"
+            return f"No AI placeholders {scope} in {path}"
+        _write(p, new_content, backup)
+        return f"OK: recorded hash for {count} AI placeholder(s) in {path}"
+
+    @server.tool()
+    def ai_check(path: str, name: str | None = None) -> str:
+        """Verify that AI placeholder content matches the recorded hash.
+
+        Returns "OK" if all hashed placeholders are intact, or a list of errors
+        for any that have been modified since the last ai_fix call.
+        Placeholders without a _content_generated_ entry are not checked.
+
+        Args:
+            path: Path to the markdown file
+            name: If given, only check the AI placeholder with this name field
+        """
+        from mdship.markdown import ai_check_placeholders
+        _, content = _read(path)
+        issues = ai_check_placeholders(content, name=name)
+        if issues:
+            return "MODIFIED:\n" + "\n".join(issues)
+        return f"OK: AI placeholder content verified in {path}"
+
     server.run(transport="stdio")

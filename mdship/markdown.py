@@ -302,6 +302,172 @@ def _apply_content_hash(open_marker: str, new_body: str) -> str:
     return '\n'.join(lines)
 
 
+def _find_ai_placeholders(content: str, name: Optional[str] = None) -> list:
+    """Find all <!--AI ... --> ... <!--/AI--> blocks in content.
+
+    Each result dict has:
+      config       — parsed YAML config
+      open_marker  — full opening comment string
+      match_start  — char offset of the opening <!--AI in content
+      start_pos    — char offset immediately after the opening -->
+      end_pos      — char offset of the start of the closing tag
+      close_marker — the closing tag string (e.g. <!--/AI-->)
+      length_ok    — True: closing tag at stored position;
+                     False: stored length present but closing tag not at position;
+                     None: no stored length
+    """
+    import re as re_module
+
+    results = []
+    search_from = 0
+
+    while True:
+        open_match = re_module.search(r'<!--AI(.*?)-->', content[search_from:], re_module.DOTALL)
+        if not open_match:
+            break
+
+        abs_start = search_from + open_match.start()
+        abs_end   = search_from + open_match.end()
+
+        if _is_in_code_block(content, abs_start):
+            search_from = abs_end
+            continue
+
+        line_start = content.rfind('\n', 0, abs_start) + 1
+        if content[line_start:abs_start].strip() != '':
+            search_from = abs_end
+            continue
+
+        open_marker = open_match.group(0)
+        config_text = open_match.group(1).strip()
+        config = {}
+        if config_text and yaml:
+            try:
+                config = yaml.safe_load(config_text) or {}
+            except yaml.YAMLError:
+                config = {}
+
+        if name is not None and config.get('name') != name:
+            search_from = abs_end
+            continue
+
+        terminate      = config.get('_terminate_', 'AI')
+        expected_close = f'<!--/{terminate}-->'
+        start_pos      = abs_end
+
+        stored_entry  = config.get(_CONTENT_GENERATED_KEY)
+        stored_length = _parse_stored_length(stored_entry) if stored_entry is not None else None
+
+        length_ok = None
+        if stored_length is not None:
+            candidate = start_pos + stored_length
+            actual = content[candidate:candidate + len(expected_close)]
+            if actual == expected_close:
+                end_pos   = candidate
+                length_ok = True
+            else:
+                fm = re_module.search(re_module.escape(expected_close), content[start_pos:])
+                if not fm:
+                    search_from = abs_end
+                    continue
+                end_pos   = start_pos + fm.start()
+                length_ok = False
+        else:
+            fm = re_module.search(re_module.escape(expected_close), content[start_pos:])
+            if not fm:
+                search_from = abs_end
+                continue
+            end_pos = start_pos + fm.start()
+
+        results.append({
+            'config':      config,
+            'open_marker': open_marker,
+            'match_start': abs_start,
+            'start_pos':   start_pos,
+            'end_pos':     end_pos,
+            'close_marker': expected_close,
+            'length_ok':   length_ok,
+        })
+
+        search_from = end_pos + len(expected_close)
+
+    return results
+
+
+def ai_fix_placeholders(content: str, name: Optional[str] = None) -> Tuple[str, int]:
+    """Add or update _content_generated_ hash for AI placeholders.
+
+    Args:
+        content: Markdown content
+        name: If given, only update the placeholder with this name field.
+
+    Returns:
+        (updated_content, count) where count is the number of placeholders updated.
+    """
+    placeholders = _find_ai_placeholders(content, name=name)
+
+    for ph in reversed(placeholders):
+        current_body    = content[ph['start_pos']:ph['end_pos']]
+        new_open_marker = _apply_content_hash(ph['open_marker'], current_body)
+        content = (
+            content[:ph['match_start']] +
+            new_open_marker +
+            current_body +
+            content[ph['end_pos']:]
+        )
+
+    return content, len(placeholders)
+
+
+def ai_check_placeholders(content: str, name: Optional[str] = None) -> list:
+    """Verify that AI placeholder content matches the stored hash.
+
+    Args:
+        content: Markdown content
+        name: If given, only check the placeholder with this name field.
+
+    Returns:
+        List of error strings. Empty list means all hashed placeholders are intact.
+        Placeholders with no _content_generated_ are silently skipped (not yet hashed).
+    """
+    placeholders = _find_ai_placeholders(content, name=name)
+    errors = []
+
+    for ph in placeholders:
+        ph_name      = ph['config'].get('name', f'at offset {ph["match_start"]}')
+        stored_entry = ph['config'].get(_CONTENT_GENERATED_KEY)
+
+        if stored_entry is None:
+            continue
+
+        if not any(line.strip().startswith(f"{_CONTENT_GENERATED_KEY}:")
+                   for line in ph['open_marker'].split('\n')):
+            errors.append(
+                f"AI placeholder '{ph_name}': {_CONTENT_GENERATED_KEY} is not on a "
+                "standalone line — delete it to reset."
+            )
+            continue
+
+        if ph['length_ok'] is False:
+            errors.append(
+                f"AI placeholder '{ph_name}': closing tag not at expected position "
+                "(content length changed). Content was manually edited since last ai-fix."
+            )
+            continue
+
+        stored_hash = _parse_stored_hash(stored_entry)
+        if stored_hash is not None:
+            current_body = content[ph['start_pos']:ph['end_pos']]
+            _, current_hash = _compute_content_hash(current_body)
+            if current_hash != stored_hash:
+                errors.append(
+                    f"AI placeholder '{ph_name}': hash mismatch. "
+                    "Content was manually edited since last ai-fix."
+                )
+
+    return errors
+
+
 def _load_file_lines(filepath: str) -> list:
     """Load lines from a file, handling errors gracefully.
 

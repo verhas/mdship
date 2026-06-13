@@ -25,8 +25,13 @@ prompt: |
     - It MUST be on its own line even when a JSON structure inside yaml would be okay.
     - The use of this metadata, when to delete
     - The use of -f and --force
+    - How ai-check and ai-fix works
+    - The checking directed by the skill file and mention it uses mcp
 
     At the end, add a "See Also" section that mentiones the placeholders that use this feature.
+_content_generated_: 8795:md5:6306920150b35e450f805828a0988498
+# ⚠️ MANAGED CONTENT: Edits will be lost.
+# danger zone: Delete _content_generated_ to override.
 -->
 
 ## The Two-M Problem: Managed and Manual Content in the Same File
@@ -138,6 +143,43 @@ With `--force`, hash checks are skipped entirely. mdship still uses the stored c
 **When `--force` cannot help:** if the managed content itself contains a string that matches the closing marker pattern (for example, an `<!--INCLUDE-->` block that pulled in a file mentioning `<!--/INCLUDE-->`), the regex fallback will stop at that false match. In this case, manually delete everything between the opening `-->` and the closing tag, leaving both markers intact and the `_content_generated_` line removed, then run `mdship update` without `--force`.
 
 
+## Content Integrity for AI Placeholders
+
+The `<!--AI-->` placeholder is different from TOC, INCLUDE, MERMAID, and TEMPLATE: its content is written by Claude, not by `mdship update`. mdship itself has no way to know when or what Claude wrote. Two dedicated commands handle integrity for AI placeholders.
+
+### `mdship ai-fix`
+
+Records the current content hash for all AI placeholders in a file:
+
+```bash
+mdship ai-fix file.md              # hash all AI placeholders
+mdship ai-fix --name intro file.md # hash only the one named "intro"
+```
+
+Call this after writing or updating an AI placeholder section. It inserts the same `_content_generated_` line and warning comments into the opening `<!--AI-->` marker that `mdship update` inserts into TOC/INCLUDE/MERMAID markers.
+
+### `mdship ai-check`
+
+Verifies that each hashed AI placeholder still matches its recorded hash:
+
+```bash
+mdship ai-check file.md              # check all AI placeholders
+mdship ai-check --name intro file.md # check only the one named "intro"
+```
+
+Exits 0 if all hashed placeholders are intact. Exits 1 and prints errors for any that differ. Placeholders with no `_content_generated_` entry are not checked — no hash means either the content was never recorded or the hash was deleted to allow a free update.
+
+### Workflow
+
+The intended workflow when Claude updates an AI placeholder:
+
+1. `ai-check` — verify the existing content has not been manually edited since the last writing. If it has, stop and report to the user before overwriting.
+2. Generate and write new content.
+3. `ai-fix` — record the new hash so future checks can detect further manual edits.
+
+This mirrors exactly what `mdship update` does for its own placeholders: check before overwriting, update the hash after.
+
+
 ## See Also
 
 The content integrity feature applies to all built-in placeholders that use a closing tag:
@@ -146,7 +188,8 @@ The content integrity feature applies to all built-in placeholders that use a cl
 - `<!--INCLUDE-->` / `<!--/INCLUDE-->` — file inclusion
 - `<!--MERMAID-->` / `<!--/MERMAID-->` — diagram rendering
 - `<!--TEMPLATE-->` / `<!--/TEMPLATE-->` — variable-substituted template blocks
+- `<!--AI-->` / `<!--/AI-->` — AI-generated content (managed via `ai-fix` / `ai-check`)
 
-Each of these placeholder processors explicitly wires in the hash check and hash update. The feature is not applied automatically to new placeholder types — a new processor must call `_check_content_hash` before generating content and `_apply_content_hash` after.
+For TOC, INCLUDE, MERMAID, and TEMPLATE, the hash check and update are wired directly into each placeholder processor in the code. The feature is not applied automatically to new placeholder types — a new processor must call `_check_content_hash` before generating content and `_apply_content_hash` after. For AI placeholders, the same hash mechanism is used but triggered explicitly by the user via `mdship ai-fix` and `mdship ai-check`.
 
 <!--/AI-->
