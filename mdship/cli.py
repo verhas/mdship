@@ -41,17 +41,24 @@ def _main(
     state.track = track
 
 
-def _write_file(file: Path, content: str, operation: str = "") -> None:
-    if not state.no_bak:
-        backup_path = file.with_suffix(file.suffix + ".bak")
-        original_content = file.read_text()
-        backup_path.write_text(original_content)
+def _write_file(file: Path, content: str, operation: str = "") -> bool:
+    """Write content to file. Returns True if the file changed, False if already up to date."""
+    original_content = file.read_text()
 
     if state.track and operation:
         from mdship.markdown import update_tracking
         content = update_tracking(content, operation)
 
+    if content == original_content:
+        err.print(f"[dim]↔[/dim] {file}: already up to date")
+        return False
+
+    if not state.no_bak:
+        backup_path = file.with_suffix(file.suffix + ".bak")
+        backup_path.write_text(original_content)
+
     file.write_text(content)
+    return True
 
 
 def _parse_line_range(lines: str) -> tuple[int | None, int | None]:
@@ -132,8 +139,8 @@ def fix_headings(
             continue
         content = file.read_text()
         fixed_content = fix_heading_levels(content)
-        _write_file(file, fixed_content, "fix-headings: fixed heading hierarchy")
-        err.print(f"[green]✓[/green] Processed {file}")
+        if _write_file(file, fixed_content, "fix-headings: fixed heading hierarchy"):
+            err.print(f"[green]✓[/green] Processed {file}")
     _exit_if_errors(errors)
 
 
@@ -167,8 +174,8 @@ def shift_headings(
             err.print(f"[red]Error:[/red] {file}: {e}")
             errors.append((file, str(e)))
             continue
-        _write_file(file, shifted_content, f"shift-headings: shifted headings by {levels} level(s)")
-        err.print(f"[green]✓[/green] Processed {file}")
+        if _write_file(file, shifted_content, f"shift-headings: shifted headings by {levels} level(s)"):
+            err.print(f"[green]✓[/green] Processed {file}")
     _exit_if_errors(errors)
 
 
@@ -188,8 +195,8 @@ def sum(
             continue
         content = file.read_text()
         updated_content = add_content_checksum(content, algorithm)
-        _write_file(file, updated_content, f"add-checksum: added {algorithm} checksum")
-        err.print(f"[green]✓[/green] Processed {file}")
+        if _write_file(file, updated_content, f"add-checksum: added {algorithm} checksum"):
+            err.print(f"[green]✓[/green] Processed {file}")
     _exit_if_errors(errors)
 
 
@@ -261,8 +268,8 @@ def reflow(
             continue
         content = file.read_text()
         reflowed_content = reflow_paragraphs(content, width)
-        _write_file(file, reflowed_content, f"reflow: reflowed paragraphs to {width} characters")
-        err.print(f"[green]✓[/green] Processed {file}")
+        if _write_file(file, reflowed_content, f"reflow: reflowed paragraphs to {width} characters"):
+            err.print(f"[green]✓[/green] Processed {file}")
     _exit_if_errors(errors)
 
 
@@ -290,8 +297,8 @@ def semantic_line_breaks(
             continue
         content = file.read_text()
         reflowed_content = reflow_paragraphs(content, width=0, start_line=start_line, end_line=end_line)
-        _write_file(file, reflowed_content, "semantic-line-breaks: split lines at sentence boundaries")
-        err.print(f"[green]✓[/green] Processed {file}")
+        if _write_file(file, reflowed_content, "semantic-line-breaks: split lines at sentence boundaries"):
+            err.print(f"[green]✓[/green] Processed {file}")
     _exit_if_errors(errors)
 
 
@@ -324,8 +331,8 @@ def number(
             continue
         content = file.read_text()
         numbered_content = add_heading_numbers(content, style=style, start_line=start_line, end_line=end_line)
-        _write_file(file, numbered_content, f"number: added heading numbers with {style} style")
-        err.print(f"[green]✓[/green] Processed {file}")
+        if _write_file(file, numbered_content, f"number: added heading numbers with {style} style"):
+            err.print(f"[green]✓[/green] Processed {file}")
         if "<!--TOC-->" in numbered_content:
             err.print(f"[yellow]⚠[/yellow]  Document contains TOC placeholder. Update it with: mdship update {file}")
     _exit_if_errors(errors)
@@ -355,8 +362,8 @@ def unnumber(
             continue
         content = file.read_text()
         unnumbered_content = remove_heading_numbers(content, start_line=start_line, end_line=end_line)
-        _write_file(file, unnumbered_content, "unnumber: removed heading numbers")
-        err.print(f"[green]✓[/green] Processed {file}")
+        if _write_file(file, unnumbered_content, "unnumber: removed heading numbers"):
+            err.print(f"[green]✓[/green] Processed {file}")
         if "<!--TOC-->" in unnumbered_content:
             err.print(f"[yellow]⚠[/yellow]  Document contains TOC placeholder. Update it with: mdship update {file}")
     _exit_if_errors(errors)
@@ -504,8 +511,8 @@ def update(
             errors.append((file, str(e)))
             continue
 
-        _write_file(file, content, "update: processed all placeholders")
-        err.print(f"[green]✓[/green] Processed {file}")
+        if _write_file(file, content, "update: processed all placeholders"):
+            err.print(f"[green]✓[/green] Processed {file}")
 
     _exit_if_errors(errors)
 
@@ -546,8 +553,8 @@ def ai_fix(
             scope = f"named '{name}'" if name else "(none found)"
             err.print(f"[yellow]⚠[/yellow]  {file}: no AI placeholders {scope}")
         else:
-            _write_file(file, new_content, f"ai-fix: recorded hash for {count} AI placeholder(s)")
-            err.print(f"[green]✓[/green] {file}: recorded hash for {count} AI placeholder(s)")
+            if _write_file(file, new_content, f"ai-fix: recorded hash for {count} AI placeholder(s)"):
+                err.print(f"[green]✓[/green] {file}: recorded hash for {count} AI placeholder(s)")
 
     _exit_if_errors(errors)
 
