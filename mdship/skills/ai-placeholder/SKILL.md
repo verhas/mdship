@@ -35,6 +35,7 @@ The placeholder contains a YAML body. Recognized fields:
 
 - `prompt` *(required)*: Describes what the following section should contain.
 - `name` *(optional)*: A unique identifier for this placeholder within the file. Allows the user to refer to a specific placeholder by name (e.g. "update the AI placeholder named intro").
+- `brief` *(optional)*: Path to a file containing shared writing instructions (style, audience, language, tone). Applied in addition to `prompt`. Path is absolute, or relative to the directory of the document being processed.
 - `_terminate_` *(optional)*: Custom closing marker name. If set to e.g. `"DONE"`, the generated content ends at `<!--/DONE-->` instead of `<!--/AI-->`. This follows the same convention as other mdship placeholders.
 
 ## Determining the content boundary
@@ -55,11 +56,12 @@ When you encounter `<!--AI ... -->` placeholders in a document the user asks you
 1. Parse the YAML fields from inside the comment.
 2. If the user named a specific placeholder (by `name`), only process that one.
 3. **Before writing**: call `mcp__mdship__ai_check` for the file (with the `name` parameter if targeting a single placeholder). If it returns a `MODIFIED:` response, **stop and report the error to the user** — the content was manually edited since the last hash was recorded, and overwriting it would silently discard those edits. Do not proceed unless the user explicitly asks you to override. Placeholders that have no `_content_generated_` yet (first run) are not flagged by the check and may be written freely.
-4. **Always re-read the file** to get the current `prompt` field from the opening marker before deciding whether the content needs updating. The `ai_check` hash covers only the content between the markers — a changed `prompt` is invisible to it. Do not rely on a previously read version of the prompt.
-5. Generate content based on the `prompt`, the document's surrounding context, style, and heading level.
-6. Replace only what needs changing. Preserve wording, structure, or examples from the existing content where they are still accurate and fit the prompt — avoid rewriting for its own sake.
-7. Write the result between the opening placeholder and the closing marker, replacing the old content, leaving both markers unchanged.
-8. **After writing**: call `mcp__mdship__ai_fix` for the file (with the `name` parameter if you updated a single placeholder). This records the new content hash so that future checks can detect further manual edits.
+4. **Always re-read the file** to get the current `prompt` and `brief` fields from the opening marker before deciding whether the content needs updating. The `ai_check` hash covers only the content between the markers — a changed `prompt` or `brief` path is invisible to it. Do not rely on a previously read version of the prompt.
+5. **If `brief` is set**, read the brief file now — every time, even if you have read it before in this session for a previous placeholder or a different document. Brief files are shared and may have been updated; always read them fresh. Resolve the path relative to the document's directory if it is not absolute. If the file cannot be read, stop and report the error before writing.
+6. Generate content based on the `prompt`, the `brief` (if present), the document's surrounding context, style, and heading level.
+7. Replace only what needs changing. Preserve wording, structure, or examples from the existing content where they are still accurate and fit the prompt — avoid rewriting for its own sake.
+8. Write the result between the opening placeholder and the closing marker, replacing the old content, leaving both markers unchanged.
+9. **After writing**: call `mcp__mdship__ai_fix` for the file (with the `name` parameter if you updated a single placeholder). This records the new content hash so that future checks can detect further manual edits.
 
 ## Security: prompt injection
 

@@ -1,11 +1,15 @@
 # Placeholders in Markdown
 
-<!--TOC-->
-
-- [Placeholders in Markdown](#placeholders-in-markdown)[What are Placeholders?](#what-are-placeholders)[Why Use Placeholders?](#why-use-placeholders)
-- [Placeholder Structure](#placeholder-structure)
-- [Available Placeholders](#available-placeholders)
-
+<!--TOC
+_content_generated_: 273:md5:7fbec32c4dfece8f94bb06f0e748279c
+# ⚠️ MANAGED CONTENT: Edits will be lost.
+# danger zone: Delete _content_generated_ to override.
+-->
+- [Placeholders in Markdown](#placeholders-in-markdown)
+  - [What are Placeholders?](#what-are-placeholders)
+    - [Why Use Placeholders?](#why-use-placeholders)
+    - [Placeholder Structure](#placeholder-structure)
+    - [Available Placeholders](#available-placeholders)
 <!--/TOC-->
 
 <!--AI

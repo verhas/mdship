@@ -18,6 +18,9 @@ diagram: |
     B --\> C[(Database)]
     B --\> D[Cache]
     D --\> E[Redis]
+_content_generated_: 40:md5:2fc06cf053a507f3e44ccfdcf79d66f0
+# ⚠️ MANAGED CONTENT: Edits will be lost.
+# danger zone: Delete _content_generated_ to override.
 -->
 ![diagram](_diagrams/architecture.svg)
 <!--/MERMAID-->
@@ -41,6 +44,9 @@ diagram: |
     API--\>>API: Hash password
     API--\>>App: JWT token
     App--\>>User: Redirect to dashboard
+_content_generated_: 37:md5:9893e249d591104aab816adae15c5cd8
+# ⚠️ MANAGED CONTENT: Edits will be lost.
+# danger zone: Delete _content_generated_ to override.
 -->
 ![diagram](_diagrams/auth_flow.svg)
 <!--/MERMAID-->
@@ -61,6 +67,9 @@ diagram: |
     F --\> G[Enrich]
     G --\> H[Store]
     H --\> I[Success]
+_content_generated_: 36:md5:89ba46d0226e56bccc27a7a42739f13c
+# ⚠️ MANAGED CONTENT: Edits will be lost.
+# danger zone: Delete _content_generated_ to override.
 -->
 ![diagram](_diagrams/pipeline.svg)
 <!--/MERMAID-->
@@ -97,6 +106,9 @@ diagram: |
       string content
       datetime created_at
     }
+_content_generated_: 34:md5:b7e13ed51f81726039e4d34a740f49fa
+# ⚠️ MANAGED CONTENT: Edits will be lost.
+# danger zone: Delete _content_generated_ to override.
 -->
 ![diagram](_diagrams/schema.svg)
 <!--/MERMAID-->
@@ -120,6 +132,9 @@ diagram: |
     I --\> J{Ready?}
     J --\>|No| E
     J --\>|Yes| K[Deploy to Production]
+_content_generated_: 38:md5:babf100af6d08bbce45c3c7f86e1301f
+# ⚠️ MANAGED CONTENT: Edits will be lost.
+# danger zone: Delete _content_generated_ to override.
 -->
 ![diagram](_diagrams/deployment.svg)
 <!--/MERMAID-->
@@ -154,6 +169,9 @@ diagram: |
     }
     User "1" --\> "many" Post
     Post "1" --\> "many" Comment
+_content_generated_: 35:md5:11c9cd0477dc842192f1ceafe9d0b771
+# ⚠️ MANAGED CONTENT: Edits will be lost.
+# danger zone: Delete _content_generated_ to override.
 -->
 ![diagram](_diagrams/classes.svg)
 <!--/MERMAID-->
@@ -175,6 +193,9 @@ diagram: |
     Processing --\> Ready: Complete
     Error --\> Idle: Retry
     Ready --\> [*]
+_content_generated_: 33:md5:d56bfeb4eb7ed180ab7c2cf4a8bdbec8
+# ⚠️ MANAGED CONTENT: Edits will be lost.
+# danger zone: Delete _content_generated_ to override.
 -->
 ![diagram](_diagrams/state.svg)
 <!--/MERMAID-->
@@ -195,6 +216,9 @@ diagram: |
     E --\> F[Format Response]
     F --\> G[Return to Client]
     D --\> G
+_content_generated_: 40:md5:09ed00775b5923f25d44e0ceefd22106
+# ⚠️ MANAGED CONTENT: Edits will be lost.
+# danger zone: Delete _content_generated_ to override.
 -->
 ![diagram](_diagrams/dark_example.svg)
 <!--/MERMAID-->

@@ -10,7 +10,7 @@ prompt: |
 
     Cover:
     - What INCLUDE does: embeds content from an external file between the opening
-      <!--INCLUDE ... --​> and closing <!--/INCLUDE--​> markers
+      <!-​-INCLUDE ... --​> and closing <!--/INCLUDE--​> markers
     - Syntax and all supported fields:
         - from: path to the file to include (required)
         - prefix/postfix: text inserted before/after the included content (e.g. fenced code block markers)
@@ -26,13 +26,16 @@ prompt: |
     Explain when to choose INCLUDE (embed entire file content) vs. IMPORT (load data as variables).
     Link to: [SET](SET.md), [IMPORT](IMPORT.md), [SLURP](SLURP.md), [SIP](SIP.md),
     [SUP](SUP.md), [TOC](TOC.md), [MERMAID](MERMAID.md)
+_content_generated_: 3280:md5:becb81b62296d2742b96072e8ebe5287
+# ⚠️ MANAGED CONTENT: Edits will be lost.
+# danger zone: Delete _content_generated_ to override.
 -->
 
 ## What INCLUDE Does
 
 The `INCLUDE` placeholder embeds content from an external file directly into your markdown document. The content is inserted between the opening `<!--INCLUDE ... -->` and closing `<!--/INCLUDE-->` markers, replacing whatever was there on the previous run. Variable references in the included content are substituted just like in the rest of the document.
 
-The closing `<!--/INCLUDE-->` (or a custom terminator) is required.
+The closing `<!--/INCLUDE-​->` (or a custom terminator) is required.
 
 ## Syntax
 

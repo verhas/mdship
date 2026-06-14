@@ -276,8 +276,8 @@ Commands are dispatched via `typer.Typer` in `cli.py`. Each command:
 mdship fix-headings file.md
 mdship shift-headings file.md --levels 1
 mdship shift-headings file.md --levels 1 --lines 10:50     # Only lines 10-50
-mdship add-checksum file.md --algorithm sha256
-mdship check-checksum file.md              # Exit 0 if valid, 1 if invalid
+mdship sum file.md --algorithm sha256
+mdship verify file.md              # Exit 0 if valid, 1 if invalid
 mdship reflow file.md --width 80
 mdship semantic-line-breaks file.md                        # One sentence per line
 mdship semantic-line-breaks file.md --lines 10:50         # Only lines 10-50
@@ -300,7 +300,7 @@ mdship --no-bak update file.md
 
 The `--no-bak` flag is a global option that works with any modifying command.
 
-The `check-checksum` command is special—it prints "OK" on success and an error message on failure, with appropriate exit codes for use in shell scripts.
+The `verify` command is special—it prints "OK" on success and an error message on failure, with appropriate exit codes for use in shell scripts.
 
 ---
 
@@ -309,7 +309,7 @@ The `check-checksum` command is special—it prints "OK" on success and an error
 The `mcp_server.py` module implements a stdio-based MCP server that exposes the same markdown functions as async tools. The server:
 
 - Runs on stdin/stdout only (no network)
-- Exposes tools: `fix_headings`, `shift_headings`, `add_checksum`, `check_checksum`, `reflow`, `semantic_line_breaks`, `number`, `unnumber`, `toc`
+- Exposes tools: `fix_headings`, `shift_headings`, `add_checksum`, `check_checksum`, `reflow`, `semantic_line_breaks`, `number`, `unnumber`, `toc`, `include`, `mermaid`, `update`, `ai_fix`, `ai_check`
 - Handles errors gracefully and returns error messages as text content
 
 Configure in Claude's MCP settings:
