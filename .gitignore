@@ -18,9 +18,13 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-
+*.bak
+.idea/
+tests/**/*.svg
 .pytest_cache/
 .ruff_cache/
+.claude/
+.mdship/
 .venv/
 venv/
 env/
