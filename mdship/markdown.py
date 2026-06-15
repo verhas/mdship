@@ -1459,12 +1459,25 @@ def add_heading_numbers(content: str, style: str = "period", start_line: Optiona
     lines = content.split("\n")
     result = []
     level_numbers = {}  # Track numbers at each level
-    in_code_block = False  # Track whether we're inside a code block
+    in_code_block = False
+    in_html_comment = False
 
     for line_num, line in enumerate(lines, 1):
         # Track code block markers
         if line.startswith("```"):
             in_code_block = not in_code_block
+
+        # Track HTML comment blocks; capture state before updating so a line
+        # that opens a comment is still checked (it won't start with #), but
+        # lines already inside a comment are skipped.
+        was_in_html_comment = in_html_comment
+        if in_html_comment:
+            if "-->" in line:
+                in_html_comment = False
+        else:
+            open_pos = line.find("<!--")
+            if open_pos >= 0 and line.find("-->", open_pos + 4) < 0:
+                in_html_comment = True
 
         # Check if line is in the specified range
         should_number = True
@@ -1473,9 +1486,9 @@ def add_heading_numbers(content: str, style: str = "period", start_line: Optiona
         if end_line is not None and line_num > end_line:
             should_number = False
 
-        # Check if this is a heading line (but not inside a code block)
+        # Check if this is a heading line (but not inside a code block or HTML comment)
         match = re.match(r"^(#{1,6})\s+(.+)$", line)
-        if match and should_number and not in_code_block:
+        if match and should_number and not in_code_block and not was_in_html_comment:
             level = len(match.group(1))
             text = match.group(2)
 
@@ -1515,12 +1528,23 @@ def remove_heading_numbers(content: str, start_line: Optional[int] = None, end_l
     """
     lines = content.split("\n")
     result = []
-    in_code_block = False  # Track whether we're inside a code block
+    in_code_block = False
+    in_html_comment = False
 
     for line_num, line in enumerate(lines, 1):
         # Track code block markers
         if line.startswith("```"):
             in_code_block = not in_code_block
+
+        # Track HTML comment blocks
+        was_in_html_comment = in_html_comment
+        if in_html_comment:
+            if "-->" in line:
+                in_html_comment = False
+        else:
+            open_pos = line.find("<!--")
+            if open_pos >= 0 and line.find("-->", open_pos + 4) < 0:
+                in_html_comment = True
 
         # Check if line is in the specified range
         should_process = True
@@ -1529,9 +1553,9 @@ def remove_heading_numbers(content: str, start_line: Optional[int] = None, end_l
         if end_line is not None and line_num > end_line:
             should_process = False
 
-        # Check if this is a heading line (but not inside a code block)
+        # Check if this is a heading line (but not inside a code block or HTML comment)
         match = re.match(r"^(#{1,6})\s+(.+)$", line)
-        if match and should_process and not in_code_block:
+        if match and should_process and not in_code_block and not was_in_html_comment:
             heading_hashes = match.group(1)
             heading_text = match.group(2)
 
