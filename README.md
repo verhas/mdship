@@ -745,15 +745,13 @@ After running `mdship update`, the file contains:
 
 ### 1.3.11. Rendering Mermaid Diagrams
 
-Generate Mermaid diagrams and embed them as images between `<!--MERMAID-->` markers. Diagrams are rendered to SVG or PNG files:
+Generate Mermaid diagrams and embed them as images using `<!--MERMAID-->` markers. Diagrams are rendered to SVG or PNG files:
 
 ```bash
 mdship update file.md                  # Update all placeholders
 ```
 
-**Configuration inside markers:**
-
-You can render Mermaid diagrams with flexible output options:
+**Configuration inside the marker:**
 
 ```markdown
 <!--MERMAID
@@ -763,8 +761,9 @@ diagram: |
     A[Client] --\> B[API Server]
     B --\> C[(Database)]
 -->
-<!--/MERMAID-->
 ```
+
+No closing tag is needed. The single line immediately after `-->` is managed automatically by `mdship update` and holds the generated image reference.
 
 **Important:** Use `--\>` instead of `-->` in your diagram source to prevent the HTML comment from closing prematurely. The `--\>` is automatically converted to `-->` during rendering.
 
@@ -773,7 +772,6 @@ diagram: |
 - `file`: Output file path (required). Relative to the markdown file. Supports `.svg` or `.png` extensions
 - `diagram`: Mermaid diagram source code (required). Can be multiline YAML literal block
 - `theme`: Mermaid theme to use (optional). Supported themes: `default`, `forest`, `dark`, `neutral`
-- `_terminate_`: Custom closing marker (optional, default: `/MERMAID`)
 
 **File creation:**
 
@@ -783,7 +781,7 @@ diagram: |
 
 **After running `mdship update`:**
 
-The content between markers is replaced with image markdown:
+The line after the marker is replaced with the image reference:
 
 ```markdown
 <!--MERMAID
@@ -791,12 +789,16 @@ file: "architecture.svg"
 diagram: |
   flowchart LR
     A[Client] --\> B[API]
+_content_generated_: 28:md5:abc123
+# danger zone: Do not edit the line below.
+# danger zone: Delete _content_generated_ to override.
 -->
 ![diagram](architecture.svg)
-<!--/MERMAID-->
 ```
 
 The diagram file `architecture.svg` is created in the same directory as the markdown file.
+
+**Backward compatibility:** If a document still contains a `<!--/MERMAID-->` closing tag on the line *after* the managed image reference, `mdship update` leaves it in place — it is treated as ordinary documentation content beyond the managed line.
 
 **Arrow Syntax Escaping:**
 
@@ -831,7 +833,6 @@ diagram: |
   flowchart LR
     A[Client] --\> B[Server]
 -->
-<!--/MERMAID-->
 ```
 
 This creates `_diagrams/architecture/` automatically if it doesn't exist.
@@ -848,7 +849,6 @@ diagram: |
     B --\>|Yes| C[Success]
     B --\>|No| D[Retry]
 -->
-<!--/MERMAID-->
 ```
 
 Supported themes are `default`, `forest`, `dark`, and `neutral`. The theme affects colors, fonts, and styling in the rendered diagram.
@@ -1005,9 +1005,11 @@ mdship automatically validates placeholder syntax before processing to prevent s
 
 **Placeholders that require closing tags:**
 - `<!​--TEMPLATE ... -->...<!--/TEMPLATE-->`
-- `<!​--MERMAID ... -->...<!--/MERMAID-->`
 - `<!​--INCLUDE ... -->...<!--/INCLUDE-->`
 - `<!​--TOC ... -->...<!--/TOC-->`
+
+**Placeholders with a single managed line (no closing tag):**
+- `<!​--MERMAID ... -->` — the next line is the generated image reference
 
 **Placeholders without closing tags:**
 - `<!​--SET ... -->`
@@ -1054,14 +1056,14 @@ Line 1: Unclosed <!--TEMPLATE--> placeholder. Expected closing tag <!--/TEMPLATE
 ```markdown
 # ❌ Mismatched nested placeholders
 <​!--TEMPLATE ... -->
-  <​!--MERMAID ... -->
-  <​!--/TEMPLATE-->  ← Should be <!--/MERMAID-->
-<​!--/MERMAID-->
+  <​!--INCLUDE ... -->
+  <​!--/TEMPLATE-->  ← Should be <!--/INCLUDE-->
+<​!--/INCLUDE-->
 ```
 
 Error message:
 ```
-Line 3: Closing <!--/TEMPLATE--> does not match opening <!--MERMAID--> at line 2.
+Line 3: Closing <!--/TEMPLATE--> does not match opening <!--INCLUDE--> at line 2.
 ```
 
 **Safety with backups:**

@@ -23,7 +23,7 @@ _content_generated_: 40:md5:2fc06cf053a507f3e44ccfdcf79d66f0
 # danger zone: Delete _content_generated_ to override.
 -->
 ![diagram](_diagrams/architecture.svg)
-<!--/MERMAID-->
+
 
 The diagram shows the basic system architecture with a client, API server, database, and caching layer.
 

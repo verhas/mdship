@@ -1286,8 +1286,8 @@ content
         with pytest.raises(ValueError, match="Closing <!--/TEMPLATEE--> does not match"):
             _validate_placeholder_structure(content)
 
-    def test_error_unclosed_mermaid(self):
-        """Test error when MERMAID is not closed."""
+    def test_mermaid_without_closing_is_valid(self):
+        """MERMAID no longer requires a closing tag — no error should be raised."""
         content = """<!--MERMAID
 file: "test.svg"
 diagram: |
@@ -1295,20 +1295,14 @@ diagram: |
     A --> B
 -->
 ![diagram](test.svg)"""
-        with pytest.raises(ValueError, match="Unclosed <!--MERMAID-->"):
-            _validate_placeholder_structure(content)
+        _validate_placeholder_structure(content)  # must not raise
 
-    def test_error_mismatched_mermaid(self):
-        """Test error when MERMAID closing tag is wrong."""
-        content = """<!--MERMAID
-file: "test.svg"
-diagram: |
-  graph TD
--->
-![diagram](test.svg)
-<!--/MERMAAID-->"""
-        with pytest.raises(ValueError, match="does not match.*Expected <!--/MERMAID-->"):
-            _validate_placeholder_structure(content)
+    def test_mermaid_stray_close_is_ignored(self):
+        """A stray <!--/MERMAID--> without an opening tag is silently ignored."""
+        content = """Some content
+<!--/MERMAID-->
+More content"""
+        _validate_placeholder_structure(content)  # must not raise
 
     def test_error_unclosed_include(self):
         """Test error when INCLUDE is not closed."""
@@ -1334,13 +1328,11 @@ Table of contents"""
 content: |
   Test
 -->
-  <!--MERMAID
-  file: "test.svg"
-  diagram: |
-    graph A --> B
+  <!--INCLUDE
+  from: "file.md"
   -->
   <!--/TEMPLATE-->
-<!--/MERMAID-->"""
+<!--/INCLUDE-->"""
         with pytest.raises(ValueError, match="does not match"):
             _validate_placeholder_structure(content)
 
@@ -1700,14 +1692,15 @@ diagram: |
   flowchart LR
     A[Start] --> B[End]
 -->
+
 <!--/MERMAID-->
 """
         result = update_mermaid(content, str(tmp_path))
-        
+
         # Check that the diagram was rendered
         assert (tmp_path / "test.svg").exists()
-        
-        # Check that the content was replaced with image markdown
+
+        # Image reference written; closing tag preserved
         assert "![diagram](test.svg)" in result
         assert "<!--MERMAID" in result
         assert "<!--/MERMAID-->" in result
@@ -1726,7 +1719,7 @@ diagram: |
   graph TD
     A[Node A] --> B[Node B]
 -->
-<!--/MERMAID-->
+
 """
         try:
             result = update_mermaid(content, str(tmp_path))
@@ -1750,7 +1743,7 @@ diagram: |
   flowchart LR
     A[Start] --> B[End]
 -->
-<!--/MERMAID-->
+
 """
         # First run
         result1 = update_mermaid(content, str(tmp_path))
@@ -1802,7 +1795,7 @@ diagram: |
             update_mermaid(content, str(tmp_path))
 
     def test_custom_terminate_marker(self, tmp_path):
-        """Custom _terminate_ marker should work correctly."""
+        """_terminate_ in config does not affect processing (closing tag no longer used)."""
         content = """# Test
 
 <!--MERMAID
@@ -1812,14 +1805,12 @@ diagram: |
     A[Start] --> B[End]
 _terminate_: "DIAGRAM"
 -->
+
 <!--/DIAGRAM-->
 """
         result = update_mermaid(content, str(tmp_path))
-        
-        # Check that the diagram was rendered
+
         assert (tmp_path / "custom.svg").exists()
-        
-        # Check that the markers are preserved
         assert "<!--MERMAID" in result
         assert "<!--/DIAGRAM-->" in result
         assert "![diagram](custom.svg)" in result
@@ -1834,7 +1825,7 @@ diagram: |
   flowchart LR
     A[Start] --\> B[End]
 -->
-<!--/MERMAID-->
+
 """
         result = update_mermaid(content, str(tmp_path))
 
@@ -1852,7 +1843,7 @@ diagram: |
   flowchart LR
     A[Start] --\> B[Middle] --\> C[End]
 -->
-<!--/MERMAID-->
+
 """
         result = update_mermaid(content, str(tmp_path))
 
@@ -1876,7 +1867,7 @@ diagram: |
   flowchart LR
     A[Start] --\> B[End]
 -->
-<!--/MERMAID-->
+
 """
         result = update_mermaid(content, str(tmp_path))
 
@@ -1888,6 +1879,92 @@ diagram: |
         svg_content = (tmp_path / "dark.svg").read_text()
         assert len(svg_content) > 0
         assert "svg" in svg_content.lower()
+
+    def test_no_closing_tag(self, tmp_path):
+        """MERMAID works without a closing <!--/MERMAID--> tag."""
+        content = r"""# Test
+
+<!--MERMAID
+file: "no-close.svg"
+diagram: |
+  flowchart LR
+    A[Start] --\> B[End]
+-->
+"""
+        result = update_mermaid(content, str(tmp_path))
+
+        assert (tmp_path / "no-close.svg").exists()
+        assert "![diagram](no-close.svg)" in result
+        assert "<!--MERMAID" in result
+        assert "<!--/MERMAID-->" not in result
+
+    def test_closing_tag_preserved_after_image(self, tmp_path):
+        """A <!--/MERMAID--> that appears after the managed image line is left untouched."""
+        # Start with an empty slot + closing tag (e.g. migrated from old format)
+        content = r"""# Test
+
+<!--MERMAID
+file: "preserve.svg"
+diagram: |
+  flowchart LR
+    A[Start] --\> B[End]
+-->
+
+<!--/MERMAID-->
+"""
+        # First run fills the empty slot; closing tag must survive on the line after
+        result = update_mermaid(content, str(tmp_path))
+
+        assert (tmp_path / "preserve.svg").exists()
+        assert "![diagram](preserve.svg)" in result
+        assert "<!--/MERMAID-->" in result
+
+    def test_idempotency_no_closing(self, tmp_path):
+        """Running update twice on a no-closing-tag document is idempotent."""
+        content = r"""# Test
+
+<!--MERMAID
+file: "idem.svg"
+diagram: |
+  flowchart LR
+    A[Start] --\> B[End]
+-->
+"""
+        result1 = update_mermaid(content, str(tmp_path))
+        result2 = update_mermaid(result1, str(tmp_path))
+
+        assert result1 == result2
+        assert "<!--/MERMAID-->" not in result1
+
+    def test_error_non_empty_line_without_hash(self, tmp_path):
+        """Non-empty line after --> with no _content_generated_ raises an informative error."""
+        content = r"""# Test
+
+<!--MERMAID
+file: "test.svg"
+diagram: |
+  flowchart LR
+    A[Start] --\> B[End]
+-->
+![diagram](test.svg)
+"""
+        with pytest.raises(ValueError, match="not empty"):
+            update_mermaid(content, str(tmp_path))
+
+    def test_error_closing_tag_as_body_without_hash(self, tmp_path):
+        """<!--/MERMAID--> directly after --> (no empty slot) also triggers the error."""
+        content = r"""# Test
+
+<!--MERMAID
+file: "test.svg"
+diagram: |
+  flowchart LR
+    A[Start] --\> B[End]
+-->
+<!--/MERMAID-->
+"""
+        with pytest.raises(ValueError, match="not empty"):
+            update_mermaid(content, str(tmp_path))
 
 
 class TestValidateLinks:

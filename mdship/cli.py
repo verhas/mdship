@@ -504,8 +504,10 @@ def update(
                 errors.append((file, str(e)))
                 continue
 
+        written_files: list[str] = []
         try:
-            content = update_mermaid(content, str(markdown_dir), variables=variables, force=force)
+            content = update_mermaid(content, str(markdown_dir), variables=variables, force=force,
+                                     written_files=written_files)
         except ValueError as e:
             err.print(f"[red]Error:[/red] {file}: {e}")
             errors.append((file, str(e)))
@@ -513,6 +515,11 @@ def update(
 
         if _write_file(file, content, "update: processed all placeholders"):
             err.print(f"[green]✓[/green] Processed {file}")
+            for wf in written_files:
+                err.print(f"  [dim]diagram:[/dim] {wf}")
+        elif written_files:
+            names = ", ".join(Path(wf).name for wf in written_files)
+            err.print(f"[green]✓[/green] {file}: diagram(s) regenerated: {names}")
 
     _exit_if_errors(errors)
 

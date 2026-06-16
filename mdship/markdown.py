@@ -1943,7 +1943,8 @@ def process_template(content: str, variables: Optional[dict] = None, force: bool
     return content
 
 
-def update_mermaid(content: str, markdown_dir: str, variables: Optional[dict] = None, force: bool = False) -> str:
+def update_mermaid(content: str, markdown_dir: str, variables: Optional[dict] = None, force: bool = False,
+                   written_files: Optional[list] = None) -> str:
     """Update MERMAID placeholders by rendering diagram source to files.
 
     Configuration in the marker:
@@ -1951,9 +1952,13 @@ def update_mermaid(content: str, markdown_dir: str, variables: Optional[dict] = 
     file: "_diagrams/architecture.svg"
     diagram: |
       flowchart LR
-        A[Client] --> B[API]
-        B --> C[(DB)]
+        A[Client] --\\> B[API]
+        B --\\> C[(DB)]
     -->
+    ![diagram](_diagrams/architecture.svg)
+
+    The single line immediately after --> is the managed image reference. No closing
+    <!--/MERMAID--> tag is required; if one is present it is consumed and not written back.
 
     Variables from SET placeholders are substituted in the diagram before rendering.
     Variable references like $variable, $structure.field, or ${variable} are replaced.
@@ -1970,8 +1975,12 @@ def update_mermaid(content: str, markdown_dir: str, variables: Optional[dict] = 
         variables = {}
     import re as regex_module
 
-    # Find all MERMAID placeholders that are at line start and not in code blocks
-    placeholder_pattern = r'<!--MERMAID.*?<!--/[^>]*?-->'
+    # Find all MERMAID opening tags. The --> closing the opening tag must be on its own
+    # line (\n-->) so that an unescaped --> inside the YAML diagram source is not
+    # treated as the end of the tag. The single line immediately after --> is the managed
+    # body; no <!--/MERMAID--> closing tag is required. Any <!--/...--> after the body
+    # is consumed for backward compatibility.
+    placeholder_pattern = r'<!--MERMAID(.*?)\n-->'
     all_matches = list(regex_module.finditer(placeholder_pattern, content, regex_module.DOTALL))
 
     # Filter matches to only those at line start and not in code blocks
@@ -1998,17 +2007,9 @@ def update_mermaid(content: str, markdown_dir: str, variables: Optional[dict] = 
 
     # Process matches in reverse order (from end of file backwards)
     for match, line_num in reversed(valid_matches):
-        match_text = match.group(0)
         match_start = match.start()
 
-        # Parse the placeholder config
-        open_pattern = r'<!--MERMAID(.*?)-->'
-        open_match = regex_module.search(open_pattern, match_text, regex_module.DOTALL)
-
-        if not open_match:
-            continue
-
-        config_text = open_match.group(1).strip() if open_match.group(1) else ""
+        config_text = match.group(1).strip() if match.group(1) else ""
 
         # Parse YAML config
         config = {}
@@ -2054,7 +2055,7 @@ def update_mermaid(content: str, markdown_dir: str, variables: Optional[dict] = 
         # Create parent directories if needed
         Path(file_path).parent.mkdir(parents=True, exist_ok=True)
 
-        # Render diagram
+        # Render diagram, tracking whether the output file actually changed.
         try:
             from merm import render_to_file
             diagram_source = config['diagram']
@@ -2068,7 +2069,13 @@ def update_mermaid(content: str, markdown_dir: str, variables: Optional[dict] = 
             if 'theme' in config:
                 render_kwargs['theme'] = config['theme']
 
+            fp = Path(file_path)
+            old_bytes = fp.read_bytes() if fp.exists() else None
             render_to_file(diagram_source, file_path, **render_kwargs)
+            if written_files is not None:
+                new_bytes = fp.read_bytes()
+                if old_bytes != new_bytes:
+                    written_files.append(file_path)
         except Exception as e:
             raise ValueError(f"Line {line_num}: Failed to render diagram: {str(e)}")
 
@@ -2076,46 +2083,57 @@ def update_mermaid(content: str, markdown_dir: str, variables: Optional[dict] = 
         relative_file_path = config['file']
         image_markdown = f"![diagram]({relative_file_path})"
 
-        # Calculate positions relative to the full content
-        opening_end = match_start + open_match.end()
-        original_open_marker = open_match.group(0)
+        # Position right after the --> of the opening tag
+        opening_end = match.end()
+        original_open_marker = match.group(0)
 
-        # Determine closing position: use stored length when available
-        terminate = config.get('_terminate_', 'MERMAID')
-        expected_close = f"<!--/{terminate}-->"
+        # Determine the end of the single-line body.
+        # When _content_generated_ is present, use stored length for exact positioning;
+        # the length encodes len('\n' + image_line + '\n') from the previous run.
         stored_entry = config.get(_CONTENT_GENERATED_KEY)
         stored_length = _parse_stored_length(stored_entry) if stored_entry is not None else None
 
         if stored_length is not None:
-            closing_start = opening_end + stored_length
-            actual = content[closing_start:closing_start + len(expected_close)]
-            if actual != expected_close:
-                if force:
-                    close_pattern = r'<!--/[^>]*?-->'
-                    close_match = regex_module.search(close_pattern, match_text)
-                    closing_start = match_start + (close_match.start() if close_match else len(match_text))
-                else:
-                    raise ValueError(
-                        f"Line {line_num}: MERMAID placeholder document integrity compromised. "
-                        "Closing tag not found at expected position. "
-                        "Delete _content_generated_ line to override and accept data loss."
-                    )
+            content_end = opening_end + stored_length
         else:
-            close_pattern = r'<!--/[^>]*?-->'
-            close_match = regex_module.search(close_pattern, match_text)
-            closing_start = match_start + (close_match.start() if close_match else len(match_text))
+            # No stored length (first run): the line after --> must be empty — it is the
+            # slot reserved for the generated image reference. A non-empty line means either
+            # the user forgot to leave room, or deleted _content_generated_ without also
+            # clearing the image reference line.
+            search_from = opening_end + 1
+            next_newline = content.find('\n', search_from)
+            line_content = (
+                content[search_from:next_newline] if next_newline != -1 else content[search_from:]
+            )
+            if line_content.strip():
+                raise ValueError(
+                    f"Line {line_num}: MERMAID placeholder has no {_CONTENT_GENERATED_KEY!r} "
+                    "entry but the line after --> is not empty. "
+                    "If you just added this placeholder, leave the line after --> empty — "
+                    "it is the slot for the generated image reference. "
+                    "If you deleted _content_generated_ to force regeneration, also delete "
+                    "the image reference line and leave it empty."
+                )
+            content_end = (next_newline + 1) if next_newline != -1 else len(content)
 
-        current_body = content[opening_end:closing_start]
-        _check_content_hash('MERMAID', original_open_marker, config, current_body, force=force)
+        current_body = content[opening_end:content_end]
+        try:
+            _check_content_hash('MERMAID', original_open_marker, config, current_body, force=force)
+        except ValueError as e:
+            raise ValueError(
+                str(e) + " Also delete the image reference line and leave it empty after -->."
+            ) from e
 
         new_body = '\n' + image_markdown + '\n'
         new_open_marker = _apply_content_hash(original_open_marker, new_body)
 
+        # Replace exactly the one managed line; everything after it (including any
+        # <!--/MERMAID--> closing tag) is left untouched.
         content = (
             content[:match_start] +
             new_open_marker +
             new_body +
-            content[closing_start:]
+            content[content_end:]
         )
 
     return content
@@ -2345,8 +2363,8 @@ def _validate_placeholder_structure(content: str, force: bool = False) -> None:
     """
     import re as regex_module
 
-    # Placeholders that require closing tags
-    PLACEHOLDERS_WITH_CLOSING = {'TEMPLATE', 'MERMAID', 'INCLUDE', 'TOC'}
+    # Placeholders that require closing tags (MERMAID uses a single managed line, no closing tag)
+    PLACEHOLDERS_WITH_CLOSING = {'TEMPLATE', 'INCLUDE', 'TOC'}
 
     # Skip validation if this looks like documentation (many code block examples)
     # Count opening/closing code blocks to detect documentation files
@@ -2431,7 +2449,7 @@ def _validate_placeholder_structure(content: str, force: bool = False) -> None:
 
         # --- Opening tags ---
         if stripped.startswith('<!--'):
-            if match := regex_module.search(r'<!--(TEMPLATE|MERMAID|INCLUDE|TOC)(?:\s|-->|$)', line):
+            if match := regex_module.search(r'<!--(TEMPLATE|INCLUDE|TOC)(?:\s|-->|$)', line):
                 ptype = match.group(1)
 
                 if '-->' in line:
