@@ -1,9 +1,11 @@
+import difflib
 from importlib.metadata import version as _pkg_version
 from pathlib import Path
 from typing import Annotated
 
 import typer
 from rich.console import Console
+from rich.markup import escape
 
 _VERSION = _pkg_version("mdship")
 
@@ -23,6 +25,7 @@ def _version_callback(value: bool) -> None:
 class State:
     no_bak: bool = False
     track: bool = False
+    dry_run: bool = False
 
 
 state = State()
@@ -36,9 +39,32 @@ def _main(
     ] = None,
     no_bak: Annotated[bool, typer.Option("--no-bak", help="Do not create backup files")] = False,
     track: Annotated[bool, typer.Option("--track", "-t", help="Track changes in front-matter (last-updated and mdship-log)")] = False,
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="Show what would change without modifying any files")] = False,
 ) -> None:
     state.no_bak = no_bak
     state.track = track
+    state.dry_run = dry_run
+
+
+def _print_diff(file: Path, original: str, new: str) -> None:
+    lines = difflib.unified_diff(
+        original.splitlines(keepends=True),
+        new.splitlines(keepends=True),
+        fromfile=f"a/{file}",
+        tofile=f"b/{file}",
+    )
+    for line in lines:
+        text = escape(line.rstrip("\n"))
+        if line.startswith("+++") or line.startswith("---"):
+            err.print(f"[bold]{text}[/bold]")
+        elif line.startswith("@@"):
+            err.print(f"[cyan]{text}[/cyan]")
+        elif line.startswith("+"):
+            err.print(f"[green]{text}[/green]")
+        elif line.startswith("-"):
+            err.print(f"[red]{text}[/red]")
+        else:
+            err.print(text)
 
 
 def _write_file(file: Path, content: str, operation: str = "") -> bool:
@@ -51,6 +77,11 @@ def _write_file(file: Path, content: str, operation: str = "") -> bool:
 
     if content == original_content:
         err.print(f"[dim]↔[/dim] {file}: already up to date")
+        return False
+
+    if state.dry_run:
+        err.print(f"[yellow]~[/yellow] {file}: would change")
+        _print_diff(file, original_content, content)
         return False
 
     if not state.no_bak:
@@ -507,7 +538,7 @@ def update(
         written_files: list[str] = []
         try:
             content = update_mermaid(content, str(markdown_dir), variables=variables, force=force,
-                                     written_files=written_files)
+                                     written_files=written_files, dry_run=state.dry_run)
         except ValueError as e:
             err.print(f"[red]Error:[/red] {file}: {e}")
             errors.append((file, str(e)))

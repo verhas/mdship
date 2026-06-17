@@ -1944,7 +1944,7 @@ def process_template(content: str, variables: Optional[dict] = None, force: bool
 
 
 def update_mermaid(content: str, markdown_dir: str, variables: Optional[dict] = None, force: bool = False,
-                   written_files: Optional[list] = None) -> str:
+                   written_files: Optional[list] = None, dry_run: bool = False) -> str:
     """Update MERMAID placeholders by rendering diagram source to files.
 
     Configuration in the marker:
@@ -2056,28 +2056,30 @@ def update_mermaid(content: str, markdown_dir: str, variables: Optional[dict] = 
         Path(file_path).parent.mkdir(parents=True, exist_ok=True)
 
         # Render diagram, tracking whether the output file actually changed.
-        try:
-            from merm import render_to_file
-            diagram_source = config['diagram']
-            # Unescape --\> to --> (used to prevent premature HTML comment closure)
-            diagram_source = diagram_source.replace('--\\>', '-->')
-            # Substitute variables in diagram source
-            diagram_source = _substitute_variables(diagram_source, variables)
+        # In dry-run mode skip the renderer so no files are written.
+        if not dry_run:
+            try:
+                from merm import render_to_file
+                diagram_source = config['diagram']
+                # Unescape --\> to --> (used to prevent premature HTML comment closure)
+                diagram_source = diagram_source.replace('--\\>', '-->')
+                # Substitute variables in diagram source
+                diagram_source = _substitute_variables(diagram_source, variables)
 
-            # Prepare rendering options
-            render_kwargs = {}
-            if 'theme' in config:
-                render_kwargs['theme'] = config['theme']
+                # Prepare rendering options
+                render_kwargs = {}
+                if 'theme' in config:
+                    render_kwargs['theme'] = config['theme']
 
-            fp = Path(file_path)
-            old_bytes = fp.read_bytes() if fp.exists() else None
-            render_to_file(diagram_source, file_path, **render_kwargs)
-            if written_files is not None:
-                new_bytes = fp.read_bytes()
-                if old_bytes != new_bytes:
-                    written_files.append(file_path)
-        except Exception as e:
-            raise ValueError(f"Line {line_num}: Failed to render diagram: {str(e)}")
+                fp = Path(file_path)
+                old_bytes = fp.read_bytes() if fp.exists() else None
+                render_to_file(diagram_source, file_path, **render_kwargs)
+                if written_files is not None:
+                    new_bytes = fp.read_bytes()
+                    if old_bytes != new_bytes:
+                        written_files.append(file_path)
+            except Exception as e:
+                raise ValueError(f"Line {line_num}: Failed to render diagram: {str(e)}")
 
         # Build image markdown (relative path for the markdown file)
         relative_file_path = config['file']
