@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8.0 -8.0 699.2 704" width="699.2" height="704" style="background-color: white">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" markerWidth="8" markerHeight="8" refX="0" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333333" />
+    </marker>
+    <marker id="circle-end" viewBox="0 0 10 10" markerWidth="8" markerHeight="8" refX="5" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+      <circle cx="5" cy="5" r="5" fill="#333333" />
+    </marker>
+    <marker id="cross-end" viewBox="0 0 11 11" markerWidth="8" markerHeight="8" refX="5.5" refY="5.5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M 1,1 l 9,9 M 10,1 l -9,9" stroke="#333333" stroke-width="2" />
+    </marker>
+    <marker id="arrow-reverse" viewBox="0 0 10 10" markerWidth="8" markerHeight="8" refX="0" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333333" />
+    </marker>
+  </defs>
+  <style>.node rect, .node polygon, .node circle, .node &gt; path, .node line { fill: #ECECFF; stroke: #9370DB; stroke-width: 1; }
+.node text { fill: #333333; font-family: "trebuchet ms", verdana, arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla"; font-size: 16px; }
+.edge path { fill: none; stroke: #333333; }
+.edge text { fill: #333333; font-family: "trebuchet ms", verdana, arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla"; font-size: 12px; }
+.subgraph rect { fill: #ffffde; stroke: #aaaa33; stroke-width: 1; opacity: 0.5; }
+.subgraph text { fill: #333333; font-family: "trebuchet ms", verdana, arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla"; font-size: 12px; font-weight: bold; }
+</style>
+  <g class="edge" data-edge-source="A" data-edge-target="B">
+    <path d="M341.6,60.8 L341.6,92.8" stroke-width="2" marker-end="url(#arrow)" />
+  </g>
+  <g class="edge" data-edge-source="B" data-edge-target="ERR">
+    <path d="M275.59,161.6 L151.27,218.85" stroke-width="2" marker-end="url(#arrow)" />
+  </g>
+  <g class="edge" data-edge-source="B" data-edge-target="SKIP">
+    <path d="M405.01,161.6 L524.19,218.74" stroke-width="2" marker-end="url(#arrow)" />
+  </g>
+  <g class="edge" data-edge-source="B" data-edge-target="CTX">
+    <path d="M338.99,161.6 L336.25,193.63" stroke-width="2" marker-end="url(#arrow)" />
+  </g>
+  <g class="edge" data-edge-source="CTX" data-edge-target="GEN">
+    <path d="M332.0,284.8 L332.0,316.8" stroke-width="2" marker-end="url(#arrow)" />
+  </g>
+  <g class="edge" data-edge-source="GEN" data-edge-target="WRITE">
+    <path d="M332.0,385.6 L332.0,417.6" stroke-width="2" marker-end="url(#arrow)" />
+  </g>
+  <g class="edge" data-edge-source="WRITE" data-edge-target="FIX">
+    <path d="M332.0,486.4 L332.0,518.4" stroke-width="2" marker-end="url(#arrow)" />
+  </g>
+  <g class="edge" data-edge-source="FIX" data-edge-target="DONE">
+    <path d="M332.0,587.2 L332.0,619.2" stroke-width="2" marker-end="url(#arrow)" />
+  </g>
+  <g class="node" data-node-id="A">
+    <rect x="228" y="0.0" width="227.2" height="60.8" />
+    <text text-anchor="middle" dominant-baseline="central" font-family="&quot;trebuchet ms&quot;, verdana, arial, sans-serif, &quot;Apple Color Emoji&quot;, &quot;Segoe UI Emoji&quot;, &quot;Noto Color Emoji&quot;, &quot;Twemoji Mozilla&quot;" x="341.6" y="19.2">
+      <tspan x="341.6" y="19.2">invoke /ai-placeholder</tspan>
+      <tspan x="341.6" y="41.6">on file</tspan>
+    </text>
+  </g>
+  <g class="node" data-node-id="B">
+    <rect x="253.6" y="100.8" width="176.0" height="60.8" />
+    <text text-anchor="middle" dominant-baseline="central" font-family="&quot;trebuchet ms&quot;, verdana, arial, sans-serif, &quot;Apple Color Emoji&quot;, &quot;Segoe UI Emoji&quot;, &quot;Noto Color Emoji&quot;, &quot;Twemoji Mozilla&quot;" x="341.6" y="120">
+      <tspan x="341.6" y="120">MCP: check(file,</tspan>
+      <tspan x="341.6" y="142.4">name|line)</tspan>
+    </text>
+  </g>
+  <g class="node" data-node-id="ERR">
+    <rect x="0.0" y="222.2" width="196.8" height="42.0" />
+    <text text-anchor="middle" dominant-baseline="central" font-family="&quot;trebuchet ms&quot;, verdana, arial, sans-serif, &quot;Apple Color Emoji&quot;, &quot;Segoe UI Emoji&quot;, &quot;Noto Color Emoji&quot;, &quot;Twemoji Mozilla&quot;" x="98.4" y="243.2">report error, stop</text>
+  </g>
+  <g class="node" data-node-id="SKIP">
+    <rect x="467.2" y="222.2" width="216.0" height="42.0" />
+    <text text-anchor="middle" dominant-baseline="central" font-family="&quot;trebuchet ms&quot;, verdana, arial, sans-serif, &quot;Apple Color Emoji&quot;, &quot;Segoe UI Emoji&quot;, &quot;Noto Color Emoji&quot;, &quot;Twemoji Mozilla&quot;" x="575.2" y="243.2">report skipped, done</text>
+  </g>
+  <g class="node" data-node-id="CTX">
+    <rect x="226.8" y="201.6" width="210.4" height="83.2" />
+    <text text-anchor="middle" dominant-baseline="central" font-family="&quot;trebuchet ms&quot;, verdana, arial, sans-serif, &quot;Apple Color Emoji&quot;, &quot;Segoe UI Emoji&quot;, &quot;Noto Color Emoji&quot;, &quot;Twemoji Mozilla&quot;" x="332" y="220.8">
+      <tspan x="332" y="220.8">receive context</tspan>
+      <tspan x="332" y="243.2">slices\nwith changed</tspan>
+      <tspan x="332" y="265.6">flags</tspan>
+    </text>
+  </g>
+  <g class="node" data-node-id="GEN">
+    <rect x="247.6" y="324.8" width="168.8" height="60.8" />
+    <text text-anchor="middle" dominant-baseline="central" font-family="&quot;trebuchet ms&quot;, verdana, arial, sans-serif, &quot;Apple Color Emoji&quot;, &quot;Segoe UI Emoji&quot;, &quot;Noto Color Emoji&quot;, &quot;Twemoji Mozilla&quot;" x="332" y="344">
+      <tspan x="332" y="344">run prompt with</tspan>
+      <tspan x="332" y="366.4">context</tspan>
+    </text>
+  </g>
+  <g class="node" data-node-id="WRITE">
+    <rect x="219.2" y="425.6" width="225.6" height="60.8" />
+    <text text-anchor="middle" dominant-baseline="central" font-family="&quot;trebuchet ms&quot;, verdana, arial, sans-serif, &quot;Apple Color Emoji&quot;, &quot;Segoe UI Emoji&quot;, &quot;Noto Color Emoji&quot;, &quot;Twemoji Mozilla&quot;" x="332" y="444.8">
+      <tspan x="332" y="444.8">write managed</tspan>
+      <tspan x="332" y="467.2">content\ninto document</tspan>
+    </text>
+  </g>
+  <g class="node" data-node-id="FIX">
+    <rect x="245.2" y="526.4" width="173.6" height="60.8" />
+    <text text-anchor="middle" dominant-baseline="central" font-family="&quot;trebuchet ms&quot;, verdana, arial, sans-serif, &quot;Apple Color Emoji&quot;, &quot;Segoe UI Emoji&quot;, &quot;Noto Color Emoji&quot;, &quot;Twemoji Mozilla&quot;" x="332" y="545.6">
+      <tspan x="332" y="545.6">MCP: ai_fix(file,</tspan>
+      <tspan x="332" y="568">name|line)</tspan>
+    </text>
+  </g>
+  <g class="node" data-node-id="DONE">
+    <rect x="233.2" y="627.2" width="197.6" height="60.8" />
+    <text text-anchor="middle" dominant-baseline="central" font-family="&quot;trebuchet ms&quot;, verdana, arial, sans-serif, &quot;Apple Color Emoji&quot;, &quot;Segoe UI Emoji&quot;, &quot;Noto Color Emoji&quot;, &quot;Twemoji Mozilla&quot;" x="332" y="646.4">
+      <tspan x="332" y="646.4">checksums written,</tspan>
+      <tspan x="332" y="668.8">done</tspan>
+    </text>
+  </g>
+  <g class="edge-label" data-edge-source="B" data-edge-target="ERR">
+    <rect x="90.29" y="184.2" width="239.0" height="24.0" fill="rgba(232,232,232,0.8)" stroke="none" />
+    <text text-anchor="middle" dominant-baseline="central" x="209.79" y="196.2">"error: content\nmanually edited"</text>
+  </g>
+  <g class="edge-label" data-edge-source="B" data-edge-target="SKIP">
+    <rect x="422.2" y="179.9" width="92.0" height="24.0" fill="rgba(232,232,232,0.8)" stroke="none" />
+    <text text-anchor="middle" dominant-baseline="central" x="468.2" y="191.9">"up_to_date"</text>
+  </g>
+  <g class="edge-label" data-edge-source="B" data-edge-target="CTX">
+    <rect x="284.28" y="169.6" width="106.0" height="24.0" fill="rgba(232,232,232,0.8)" stroke="none" />
+    <text text-anchor="middle" dominant-baseline="central" x="337.28" y="181.6">"needs_update"</text>
+  </g>
+</svg>

@@ -2,7 +2,7 @@
 
 ## Summary
 
-Extend the `<!​--AI--​>` placeholder with a `deps:` key that declares the external
+Extend the `<!--AI-->` placeholder with a `deps:` key that declares the external
 files (or file slices) the prompt depends on. mdship tracks a checksum for each
 dep entry and for the prompt text itself. When the agent skill is invoked, a
 single MCP call checks all stored checksums and returns either "skip — nothing
@@ -17,13 +17,16 @@ Running `/ai-placeholder` on a document that has not changed wastes tokens:
 the agent re-reads files, re-runs the prompt, and produces identical output.
 For large documents with many `<!--AI-->` sections, or for automated runs in CI,
 the cost adds up.
-
-//AI: needs a bit more explanation, perhaps not for the implementers, but for casual readers, that this skip condition
-is triggered by manual editing the generated context and hece not matching the checksum
-Without `deps:`, the only skip condition available is `_content_generated_` —
-if the managed content is intact the agent *could* skip, but it has no way to
-know whether the prompt or its source files have changed and a fresh run is
-actually needed.
+Without `deps:`, the only skip condition available is `_content_generated_`.
+This checksum serves two roles: it detects whether the managed content was
+manually edited by the user — in which case the agent is blocked from
+overwriting it — and it confirms the content is still what was last generated.
+But if the content is intact, the agent has no way to know whether the prompt
+or its source files have changed since the last run. A changed source file means
+the current content may be outdated even though no one touched it by hand. So
+//AI: The agent may say that as far as it sees, the content does not need update, as it happens with the current skill.
+without `deps:`, the agent either regenerates on every run or is manually
+suppressed — there is no safe, automatic skip.
 
 `deps:` makes the dependency graph explicit. Combined with a prompt checksum,
 mdship can determine with certainty whether any input to the generation has
@@ -34,7 +37,7 @@ changed, and skip the LLM call when none have.
 ## Extended Placeholder Syntax
 
 ```
-<!​--AI
+<!--AI
 name: "auth-docs"
 prompt: |
     Document the login flow. Describe the public API, error codes, and
@@ -53,10 +56,19 @@ _prompt_checksum_: md5:prompt_hash...
 _content_generated_: 2048:md5:content_hash...
 -->
 ...managed content...
-<!​--/AI-​->
+<!--/AI-->
 ```
 
-//AI: the explanation of the `name:` field is missing. What it is, how is it used.
+### Placeholder fields
+
+- `name` *(optional)*: A string identifier for the placeholder. Used to target
+  it with `--name NAME` in CLI commands and MCP calls. When absent, the
+  placeholder's opening line number serves as its identifier instead. Names
+  should be unique within a file. //AI: Add a section that the command validate should also check this
+- `prompt` *(required)*: The generation instruction given to the agent.
+- `deps` *(optional)*: List of file dependency entries (see below).
+- `_prompt_checksum_`: Written by mdship after generation. Do not edit manually.
+- `_content_generated_`: Written by mdship after generation. Do not edit manually.
 
 ### `deps:` entries
 
@@ -65,13 +77,23 @@ Each entry follows the same syntax as the planned `<!--PIN-->` placeholder:
 - `path` *(required)*: File path relative to the markdown file's directory.
 - `range: "x..y"` *(optional)*: Lines x through y, 1-based inclusive.
 - `start` / `end` *(optional)*: Regex anchors for pattern-based extraction,
-  identical to `<!​--INCLUDE-​->` semantics. Both support `include: true` to
+  identical to `<!--INCLUDE-->` semantics. Both support `include: true` to
   include the matched line itself.
+  //AI: In the section about the command validate add that validate should also check that no range or start/end are
+  used with binary and also either range or start/end is used in a single placeholder.
+- `binary: true` *(optional)*: (default is `false` meaning the file is text)
+  Treat the file as binary. The MCP tool and CLI
+  commands return the content as base64 with a `content-type` field rather than
+  plain text, so the agent can receive it as a multimodal input (e.g. an image).
+  `range`, `start`, and `end` are not supported for binary entries.
 - `checksum` *(optional)*: MD5 hash of the extracted content, written by
   mdship after generation. When absent the entry is untracked; the MCP tool
-  treats the placeholder as needing regeneration.
+  treats the placeholder as needing regeneration. This is the normal cold-start
+  state before the first `/ai-placeholder` run.
 
-//AI: add 'binary' as an option. In this case the file is returned by the mcp or the command line as base64 encoded with content-type
+//AI: detail how the checksum is calculated in the case of text files and also in the case of binary. In the case of
+text: lines joined with \n avoiding platform-specific new line difference in the checksums. Binary checksum is
+byte-by-byte.
 
 File slicing (applying `range`, `start`, `end`) is performed by mdship, not by
 the agent. The agent receives the already-extracted text as context.
@@ -95,7 +117,8 @@ The three checksum fields together describe a complete generation state:
 | `_prompt_checksum_`   | The `prompt:` text              | Prompt never tracked; regenerate |
 | `deps[*].checksum`    | Each dependency file slice      | Dep never tracked; regenerate    |
 
-If any stored checksum is absent → regenerate.
+If any stored checksum is absent → regenerate (cold-start state; normal before
+the first `/ai-placeholder` run).
 If `_content_generated_` does not match → the managed content was manually
 edited → error; do not overwrite.
 If `_content_generated_` matches but prompt or any dep checksum differs →
@@ -109,10 +132,12 @@ If all match → skip.
 The existing `ai_check` / `ai_fix` MCP surface is extended. A new tool (or an
 extended call to `ai_check`) performs the full decision:
 
-//AI: cannot default to all, it wants to get the content for one specific placeholder. Different AI placeholders can have different dependencies, it cannot return all the content in a single call. If there is no name, then the line number has to be given.
-**Input:** document path, placeholder name (optional — defaults to all).
+**Input:** document path, placeholder name or line number (required — a document
+may contain multiple `<!--AI-->` placeholders with different dependencies; the
+tool must operate on exactly one).
 
 **Process:**
+
 1. Parse the placeholder. Extract `_content_generated_`, `_prompt_checksum_`,
    and all `deps:` entries with their stored checksums.
 2. Verify `_content_generated_`: compute the current hash of the managed
@@ -120,12 +145,14 @@ extended call to `ai_check`) performs the full decision:
 3. Compute the current hash of the `prompt:` value. Compare to
    `_prompt_checksum_`.
 4. For each `deps:` entry: extract the file slice using mdship's INCLUDE
-   extraction logic. Compute MD5 of the extracted text (LF-normalized).
-   Compare to the stored checksum.
+   extraction logic. Compute MD5 of the extracted text (LF-normalized), or MD5
+   of raw bytes for `binary: true` entries. Compare to the stored checksum.
 5. If all match → return `{"status": "up_to_date"}`. Agent skips.
 6. If any dep or prompt changed → return `{"status": "needs_update",
-   "context": [{"path": ..., "slice": ...}, ...]}`, where `context` contains
-   the extracted text of every dep entry.
+   "context": [...]}`, where each context entry includes `path`, `slice` (the
+   extracted text or base64 content), and `changed` (boolean — whether this
+   specific entry's checksum differed). All deps are always included in context;
+   the `changed` flag lets the agent prioritise attention.
 
 The agent receives one of the two possible responses. It never sees checksums.
 It never reads files.
@@ -137,26 +164,31 @@ skill) which writes `_content_generated_`, `_prompt_checksum_`, and all
 ---
 
 ## Agent Skill Flow
-//AI: we have MERMAID implemented in this project, it works, create a MERMAID diagram in a MERMAID placeholder and then call the update MCP.
 
-```
-invoke /ai-placeholder on file
-  │
-  ├─ call MCP: check(file, name)
-  │     │
-  │     ├─ status: up_to_date  →  report "skipped, nothing changed"  →  done
-  │     │
-  │     └─ status: needs_update, context: [...]
-  │           │
-  │           ├─ run prompt with context slices injected
-  │           ├─ write new managed content into document
-  │           └─ call MCP: ai_fix(file, name)  →  checksums written  →  done
-  │
-  └─ error: content was manually edited  →  report error, do not overwrite
-```
+<!--MERMAID
+file: "_diagrams/ai-deps-flow.svg"
+diagram: |
+  flowchart TD
+    A["invoke /ai-placeholder on file"] --\> B["MCP: check(file, name|line)"]
+    B --\>|"error: content\nmanually edited"| ERR["report error, stop"]
+    B --\>|"up_to_date"| SKIP["report skipped, done"]
+    B --\>|"needs_update"| CTX["receive context slices\nwith changed flags"]
+    CTX --\> GEN["run prompt with context"]
+    GEN --\> WRITE["write managed content\ninto document"]
+    WRITE --\> FIX["MCP: ai_fix(file, name|line)"]
+    FIX --\> DONE["checksums written, done"]
+_content_generated_: 40:md5:71ff877d5f77b36dd5dede1f439f29de
+# ⚠️ MANAGED CONTENT: Edits will be lost.
+# danger zone: Delete _content_generated_ to override.
+-->
+![diagram](_diagrams/ai-deps-flow.svg)
 
-//AI: What if there is no name specified? We can use the line number of the AI placeholder instead of the name. A decimal line number is fairly easy to get for the agent. Users are not encouraged, but they may want to see from the command line the output the same way as the mcp.
-
+When no `name:` is given in the placeholder, the agent uses the placeholder's
+opening line number as the identifier — a decimal integer that is straightforward
+to obtain. Line numbers also allow targeting a specific placeholder from the CLI
+without knowing its name, which is useful for testing the MCP server behaviour
+directly.
+//AI: Explicit: name cannot be a digital number and command validate should check it.
 ---
 
 ## Commands
@@ -164,26 +196,31 @@ invoke /ai-placeholder on file
 ### `mdship ai-fix [file(s)] [--name NAME]`
 
 Already writes `_content_generated_`. Extended to also write `_prompt_checksum_`
-and all `deps[*].checksum` fields. The user runs this after manually editing
-managed content to accept the new state and reset all checksums.
+and all `deps[*].checksum` fields. When `--name` is omitted, all `<!--AI-->`
+placeholders in the file(s) are updated. `NAME` may be the placeholder's string
+name or its line number — line numbers enable targeting unnamed placeholders or
+testing MCP behaviour from the command line, since a name is rarely a plain
+integer.
 
-//AI: Note that the name is not optional in this case and this functionality defaults to update all AI placeholder in the file(s)
-//AI: Note that if only one placeholder is to update then name can be the line number, like `--name 63`. There is no need for a separate option key for this use, as a name is rarely a number and this is a niche use, only when someone wants to check the functionality of the mcp server via the command line.
+The user runs `ai-fix` manually after editing managed content by hand, to accept
+the new state and reset all checksums.
+
+//AI: Make a note that if NAME is specified and the name appears in multiple files, which is valid because name is unique only per file, then all the placeholders with that name are updated. In some rare cases, it may be a valid workflow.
 
 ### `mdship ai-check [file(s)] [--name NAME]`
 
 Already verifies `_content_generated_`. Extended to also report mismatches in
-`_prompt_checksum_` and dep checksums, with a distinct message for each:
+`_prompt_checksum_` and dep checksums, with a distinct message for each. For
+partial file references, the report always includes the resolved line numbers of
+the extracted region — even when the range was specified with `start`/`end`
+patterns rather than a numeric `range`:
 
 ```
 $ mdship ai-check docs/auth.md
 ✗ docs/auth.md: AI "auth-docs" — prompt has changed since last generation
-✗ docs/auth.md: AI "auth-docs" — dep src/auth.py (lines via start/end) has changed
+✗ docs/auth.md: AI "auth-docs" — dep src/auth.py (lines 42–89) has changed
     Run: /ai-placeholder docs/auth.md --name auth-docs
 ```
-
-//AI: Make it clear that the actual start and end line numbers are reported when a partial file is checked and is changed, even when the part is specified using a pattern with start and end.
-
 
 ---
 
@@ -201,20 +238,3 @@ $ mdship ai-check docs/auth.md
 A document may use both: PIN to assert that a prose section accurately reflects
 a source file, and `deps:` to feed that same source file to the agent that
 writes the prose.
-
----
-
-## Open Questions
-
-1. Should `deps:` entries support the same `binary: true` opt-in as PIN, for
-   cases where a binary file (e.g. an image or compiled artefact) is a
-   meaningful signal that the prompt output should be refreshed?
-//AI: yes, see above. Check as binary and deliver as base64 with content-type.
-2. Should the MCP check tool report which specific deps changed, or only whether
-   regeneration is needed? (Current design: full context is always returned on
-   `needs_update`; the agent does not need to know which dep triggered it.)
-//AI: The token cost of delivering a flag for the individual text files, binary files or text fragment about their change status is minimal. On the other hand, the agent may use this information at it's own decision, so it makes sense to include it. Let's include this informarion.
-3. Should an `<!--AI-->` placeholder with `deps:` but no checksums yet emit a
-   warning on `mdship ai-check`, or remain entirely silent until `ai-fix` has
-   been run once?
-//AI: when there is no checksum is the same as checksum not matching. This is the case before the execution of the very fist /ai-placeholder skill command.
