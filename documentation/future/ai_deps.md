@@ -23,10 +23,12 @@ manually edited by the user — in which case the agent is blocked from
 overwriting it — and it confirms the content is still what was last generated.
 But if the content is intact, the agent has no way to know whether the prompt
 or its source files have changed since the last run. A changed source file means
-the current content may be outdated even though no one touched it by hand. So
-//AI: The agent may say that as far as it sees, the content does not need update, as it happens with the current skill.
-without `deps:`, the agent either regenerates on every run or is manually
-suppressed — there is no safe, automatic skip.
+the current content may be outdated even though no one touched it by hand. The
+current skill handles this by having the agent read the content and any relevant
+files and decide — spending tokens to make a judgment call that may conclude no
+update is needed. `deps:` replaces that LLM judgment with a mechanical checksum
+comparison: if nothing has changed, the MCP tool returns "skip" before the agent
+is invoked at all, at zero token cost.
 
 `deps:` makes the dependency graph explicit. Combined with a prompt checksum,
 mdship can determine with certainty whether any input to the generation has
@@ -64,7 +66,9 @@ _content_generated_: 2048:md5:content_hash...
 - `name` *(optional)*: A string identifier for the placeholder. Used to target
   it with `--name NAME` in CLI commands and MCP calls. When absent, the
   placeholder's opening line number serves as its identifier instead. Names
-  should be unique within a file. //AI: Add a section that the command validate should also check this
+  must be unique within a file and must not be pure decimal integers — integers
+  are reserved for line-number addressing and would create ambiguity.
+  `mdship validate` checks both constraints.
 - `prompt` *(required)*: The generation instruction given to the agent.
 - `deps` *(optional)*: List of file dependency entries (see below).
 - `_prompt_checksum_`: Written by mdship after generation. Do not edit manually.
@@ -78,9 +82,8 @@ Each entry follows the same syntax as the planned `<!--PIN-->` placeholder:
 - `range: "x..y"` *(optional)*: Lines x through y, 1-based inclusive.
 - `start` / `end` *(optional)*: Regex anchors for pattern-based extraction,
   identical to `<!--INCLUDE-->` semantics. Both support `include: true` to
-  include the matched line itself.
-  //AI: In the section about the command validate add that validate should also check that no range or start/end are
-  used with binary and also either range or start/end is used in a single placeholder.
+  include the matched line itself. Mutually exclusive with `range:` — a single
+  entry may use one or the other, not both.
 - `binary: true` *(optional)*: (default is `false` meaning the file is text)
   Treat the file as binary. The MCP tool and CLI
   commands return the content as base64 with a `content-type` field rather than
@@ -91,9 +94,12 @@ Each entry follows the same syntax as the planned `<!--PIN-->` placeholder:
   treats the placeholder as needing regeneration. This is the normal cold-start
   state before the first `/ai-placeholder` run.
 
-//AI: detail how the checksum is calculated in the case of text files and also in the case of binary. In the case of
-text: lines joined with \n avoiding platform-specific new line difference in the checksums. Binary checksum is
-byte-by-byte.
+  Checksum computation:
+  - **Text** (default): all extracted lines are joined with `\n` regardless of
+    the platform's native line ending, then MD5 is computed on the resulting
+    string. This makes checksums identical across Linux, macOS, and Windows.
+  - **Binary** (`binary: true`): MD5 is computed on the raw bytes of the file
+    with no transformation.
 
 File slicing (applying `range`, `start`, `end`) is performed by mdship, not by
 the agent. The agent receives the already-extracted text as context.
@@ -187,8 +193,8 @@ When no `name:` is given in the placeholder, the agent uses the placeholder's
 opening line number as the identifier — a decimal integer that is straightforward
 to obtain. Line numbers also allow targeting a specific placeholder from the CLI
 without knowing its name, which is useful for testing the MCP server behaviour
-directly.
-//AI: Explicit: name cannot be a digital number and command validate should check it.
+directly. Because of this dual use, a `name:` value that is a pure decimal
+integer is invalid; `mdship validate` rejects it.
 ---
 
 ## Commands
@@ -205,7 +211,10 @@ integer.
 The user runs `ai-fix` manually after editing managed content by hand, to accept
 the new state and reset all checksums.
 
-//AI: Make a note that if NAME is specified and the name appears in multiple files, which is valid because name is unique only per file, then all the placeholders with that name are updated. In some rare cases, it may be a valid workflow.
+When `--name NAME` is given and multiple files are specified, all placeholders
+with that name across all the files are updated. Names are unique only within a
+file, so the same name can legitimately appear in several files — updating them
+all in one call can be a valid workflow when the files share a common section.
 
 ### `mdship ai-check [file(s)] [--name NAME]`
 
@@ -221,6 +230,19 @@ $ mdship ai-check docs/auth.md
 ✗ docs/auth.md: AI "auth-docs" — dep src/auth.py (lines 42–89) has changed
     Run: /ai-placeholder docs/auth.md --name auth-docs
 ```
+
+### `mdship validate [file(s)]`
+
+Extended to check structural correctness of `<!--AI-->` placeholders with `deps:`:
+
+- **Name uniqueness**: duplicate `name:` values within a single file are an
+  error.
+- **Name format**: a `name:` that is a pure decimal integer is an error
+  (reserved for line-number addressing).
+- **Binary incompatibility**: a dep entry that sets `binary: true` and also
+  specifies `range:`, `start:`, or `end:` is an error.
+- **Range exclusivity**: a dep entry that specifies both `range:` and
+  `start:`/`end:` is an error — use one or the other.
 
 ---
 
