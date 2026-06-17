@@ -44,17 +44,35 @@ files:
 ```
 
 ### Partial file — range
-//AI: No. range, start and end work the same way as in INCLUDE. Read the INCLUDE.md one directory higher for reference.
-`start` and `end` are 1-based line numbers, inclusive, following the same
-convention as the `range` parameter in `<!--INCLUDE-->`.
+
+Range selection follows the same conventions as `<!--INCLUDE-->`:
+
+- `range: "x..y"` — include lines x through y (1-based, inclusive).
+- `start` / `end` — regex patterns for anchor-based extraction. `start` skips
+  to the line after the first match; `end` stops at the first match after that.
+  Both support `include: true` to include the matched line itself.
+
+**Numeric range:**
 
 ```
 <!--PIN
 name: "login-function"
 files:
   - path: src/auth.py
-    start: 42
-    end: 78
+    range: "42..78"
+    checksum: md5:9f86d081884c7d659a2f...
+-->
+```
+
+**Regex anchors:**
+
+```
+<!--PIN
+name: "login-function"
+files:
+  - path: src/auth.py
+    start: "def login"
+    end: "^def "
     checksum: md5:9f86d081884c7d659a2f...
 -->
 ```
@@ -71,8 +89,7 @@ files:
   - path: openapi/paths/users.yaml
     checksum: md5:b94f6f125c79e3a5ffaa...
   - path: openapi/components.yaml
-    start: 1
-    end: 50
+    range: "1..50"
     checksum: md5:c3d4e5f6a7b8c9d0...
 -->
 ```
@@ -108,8 +125,9 @@ configurable: this feature is not a security mechanism. It detects accidental
 drift, not malicious tampering; MD5 is sufficient.
 
 - For a whole-file entry: all lines of the file, LF-normalized.
-- For a ranged entry (`start`/`end`): only the lines in the specified range,
-  LF-normalized.
+- For a `range: "x..y"` entry: only the lines in the specified range, LF-normalized.
+- For a `start`/`end` regex entry: the lines extracted by the same anchor logic
+  as `<!--INCLUDE-->`, LF-normalized.
 
 For binary files, set `binary: true` on the entry. Raw bytes are used without
 line-ending normalization. Line ranges (`start`/`end`) are not supported for
@@ -141,7 +159,7 @@ found:
 - Compute the current checksum for each file entry independently.
 - Compare to the stored checksum.
 - On mismatch: print an error identifying the placeholder name, the document
-  file, and the differing path — including the line range when `start`/`end`
+  file, and the differing path — including the range when `range` or `start`/`end`
   were specified; set exit code 1.
 - On missing file: treat as a mismatch (error), not a skip.
 - Unpinned entries (no `checksum` key): skip silently.
@@ -228,11 +246,10 @@ fails due to a PIN mismatch the path of least resistance is `mdship pin`
 without reviewing what changed. No tooling can prevent this; the value comes
 from making the act of bypassing explicit and traceable in git history.
 
-**Range fragility.** Line numbers shift when files are edited above the pinned
-range. A `start`/`end` pin will fire a false positive any time content is
-inserted above it, even if the pinned lines themselves are unchanged. A possible
-mitigation (future work): support anchoring by pattern (e.g. a function name)
-rather than line numbers.
+**Range fragility.** Numeric ranges (`range: "x..y"`) shift when files are
+edited above the pinned range — a false positive fires even if the pinned lines
+themselves are unchanged. Regex anchors (`start`/`end`) are more resilient to
+insertion above the region but break if the anchor pattern is renamed or removed.
 
 **Binary and generated files.** Pinning a compiled binary or a file that
 changes on every build is pointless. The feature is intended for stable
