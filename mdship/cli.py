@@ -267,7 +267,7 @@ def validate(
         err.print(f"[red]Error:[/red] --track option is not supported for read-only commands")
         raise typer.Exit(1)
 
-    from mdship.markdown import validate_links
+    from mdship.markdown import validate_links, validate_ai_placeholders
 
     errors = []
     for file in _resolve_files(files):
@@ -280,6 +280,11 @@ def validate(
         err.print(message)
         if not is_valid:
             errors.append((file, message))
+        ai_errors = validate_ai_placeholders(content)
+        for ae in ai_errors:
+            err.print(f"[red]Error:[/red] {file}: {ae}")
+        if ai_errors:
+            errors.append((file, ai_errors[0]))
     _exit_if_errors(errors)
 
 
@@ -581,7 +586,7 @@ def ai_fix(
 
         content = file.read_text()
         try:
-            new_content, count = ai_fix_placeholders(content, name=name)
+            new_content, count = ai_fix_placeholders(content, name=name, markdown_dir=str(file.parent))
         except Exception as e:
             err.print(f"[red]Error:[/red] {file}: {e}")
             errors.append((file, str(e)))
@@ -619,7 +624,7 @@ def ai_check(
 
         content = file.read_text()
         try:
-            issues = ai_check_placeholders(content, name=name)
+            issues = ai_check_placeholders(content, name=name, markdown_dir=str(file.parent))
         except Exception as e:
             err.print(f"[red]Error:[/red] {file}: {e}")
             errors.append((file, str(e)))

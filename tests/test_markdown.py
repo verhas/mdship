@@ -22,6 +22,11 @@ from mdship.markdown import (
     update_tracking,
     validate_links,
     _validate_placeholder_structure,
+    ai_fix_placeholders,
+    ai_check_placeholders,
+    ai_check_and_get_context,
+    validate_ai_placeholders,
+    ai_update_placeholder,
 )
 
 
@@ -2242,3 +2247,655 @@ class TestContentGeneratedHash:
         result1 = update_includes(content, str(tmp_path))
         result2 = update_includes(result1, str(tmp_path))
         assert result1 == result2
+
+
+class TestAIDepsExtension:
+    """Tests for the deps: extension to AI placeholders."""
+
+    # ------------------------------------------------------------------
+    # ai_fix_placeholders — prompt checksum
+    # ------------------------------------------------------------------
+
+    def test_ai_fix_writes_prompt_checksum(self):
+        """ai_fix writes _prompt_checksum_ into the opening marker."""
+        content = (
+            "<!--AI\n"
+            "name: \"section\"\n"
+            "prompt: Do the thing.\n"
+            "-->\n"
+            "some content\n"
+            "<!--/AI-->\n"
+        )
+        result, count = ai_fix_placeholders(content)
+        assert count == 1
+        assert "_prompt_checksum_: md5:" in result
+
+    def test_ai_fix_prompt_checksum_is_stable(self):
+        """Running ai_fix twice produces identical output."""
+        content = (
+            "<!--AI\n"
+            "name: \"section\"\n"
+            "prompt: Do the thing.\n"
+            "-->\n"
+            "body\n"
+            "<!--/AI-->\n"
+        )
+        r1, _ = ai_fix_placeholders(content)
+        r2, _ = ai_fix_placeholders(r1)
+        assert r1 == r2
+
+    def test_ai_fix_prompt_checksum_value(self):
+        """Prompt checksum matches MD5 of the prompt string."""
+        prompt = "Do the thing."
+        expected = hashlib.md5(prompt.encode()).hexdigest()
+        content = (
+            f"<!--AI\nname: \"s\"\nprompt: {prompt}\n-->\nbody\n<!--/AI-->\n"
+        )
+        result, _ = ai_fix_placeholders(content)
+        assert f"_prompt_checksum_: md5:{expected}" in result
+
+    # ------------------------------------------------------------------
+    # ai_fix_placeholders — dep checksums
+    # ------------------------------------------------------------------
+
+    def test_ai_fix_writes_dep_checksum(self, tmp_path):
+        """ai_fix writes checksum: into each dep entry."""
+        dep_file = tmp_path / "dep.txt"
+        dep_file.write_text("hello\nworld\n")
+        content = (
+            "<!--AI\n"
+            "name: \"s\"\n"
+            "prompt: Do it.\n"
+            "deps:\n"
+            f"  - path: {dep_file}\n"
+            "-->\n"
+            "body\n"
+            "<!--/AI-->\n"
+        )
+        result, _ = ai_fix_placeholders(content, markdown_dir=str(tmp_path))
+        assert "checksum: md5:" in result
+
+    def test_ai_fix_dep_checksum_value(self, tmp_path):
+        """Dep checksum matches LF-joined MD5 of the extracted lines."""
+        dep_file = tmp_path / "dep.txt"
+        dep_file.write_text("line1\nline2\n")
+        expected = hashlib.md5("line1\nline2".encode()).hexdigest()
+        content = (
+            "<!--AI\n"
+            "name: \"s\"\n"
+            "prompt: p.\n"
+            "deps:\n"
+            f"  - path: {dep_file}\n"
+            "-->\nbody\n<!--/AI-->\n"
+        )
+        result, _ = ai_fix_placeholders(content, markdown_dir=str(tmp_path))
+        assert f"checksum: md5:{expected}" in result
+
+    def test_ai_fix_dep_range_checksum(self, tmp_path):
+        """Dep checksum covers only the specified range."""
+        dep_file = tmp_path / "dep.txt"
+        dep_file.write_text("line1\nline2\nline3\n")
+        expected = hashlib.md5("line1\nline2".encode()).hexdigest()
+        content = (
+            "<!--AI\n"
+            "name: \"s\"\n"
+            "prompt: p.\n"
+            "deps:\n"
+            f"  - path: {dep_file}\n"
+            "    range: \"1..2\"\n"
+            "-->\nbody\n<!--/AI-->\n"
+        )
+        result, _ = ai_fix_placeholders(content, markdown_dir=str(tmp_path))
+        assert f"checksum: md5:{expected}" in result
+
+    def test_ai_fix_binary_dep_checksum(self, tmp_path):
+        """Binary dep checksum is raw-bytes MD5."""
+        dep_file = tmp_path / "img.bin"
+        data = bytes(range(16))
+        dep_file.write_bytes(data)
+        expected = hashlib.md5(data).hexdigest()
+        content = (
+            "<!--AI\n"
+            "name: \"s\"\n"
+            "prompt: p.\n"
+            "deps:\n"
+            f"  - path: {dep_file}\n"
+            "    binary: true\n"
+            "-->\nbody\n<!--/AI-->\n"
+        )
+        result, _ = ai_fix_placeholders(content, markdown_dir=str(tmp_path))
+        assert f"checksum: md5:{expected}" in result
+
+    def test_ai_fix_relative_dep_path(self, tmp_path):
+        """Dep path relative to markdown_dir is resolved correctly."""
+        dep_file = tmp_path / "dep.txt"
+        dep_file.write_text("hello\n")
+        expected = hashlib.md5("hello".encode()).hexdigest()
+        content = (
+            "<!--AI\n"
+            "name: \"s\"\n"
+            "prompt: p.\n"
+            "deps:\n"
+            "  - path: dep.txt\n"
+            "-->\nbody\n<!--/AI-->\n"
+        )
+        result, _ = ai_fix_placeholders(content, markdown_dir=str(tmp_path))
+        assert f"checksum: md5:{expected}" in result
+
+    # ------------------------------------------------------------------
+    # ai_check_placeholders — prompt and dep checksums
+    # ------------------------------------------------------------------
+
+    def test_ai_check_detects_prompt_change(self):
+        """ai_check reports an error when the prompt has changed."""
+        content = (
+            "<!--AI\n"
+            "name: \"s\"\n"
+            "prompt: Original prompt.\n"
+            "-->\nbody\n<!--/AI-->\n"
+        )
+        fixed, _ = ai_fix_placeholders(content)
+        modified = fixed.replace("prompt: Original prompt.", "prompt: Changed prompt.")
+        issues = ai_check_placeholders(modified)
+        assert any("prompt has changed" in i for i in issues)
+
+    def test_ai_check_no_issues_when_unchanged(self):
+        """ai_check returns no errors when prompt and deps are unchanged."""
+        content = (
+            "<!--AI\n"
+            "name: \"s\"\n"
+            "prompt: Stable.\n"
+            "-->\nbody\n<!--/AI-->\n"
+        )
+        fixed, _ = ai_fix_placeholders(content)
+        issues = ai_check_placeholders(fixed)
+        assert issues == []
+
+    def test_ai_check_detects_dep_change(self, tmp_path):
+        """ai_check reports an error when a dep file has changed."""
+        dep_file = tmp_path / "dep.txt"
+        dep_file.write_text("original\n")
+        content = (
+            "<!--AI\n"
+            "name: \"s\"\n"
+            "prompt: p.\n"
+            "deps:\n"
+            "  - path: dep.txt\n"
+            "-->\nbody\n<!--/AI-->\n"
+        )
+        fixed, _ = ai_fix_placeholders(content, markdown_dir=str(tmp_path))
+        dep_file.write_text("changed\n")
+        issues = ai_check_placeholders(fixed, markdown_dir=str(tmp_path))
+        assert any("has changed" in i for i in issues)
+
+    def test_ai_check_no_issues_when_dep_unchanged(self, tmp_path):
+        """ai_check returns no errors when dep file is unchanged."""
+        dep_file = tmp_path / "dep.txt"
+        dep_file.write_text("original\n")
+        content = (
+            "<!--AI\n"
+            "name: \"s\"\n"
+            "prompt: p.\n"
+            "deps:\n"
+            "  - path: dep.txt\n"
+            "-->\nbody\n<!--/AI-->\n"
+        )
+        fixed, _ = ai_fix_placeholders(content, markdown_dir=str(tmp_path))
+        issues = ai_check_placeholders(fixed, markdown_dir=str(tmp_path))
+        assert issues == []
+
+    # ------------------------------------------------------------------
+    # ai_check_and_get_context
+    # ------------------------------------------------------------------
+
+    def test_context_up_to_date(self, tmp_path):
+        """Returns up_to_date when nothing has changed."""
+        dep_file = tmp_path / "dep.txt"
+        dep_file.write_text("stable\n")
+        content = (
+            "<!--AI\n"
+            "name: \"sec\"\n"
+            "prompt: Do it.\n"
+            "deps:\n"
+            "  - path: dep.txt\n"
+            "-->\nbody\n<!--/AI-->\n"
+        )
+        fixed, _ = ai_fix_placeholders(content, markdown_dir=str(tmp_path))
+        result = ai_check_and_get_context(fixed, "sec", str(tmp_path))
+        assert result == {'status': 'up_to_date'}
+
+    def test_context_needs_update_on_cold_start(self):
+        """Cold start (no checksums) returns needs_update."""
+        content = (
+            "<!--AI\n"
+            "name: \"sec\"\n"
+            "prompt: Do it.\n"
+            "-->\nbody\n<!--/AI-->\n"
+        )
+        # Run ai_fix to get _content_generated_ but NOT prompt checksum
+        # (simulate cold start by using a marker with no _prompt_checksum_)
+        result = ai_check_and_get_context(content, "sec", "/tmp")
+        assert result['status'] == 'needs_update'
+
+    def test_context_needs_update_on_dep_change(self, tmp_path):
+        """Returns needs_update with changed=True when dep changed."""
+        dep_file = tmp_path / "dep.txt"
+        dep_file.write_text("original\n")
+        content = (
+            "<!--AI\n"
+            "name: \"sec\"\n"
+            "prompt: Do it.\n"
+            "deps:\n"
+            "  - path: dep.txt\n"
+            "-->\nbody\n<!--/AI-->\n"
+        )
+        fixed, _ = ai_fix_placeholders(content, markdown_dir=str(tmp_path))
+        dep_file.write_text("modified\n")
+        result = ai_check_and_get_context(fixed, "sec", str(tmp_path))
+        assert result['status'] == 'needs_update'
+        assert result['context'][0]['changed'] is True
+
+    def test_context_unchanged_dep_marked_false(self, tmp_path):
+        """All-unchanged deps have changed=False in context entries."""
+        dep1 = tmp_path / "a.txt"
+        dep2 = tmp_path / "b.txt"
+        dep1.write_text("a\n")
+        dep2.write_text("b\n")
+        content = (
+            "<!--AI\n"
+            "name: \"sec\"\n"
+            "prompt: Old prompt.\n"
+            "deps:\n"
+            "  - path: a.txt\n"
+            "  - path: b.txt\n"
+            "-->\nbody\n<!--/AI-->\n"
+        )
+        fixed, _ = ai_fix_placeholders(content, markdown_dir=str(tmp_path))
+        # Change only the prompt so update is needed but deps are unchanged.
+        changed = fixed.replace("prompt: Old prompt.", "prompt: New prompt.")
+        result = ai_check_and_get_context(changed, "sec", str(tmp_path))
+        assert result['status'] == 'needs_update'
+        for entry in result['context']:
+            assert entry['changed'] is False
+
+    def test_context_error_on_manual_content_edit(self):
+        """Returns error when managed content was manually edited."""
+        content = (
+            "<!--AI\n"
+            "name: \"sec\"\n"
+            "prompt: p.\n"
+            "-->\nbody here\n<!--/AI-->\n"
+        )
+        fixed, _ = ai_fix_placeholders(content)
+        # Same-length replacement so hash check fires (not length check).
+        tampered = fixed.replace("\nbody here\n", "\nbody XXXX\n")
+        result = ai_check_and_get_context(tampered, "sec", "/tmp")
+        assert result['status'] == 'error'
+        assert "manually edited" in result['message']
+
+    def test_context_by_line_number(self):
+        """Placeholder can be addressed by its opening line number."""
+        content = (
+            "<!--AI\n"
+            "prompt: p.\n"
+            "-->\nbody\n<!--/AI-->\n"
+        )
+        fixed, _ = ai_fix_placeholders(content)
+        result = ai_check_and_get_context(fixed, "1", "/tmp")
+        # No _prompt_checksum_ should trigger needs_update or the line addressing works.
+        assert result['status'] in ('needs_update', 'up_to_date')
+
+    def test_context_not_found_returns_error(self):
+        """Returns error when name does not match any placeholder."""
+        content = "<!--AI\nname: \"s\"\nprompt: p.\n-->\nbody\n<!--/AI-->\n"
+        result = ai_check_and_get_context(content, "nonexistent", "/tmp")
+        assert result['status'] == 'error'
+        assert "nonexistent" in result['message']
+
+    def test_context_includes_dep_text(self, tmp_path):
+        """Context entry contains extracted dep text."""
+        dep_file = tmp_path / "dep.txt"
+        dep_file.write_text("line one\nline two\n")
+        content = (
+            "<!--AI\n"
+            "name: \"sec\"\n"
+            "prompt: Old.\n"
+            "deps:\n"
+            "  - path: dep.txt\n"
+            "-->\nbody\n<!--/AI-->\n"
+        )
+        # No ai_fix, so cold start → needs_update
+        result = ai_check_and_get_context(content, "sec", str(tmp_path))
+        assert result['status'] == 'needs_update'
+        assert result['context'][0]['type'] == 'text'
+        assert 'line one' in result['context'][0]['text']
+
+    def test_context_includes_previous_content(self):
+        """needs_update response includes the previously generated content."""
+        content = (
+            "<!--AI\n"
+            "name: \"sec\"\n"
+            "prompt: p.\n"
+            "-->\nprevious generated text\n<!--/AI-->\n"
+        )
+        result = ai_check_and_get_context(content, "sec", "/tmp")
+        assert result['status'] == 'needs_update'
+        assert 'previous_content' in result
+        assert 'previous generated text' in result['previous_content']
+
+    def test_context_previous_content_matches_body(self):
+        """previous_content is exactly the text between the markers."""
+        body = "\nsome body\n"
+        content = f"<!--AI\nname: \"sec\"\nprompt: p.\n-->{body}<!--/AI-->\n"
+        result = ai_check_and_get_context(content, "sec", "/tmp")
+        assert result['previous_content'] == body
+
+    def test_context_includes_brief_text(self, tmp_path):
+        """needs_update response includes the brief file content."""
+        brief_file = tmp_path / "brief.md"
+        brief_file.write_text("Write clearly.\n")
+        content = (
+            "<!--AI\n"
+            "name: \"sec\"\n"
+            "prompt: p.\n"
+            "brief: brief.md\n"
+            "-->\nbody\n<!--/AI-->\n"
+        )
+        result = ai_check_and_get_context(content, "sec", str(tmp_path))
+        assert result['status'] == 'needs_update'
+        assert result.get('brief') == "Write clearly.\n"
+
+    def test_context_no_brief_key_when_no_brief(self):
+        """needs_update response has no 'brief' key when brief: is not set."""
+        content = "<!--AI\nname: \"sec\"\nprompt: p.\n-->\nbody\n<!--/AI-->\n"
+        result = ai_check_and_get_context(content, "sec", "/tmp")
+        assert result['status'] == 'needs_update'
+        assert 'brief' not in result
+
+    # ------------------------------------------------------------------
+    # validate_ai_placeholders
+    # ------------------------------------------------------------------
+
+    def test_validate_accepts_valid_placeholder(self):
+        """Valid placeholder with no issues passes."""
+        content = (
+            "<!--AI\n"
+            "name: \"section\"\n"
+            "prompt: p.\n"
+            "deps:\n"
+            "  - path: src/auth.py\n"
+            "-->\nbody\n<!--/AI-->\n"
+        )
+        assert validate_ai_placeholders(content) == []
+
+    def test_validate_rejects_decimal_name(self):
+        """A name that is a pure decimal integer is rejected."""
+        content = "<!--AI\nname: \"42\"\nprompt: p.\n-->\nbody\n<!--/AI-->\n"
+        errors = validate_ai_placeholders(content)
+        assert any("decimal integer" in e for e in errors)
+
+    def test_validate_rejects_duplicate_names(self):
+        """Two placeholders with the same name are rejected."""
+        content = (
+            "<!--AI\nname: \"dup\"\nprompt: p.\n-->\nbody\n<!--/AI-->\n"
+            "<!--AI\nname: \"dup\"\nprompt: q.\n-->\nbody2\n<!--/AI-->\n"
+        )
+        errors = validate_ai_placeholders(content)
+        assert any("duplicates" in e for e in errors)
+
+    def test_validate_rejects_binary_with_range(self):
+        """binary: true with range is rejected."""
+        content = (
+            "<!--AI\n"
+            "name: \"s\"\n"
+            "prompt: p.\n"
+            "deps:\n"
+            "  - path: img.png\n"
+            "    binary: true\n"
+            "    range: \"1..5\"\n"
+            "-->\nbody\n<!--/AI-->\n"
+        )
+        errors = validate_ai_placeholders(content)
+        assert any("binary" in e and "range" in e for e in errors)
+
+    def test_validate_rejects_binary_with_start(self):
+        """binary: true with start is rejected."""
+        content = (
+            "<!--AI\n"
+            "name: \"s\"\n"
+            "prompt: p.\n"
+            "deps:\n"
+            "  - path: img.png\n"
+            "    binary: true\n"
+            "    start: foo\n"
+            "-->\nbody\n<!--/AI-->\n"
+        )
+        errors = validate_ai_placeholders(content)
+        assert any("binary" in e for e in errors)
+
+    def test_validate_rejects_range_with_start(self):
+        """range and start together are rejected."""
+        content = (
+            "<!--AI\n"
+            "name: \"s\"\n"
+            "prompt: p.\n"
+            "deps:\n"
+            "  - path: src/file.py\n"
+            "    range: \"1..10\"\n"
+            "    start: pattern\n"
+            "-->\nbody\n<!--/AI-->\n"
+        )
+        errors = validate_ai_placeholders(content)
+        assert any("mutually exclusive" in e for e in errors)
+
+    def test_validate_unique_names_ok(self):
+        """Two different names produce no errors."""
+        content = (
+            "<!--AI\nname: \"a\"\nprompt: p.\n-->\nbody\n<!--/AI-->\n"
+            "<!--AI\nname: \"b\"\nprompt: q.\n-->\nbody2\n<!--/AI-->\n"
+        )
+        assert validate_ai_placeholders(content) == []
+
+    # ------------------------------------------------------------------
+    # brief checksum
+    # ------------------------------------------------------------------
+
+    def test_ai_fix_writes_brief_checksum(self, tmp_path):
+        """ai_fix writes _brief_checksum_ when brief: is set."""
+        brief_file = tmp_path / "brief.md"
+        brief_file.write_text("Write concisely.\n")
+        content = (
+            "<!--AI\n"
+            "name: \"s\"\n"
+            "prompt: p.\n"
+            "brief: brief.md\n"
+            "-->\nbody\n<!--/AI-->\n"
+        )
+        result, _ = ai_fix_placeholders(content, markdown_dir=str(tmp_path))
+        assert "_brief_checksum_: md5:" in result
+
+    def test_ai_fix_brief_checksum_value(self, tmp_path):
+        """Brief checksum matches MD5 of the brief file's full text."""
+        text = "Write concisely.\n"
+        brief_file = tmp_path / "brief.md"
+        brief_file.write_text(text)
+        expected = hashlib.md5(text.encode()).hexdigest()
+        content = (
+            "<!--AI\n"
+            "name: \"s\"\n"
+            "prompt: p.\n"
+            "brief: brief.md\n"
+            "-->\nbody\n<!--/AI-->\n"
+        )
+        result, _ = ai_fix_placeholders(content, markdown_dir=str(tmp_path))
+        assert f"_brief_checksum_: md5:{expected}" in result
+
+    def test_ai_fix_no_brief_checksum_without_brief(self):
+        """_brief_checksum_ is not written when there is no brief: field."""
+        content = "<!--AI\nname: \"s\"\nprompt: p.\n-->\nbody\n<!--/AI-->\n"
+        result, _ = ai_fix_placeholders(content)
+        assert "_brief_checksum_" not in result
+
+    def test_ai_check_detects_brief_change(self, tmp_path):
+        """ai_check reports an error when the brief file has changed."""
+        brief_file = tmp_path / "brief.md"
+        brief_file.write_text("Original brief.\n")
+        content = (
+            "<!--AI\n"
+            "name: \"s\"\n"
+            "prompt: p.\n"
+            "brief: brief.md\n"
+            "-->\nbody\n<!--/AI-->\n"
+        )
+        fixed, _ = ai_fix_placeholders(content, markdown_dir=str(tmp_path))
+        brief_file.write_text("Changed brief.\n")
+        issues = ai_check_placeholders(fixed, markdown_dir=str(tmp_path))
+        assert any("brief has changed" in i for i in issues)
+
+    def test_ai_check_no_issues_when_brief_unchanged(self, tmp_path):
+        """ai_check returns no errors when the brief file is unchanged."""
+        brief_file = tmp_path / "brief.md"
+        brief_file.write_text("Stable brief.\n")
+        content = (
+            "<!--AI\n"
+            "name: \"s\"\n"
+            "prompt: p.\n"
+            "brief: brief.md\n"
+            "-->\nbody\n<!--/AI-->\n"
+        )
+        fixed, _ = ai_fix_placeholders(content, markdown_dir=str(tmp_path))
+        issues = ai_check_placeholders(fixed, markdown_dir=str(tmp_path))
+        assert issues == []
+
+    def test_context_needs_update_on_brief_change(self, tmp_path):
+        """ai_check_and_get_context returns needs_update when brief changed."""
+        brief_file = tmp_path / "brief.md"
+        brief_file.write_text("Original brief.\n")
+        content = (
+            "<!--AI\n"
+            "name: \"sec\"\n"
+            "prompt: p.\n"
+            "brief: brief.md\n"
+            "-->\nbody\n<!--/AI-->\n"
+        )
+        fixed, _ = ai_fix_placeholders(content, markdown_dir=str(tmp_path))
+        brief_file.write_text("Changed brief.\n")
+        result = ai_check_and_get_context(fixed, "sec", str(tmp_path))
+        assert result['status'] == 'needs_update'
+
+    def test_context_up_to_date_with_unchanged_brief(self, tmp_path):
+        """ai_check_and_get_context returns up_to_date when brief is unchanged."""
+        brief_file = tmp_path / "brief.md"
+        brief_file.write_text("Stable brief.\n")
+        content = (
+            "<!--AI\n"
+            "name: \"sec\"\n"
+            "prompt: Stable prompt.\n"
+            "brief: brief.md\n"
+            "-->\nbody\n<!--/AI-->\n"
+        )
+        fixed, _ = ai_fix_placeholders(content, markdown_dir=str(tmp_path))
+        result = ai_check_and_get_context(fixed, "sec", str(tmp_path))
+        assert result['status'] == 'up_to_date'
+
+
+class TestAIUpdatePlaceholder:
+    """Tests for ai_update_placeholder."""
+
+    _BASE = (
+        "<!--AI\n"
+        "name: \"section\"\n"
+        "prompt: Write a section.\n"
+        "-->\nold content\n<!--/AI-->\n"
+    )
+
+    def test_basic_content_replacement(self):
+        """ai_update_placeholder replaces content between markers."""
+        result = ai_update_placeholder(self._BASE, "section", "new content\n")
+        assert "new content" in result
+        assert "old content" not in result
+
+    def test_markers_preserved(self):
+        """Opening and closing markers are kept intact."""
+        result = ai_update_placeholder(self._BASE, "section", "new content\n")
+        assert "<!--AI" in result
+        assert "<!--/AI-->" in result
+
+    def test_checksums_written(self):
+        """ai_update_placeholder writes _content_generated_ checksum."""
+        result = ai_update_placeholder(self._BASE, "section", "new content\n")
+        assert "_content_generated_:" in result
+
+    def test_prompt_checksum_written(self):
+        """ai_update_placeholder writes _prompt_checksum_."""
+        result = ai_update_placeholder(self._BASE, "section", "new content\n")
+        assert "_prompt_checksum_:" in result
+
+    def test_named_addressing(self):
+        """ai_update_placeholder can address a placeholder by name."""
+        result = ai_update_placeholder(self._BASE, "section", "named result\n")
+        assert "named result" in result
+
+    def test_line_number_addressing(self, tmp_path):
+        """ai_update_placeholder can address a placeholder by opening line number."""
+        result = ai_update_placeholder(self._BASE, "1", "by line\n")
+        assert "by line" in result
+
+    def test_error_on_missing_name(self):
+        """ai_update_placeholder raises ValueError for unknown name."""
+        with pytest.raises(ValueError, match="(?i)no.*placeholder.*named"):
+            ai_update_placeholder(self._BASE, "nonexistent", "x\n")
+
+    def test_error_on_missing_line(self):
+        """ai_update_placeholder raises ValueError for out-of-range line number."""
+        with pytest.raises(ValueError, match="No AI placeholder found at line"):
+            ai_update_placeholder(self._BASE, "999", "x\n")
+
+    def test_round_trip_up_to_date(self, tmp_path):
+        """After ai_update_placeholder, ai_check_and_get_context returns up_to_date."""
+        dep = tmp_path / "dep.txt"
+        dep.write_text("dep content\n")
+        content = (
+            "<!--AI\n"
+            "name: \"rt\"\n"
+            "prompt: Write something.\n"
+            "deps:\n"
+            "  - path: dep.txt\n"
+            "-->\nplaceholder\n<!--/AI-->\n"
+        )
+        updated = ai_update_placeholder(content, "rt", "generated\n",
+                                         markdown_dir=str(tmp_path))
+        result = ai_check_and_get_context(updated, "rt", str(tmp_path))
+        assert result['status'] == 'up_to_date'
+
+    def test_dep_checksum_written(self, tmp_path):
+        """ai_update_placeholder writes per-dep checksum: field."""
+        dep = tmp_path / "dep.txt"
+        dep.write_text("some dep\n")
+        content = (
+            "<!--AI\n"
+            "name: \"dc\"\n"
+            "prompt: Use dep.\n"
+            "deps:\n"
+            "  - path: dep.txt\n"
+            "-->\nplaceholder\n<!--/AI-->\n"
+        )
+        result = ai_update_placeholder(content, "dc", "result\n",
+                                        markdown_dir=str(tmp_path))
+        assert "checksum: md5:" in result
+
+    def test_multiple_placeholders_only_target_updated(self):
+        """ai_update_placeholder only replaces the targeted placeholder's content."""
+        content = (
+            "<!--AI\n"
+            "name: \"first\"\n"
+            "prompt: First.\n"
+            "-->\nfirst old\n<!--/AI-->\n"
+            "<!--AI\n"
+            "name: \"second\"\n"
+            "prompt: Second.\n"
+            "-->\nsecond old\n<!--/AI-->\n"
+        )
+        result = ai_update_placeholder(content, "first", "first new\n")
+        assert "first new" in result
+        assert "second old" in result

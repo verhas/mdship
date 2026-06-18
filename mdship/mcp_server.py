@@ -247,11 +247,11 @@ def main() -> None:
 
     @server.tool()
     def ai_fix(path: str, name: str | None = None, backup: bool = True) -> str:
-        """Record content hash for AI placeholders to protect against accidental edits.
+        """Record checksums for AI placeholders to protect against accidental edits.
 
-        Computes _content_generated_ (character count + MD5) for each <!--AI-->
-        placeholder and writes it into the opening marker. Call this after writing
-        or updating an AI placeholder section.
+        Writes _content_generated_, _prompt_checksum_, and per-dep checksum: fields
+        into each <!--AI--> placeholder opening marker. Call this after writing or
+        updating an AI placeholder section.
 
         Args:
             path: Path to the markdown file
@@ -260,16 +260,17 @@ def main() -> None:
         """
         from mdship.markdown import ai_fix_placeholders
         p, content = _read(path)
-        new_content, count = ai_fix_placeholders(content, name=name)
+        markdown_dir = str(p.parent)
+        new_content, count = ai_fix_placeholders(content, name=name, markdown_dir=markdown_dir)
         if count == 0:
             scope = f"named '{name}'" if name else "(none found)"
             return f"No AI placeholders {scope} in {path}"
         _write(p, new_content, backup)
-        return f"OK: recorded hash for {count} AI placeholder(s) in {path}"
+        return f"OK: recorded checksums for {count} AI placeholder(s) in {path}"
 
     @server.tool()
     def ai_check(path: str, name: str | None = None) -> str:
-        """Verify that AI placeholder content matches the recorded hash.
+        """Verify that AI placeholder content, prompt, and dep checksums all match.
 
         Returns "OK" if all hashed placeholders are intact, or a list of errors
         for any that have been modified since the last ai_fix call.
@@ -280,10 +281,68 @@ def main() -> None:
             name: If given, only check the AI placeholder with this name field
         """
         from mdship.markdown import ai_check_placeholders
-        _, content = _read(path)
-        issues = ai_check_placeholders(content, name=name)
+        p, content = _read(path)
+        markdown_dir = str(p.parent)
+        issues = ai_check_placeholders(content, name=name, markdown_dir=markdown_dir)
         if issues:
             return "MODIFIED:\n" + "\n".join(issues)
         return f"OK: AI placeholder content verified in {path}"
+
+    @server.tool()
+    def ai_update(path: str, name: str, new_content: str, backup: bool = True) -> str:
+        """Write new content into an AI placeholder and update all checksums atomically.
+
+        Replaces the managed content between the opening marker and closing tag,
+        then records _content_generated_, _prompt_checksum_, _brief_checksum_, and
+        per-dep checksums — all in a single file write.
+
+        The intended workflow is:
+          1. Call ai_context to get the prompt, previous content, brief, and dep slices.
+          2. Generate new_content from those inputs.
+          3. Call ai_update — the source file is never read or written by the agent.
+
+        Args:
+            path: Path to the markdown file
+            name: Placeholder name string or its opening line number as a decimal string
+            new_content: The generated text to place between the markers
+            backup: Create a .bak backup before modifying (default: True)
+        """
+        from mdship.markdown import ai_update_placeholder
+        p, content = _read(path)
+        try:
+            new_document = ai_update_placeholder(content, name, new_content,
+                                                  markdown_dir=str(p.parent))
+        except ValueError as e:
+            return f"ERROR: {e}"
+        _write(p, new_document, backup)
+        return f"OK: updated AI placeholder '{name}' in {path}"
+
+    @server.tool()
+    def ai_context(path: str, name: str) -> str:
+        """Check AI placeholder state and return everything needed for regeneration.
+
+        Performs a zero-token check: if all stored checksums match, returns
+        {"status": "up_to_date"} and the agent skips entirely.
+
+        Otherwise returns {"status": "needs_update", ...} with all inputs the
+        agent needs — no file reads required after this call:
+          "prompt"           — the generation instruction from the marker
+          "previous_content" — the content produced by the last generation run
+          "brief"            — full text of the brief file (only if brief: is set)
+          "context"          — list of dep entries, each with "path", "changed",
+                               "type", and either "text" or "data"/"content_type"
+
+        Returns {"status": "error", "message": ...} when the managed content
+        was manually edited (regeneration is blocked until ai_fix is called).
+
+        Args:
+            path: Path to the markdown file
+            name: Placeholder name string or its opening line number as a decimal string
+        """
+        import json as _json
+        from mdship.markdown import ai_check_and_get_context
+        p, content = _read(path)
+        result = ai_check_and_get_context(content, name, str(p.parent))
+        return _json.dumps(result)
 
     server.run(transport="stdio")
