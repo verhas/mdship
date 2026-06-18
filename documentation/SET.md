@@ -2,11 +2,12 @@
 
 <!--AI
 name: "set"
+deps:
+  - path: ../README.md
+    section: Variables
+    checksum: md5:4b43cb11467cbe92e04bae514956a389
 prompt: |
     Write documentation for the SET placeholder in mdship.
-
-    Read /Users/verhasp/github/mdship/README.md section 1.3.6 (Variables) for the
-    reference material. Focus on SET specifically.
 
     Cover:
     - What SET does: defines variables inline using YAML values
@@ -21,6 +22,10 @@ prompt: |
     Explain when to choose SET over the others (inline vs. external source).
     Link to: [IMPORT](IMPORT.md), [SLURP](SLURP.md), [SIP](SIP.md), [SUP](SUP.md),
     [INCLUDE](INCLUDE.md), [TOC](TOC.md), [MERMAID](MERMAID.md)
+_prompt_checksum_: md5:398ef4a306b86389164cd614d292f613
+_content_generated_: 3423:md5:b7cd3153aff927bbacc03aeed6934b65
+# ⚠️ MANAGED CONTENT: Edits will be lost.
+# danger zone: Delete _content_generated_ to override.
 -->
 
 ## What SET Does
@@ -73,8 +78,8 @@ Description: <!--$config.description<>-->old value<!---->
 - `$app.database.host` — deep nesting
 
 Variable references are updated by `mdship update`: the value between the markers is replaced with the current variable
-value. The operation is idempotent — running update multiple times always produces the same result. Variables are **not
-** updated inside fenced code blocks — use [TEMPLATE](TEMPLATE.md) for that.
+value. The operation is idempotent — running update multiple times always produces the same result. Variables are **not**
+updated inside fenced code blocks — use [TEMPLATE](TEMPLATE.md) for that.
 
 ## Example
 
@@ -97,8 +102,8 @@ First author: <!--$config.authors[0]<>-->Alice<!---->
 
 ## Pattern Dictionary
 
-SET can define custom regex patterns for use with [SUP](SUP.md) and [SIP](SIP.md). Note that [SLURP](SLURP.md) does *
-*not** support `@pattern` references — it compiles its `rules` as raw regex strings directly.
+SET can define custom regex patterns for use with [SUP](SUP.md) and [SIP](SIP.md). Note that [SLURP](SLURP.md) does
+**not** support `@pattern` references — it compiles its `rules` as raw regex strings directly.
 
 ```markdown
 <!--SET

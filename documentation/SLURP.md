@@ -2,6 +2,9 @@
 
 <!--AI
 name: "slurp"
+deps:
+  - path: ../README.md
+    section: "SLURP: Extract Names and Values from Files"
 prompt: |
     Write documentation for the SLURP placeholder in mdship.
 
@@ -25,6 +28,10 @@ prompt: |
     vs. SIP (variable names are known, only values are extracted).
     Link to: [SET](SET.md), [IMPORT](IMPORT.md), [SIP](SIP.md), [SUP](SUP.md),
     [INCLUDE](INCLUDE.md), [TOC](TOC.md), [MERMAID](MERMAID.md)
+_prompt_checksum_: md5:be164237d46600a23c9e520c3b732e67
+_content_generated_: 2766:md5:c7954172460da90cb92363b4e0e98790
+# ⚠️ MANAGED CONTENT: Edits will be lost.
+# danger zone: Delete _content_generated_ to override.
 -->
 
 ## What SLURP Does
@@ -47,7 +54,7 @@ rules:
 
 ## Configuration Parameters
 
-- `name` *(optional)*: Namespace prefix stored under which extracted variables are grouped. Supports hierarchical dot-notation.
+- `name` *(optional)*: Namespace prefix under which extracted variables are grouped. Supports hierarchical dot-notation.
 - `from` *(required)*: Path to the source file (or directory), relative to the markdown file.
 - `rules` *(required)*: List of regex patterns, each with exactly **2 capturing groups** — `(name)` and `(value)`. Named groups `(?P<var>...)` and `(?P<val>...)` are also supported to control ordering.
 - `strategy` *(optional)*: How to handle multiple matches for the same key:

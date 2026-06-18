@@ -25,6 +25,10 @@ prompt: |
     vs. SLURP (variable names are discovered from the file).
     Link to: [SET](SET.md), [IMPORT](IMPORT.md), [SLURP](SLURP.md), [SUP](SUP.md),
     [INCLUDE](INCLUDE.md), [TOC](TOC.md), [MERMAID](MERMAID.md)
+_prompt_checksum_: md5:8fd52d9b2f54d3dce2cc99042c3e5bf2
+_content_generated_: 2670:md5:1d49e2ba7f419d53e1f27be3c2dfe922
+# ⚠️ MANAGED CONTENT: Edits will be lost.
+# danger zone: Delete _content_generated_ to override.
 -->
 
 ## What SIP Does

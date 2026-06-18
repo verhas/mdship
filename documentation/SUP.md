@@ -25,6 +25,10 @@ prompt: |
     vs. the others.
     Link to: [SET](SET.md), [IMPORT](IMPORT.md), [SLURP](SLURP.md), [SIP](SIP.md),
     [INCLUDE](INCLUDE.md), [TOC](TOC.md), [MERMAID](MERMAID.md)
+_prompt_checksum_: md5:760a365cf0f5f50bd6e86caa27f66ef2
+_content_generated_: 2840:md5:5f7fcd095762d43b4d2c4eab67339e08
+# ⚠️ MANAGED CONTENT: Edits will be lost.
+# danger zone: Delete _content_generated_ to override.
 -->
 
 ## What SUP Does

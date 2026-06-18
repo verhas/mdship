@@ -2,22 +2,23 @@
 
 <!--AI
 name: "include"
+deps:
+  - path: ../README.md
+    section: Including Files
+    checksum: md5:4b43cb11467cbe92e04bae514956a389
 prompt: |
     Write documentation for the INCLUDE placeholder in mdship.
 
-    Read /Users/verhasp/github/mdship/README.md section 1.3.10 (Including Files) for
-    the reference material.
-
     Cover:
     - What INCLUDE does: embeds content from an external file between the opening
-      <!-​-INCLUDE ... --​> and closing <!--/INCLUDE--​> markers
+      <!-​-INCLUDE ... --​> and closing <!​--/INCLUDE--​> markers
     - Syntax and all supported fields:
         - from: path to the file to include (required)
         - prefix/postfix: text inserted before/after the included content (e.g. fenced code block markers)
         - range: line range to include (e.g. "10..20")
         - _terminate_: custom closing marker name
     - How variable references in included content are also substituted
-    - The closing <!--/INCLUDE--​> (or custom terminator) is required to delimit the region
+    - The closing <!​--/INCLUDE--​> (or custom terminator) is required to delimit the region
     - Practical examples: including a plain file, including a code snippet with prefix/postfix,
       including a line range
 
@@ -26,8 +27,8 @@ prompt: |
     Explain when to choose INCLUDE (embed entire file content) vs. IMPORT (load data as variables).
     Link to: [SET](SET.md), [IMPORT](IMPORT.md), [SLURP](SLURP.md), [SIP](SIP.md),
     [SUP](SUP.md), [TOC](TOC.md), [MERMAID](MERMAID.md)
-_prompt_checksum_: md5:f0175ba30a0c64ba2e5e591bbea4780b
-_content_generated_: 4080:md5:da756a9a00272e167728199a8e832398
+_prompt_checksum_: md5:ca8e84d315a39d676ebdf189de1c028b
+_content_generated_: 4167:md5:690f92fe0227e3a26320b8a50b183e0f
 # ⚠️ MANAGED CONTENT: Edits will be lost.
 # danger zone: Delete _content_generated_ to override.
 -->
@@ -92,7 +93,7 @@ section: "Configuration"
 <!--/INCLUDE-->
 ```
 
-This pulls in the `## Configuration` heading and everything under it until the next heading at the same or higher level. Heading numbers are ignored: `section: "Configuration"` matches `## 2.3. Configuration` just as well as `## Configuration`.
+This selects the heading whose bare title matches `"Configuration"` (case-insensitive; numbering prefixes like `2.3.` are stripped) and all lines following it until the next heading at the same or higher level, or end of file. Useful for pulling a named section from another markdown document without needing to track line numbers.
 
 **Include between regex markers:**
 ```markdown

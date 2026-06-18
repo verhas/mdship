@@ -694,6 +694,17 @@ In this format:
 
 This is useful for including method definitions where you want to start from the `def` or `class` line itself rather than the line after it.
 
+**Section-based selection:**
+```markdown
+<!--INCLUDE
+from: "reference.md"
+section: "Configuration"
+-->
+<!--/INCLUDE-->
+```
+
+This selects the heading whose bare title matches `"Configuration"` (case-insensitive, numbering prefixes like `2.3.` are ignored) and all lines following it until the next heading at the same or higher level, or end of file. Useful for pulling a named section from another markdown document without needing to track line numbers.
+
 **Example:**
 
 Source file `hello.py`:

@@ -29,7 +29,8 @@ prompt: |
     - The checking directed by the skill file and mention it uses mcp
 
     At the end, add a "See Also" section that mentiones the placeholders that use this feature.
-_content_generated_: 9602:md5:8b7eb1a9ccd491ba615e518d9c5fb0b7
+_prompt_checksum_: md5:4d1a4f9b5102a259df9b668d2f438f76
+_content_generated_: 11082:md5:4e8d4435bbffd9b630cbed43781e79d3
 # ⚠️ MANAGED CONTENT: Edits will be lost.
 # danger zone: Delete _content_generated_ to override.
 -->
@@ -72,7 +73,7 @@ _content_generated_: 312:md5:a3f1c8b2e94d7056f1b2c3d4e5f60718
 The value `312:md5:a3f1c8b2e94d7056...` encodes two things:
 
 - **`312`** — the exact character count of the managed block (from the `-->` of the opening marker to the start of the closing tag).
-- **`md5:...`** — the MD5 hex digest of that same block.
+- **`md5:...`** — the MD5 hex digest of that same block. MD5 is always used for this field; no other algorithm is supported.
 
 On every subsequent run, before regenerating content, mdship:
 
@@ -171,30 +172,66 @@ Exits 0 if all hashed placeholders are intact. Exits 1 and prints errors for any
 
 ### Workflow
 
+<!--MERMAID
+file: "_sequence_content_safety.svg"
+diagram: |
+    sequenceDiagram
+        actor User
+        participant Skill as /ai-placeholder skill
+        participant MCP as mdship MCP
+        participant File
+    
+        User->>Skill: /ai-placeholder file.md
+        Skill->>MCP: ai_context(file, name)
+        MCP->>File: read
+        File--\>>MCP: content
+        MCP--\>>Skill: status
+    
+        alt status = up_to_date
+            Skill--\>>User: skipped (all checksums match)
+        else status = error
+            Skill--\>>User: error — manual edits detected, run ai-fix first
+        else status = needs_update / may_need_update
+            Skill->>Skill: generate content from prompt + context
+            Skill->>MCP: ai_update(file, name, new_content)
+            MCP->>File: write content + checksums atomically
+            MCP--\>>Skill: OK
+            Skill--\>>User: updated
+        end
+_content_generated_: 42:md5:5588a3fe1ada98cc5c7d244e89d51d5e
+# ⚠️ MANAGED CONTENT: Edits will be lost.
+# danger zone: Delete _content_generated_ to override.
+-->
+![diagram](_sequence_content_safety.svg)
+
 The intended workflow when Claude updates an AI placeholder:
 
-1. `ai-check` — verify the existing content has not been manually edited since the last write. If it has, stop and report to the user before overwriting.
-2. Generate and write the new content.
-3. `ai-fix` — record the new hash so future checks can detect further manual edits.
+1. **Check** — call `ai_context` to verify whether the content is up to date and detect any manual edits since the last write. If the response is `error`, stop and report to the user before overwriting.
+2. **Generate** — produce the new content.
+3. **Write and fix atomically** — call `ai_update`, which replaces the content between the markers and writes all checksums (`_content_generated_`, `_prompt_checksum_`, per-dep `checksum:`) in a single file write.
 
 This mirrors exactly what `mdship update` does for its own placeholders: check before overwriting, update the hash after.
 
 ### How the `/ai-placeholder` skill enforces this
 
-When you invoke the `/ai-placeholder` skill in Claude Code, the skill file instructs Claude to call `mcp__mdship__ai_check` via the mdship MCP server before writing anything. If the server returns a `MODIFIED:` response, Claude stops and reports the conflict to you rather than silently overwriting your edits. After writing, the skill instructs Claude to call `mcp__mdship__ai_fix` via MCP to record the new hash.
+When you invoke the `/ai-placeholder` skill in Claude Code, the skill file instructs Claude to call `mcp__mdship__ai_context` via the mdship MCP server before writing anything. If the server returns an `error` status, Claude stops and reports the conflict to you rather than silently overwriting your edits. After generating, the skill instructs Claude to call `mcp__mdship__ai_update` via MCP, which writes the content and records all checksums atomically in a single file write — no separate `ai_fix` call is needed.
 
-This means the check-write-fix cycle is not something Claude has to remember to do — it is encoded directly in the skill definition and enforced automatically on every `/ai-placeholder` invocation. The MCP calls are the machine-readable equivalent of the `_content_generated_` guard that `mdship update` applies to its own placeholders.
+This means the check-generate-update cycle is not something Claude has to remember to do — it is encoded directly in the skill definition and enforced automatically on every `/ai-placeholder` invocation. The MCP calls are the machine-readable equivalent of the `_content_generated_` guard that `mdship update` applies to its own placeholders.
 
 
 ## See Also
 
 The content integrity feature applies to all built-in placeholders that use a closing tag:
 
-- `<!--TOC-->` / `<!--/TOC-->` — table of contents
-- `<!--INCLUDE-->` / `<!--/INCLUDE-->` — file inclusion
-- `<!--MERMAID-->` / `<!--/MERMAID-->` — diagram rendering
-- `<!--TEMPLATE-->` / `<!--/TEMPLATE-->` — variable-substituted template blocks
-- `<!--AI-->` / `<!--/AI-->` — AI-generated content (managed via `ai-fix` / `ai-check`)
+- `<!​--TOC-->` / `<!--/TOC-->` — table of contents
+- `<!​--INCLUDE-->` / `<!--/INCLUDE-->` — file inclusion
+- `<!​--MERMAID-->` / `<!--/MERMAID-->` — diagram rendering
+- `<!​--TEMPLATE-->` / `<!--/TEMPLATE-->` — variable-substituted template blocks
+- `<!​--AI-->` / `<!--/AI-->` — AI-generated content (managed via `ai-fix` / `ai-check`)
+
+For TOC, INCLUDE, MERMAID, and TEMPLATE, the hash check and update are wired directly into each placeholder processor in the code. The feature is not applied automatically to new placeholder types — a new processor must call `_check_content_hash` before generating content and `_apply_content_hash` after. For AI placeholders, the same hash mechanism is used but triggered explicitly by the user via `mdship ai-fix` and `mdship ai-check`.
+
+<!--/AI-->` — AI-generated content (managed via `ai-fix` / `ai-check`)
 
 For TOC, INCLUDE, MERMAID, and TEMPLATE, the hash check and update are wired directly into each placeholder processor in the code. The feature is not applied automatically to new placeholder types — a new processor must call `_check_content_hash` before generating content and `_apply_content_hash` after. For AI placeholders, the same hash mechanism is used but triggered explicitly by the user via `mdship ai-fix` and `mdship ai-check`.
 

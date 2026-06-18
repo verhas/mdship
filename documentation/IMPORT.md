@@ -2,6 +2,9 @@
 
 <!--AI
 name: "import"
+deps:
+  - path: ../README.md
+    section: "IMPORT: Load from External Files"
 prompt: |
     Write documentation for the IMPORT placeholder in mdship.
 
@@ -22,6 +25,10 @@ prompt: |
     Explain when to choose IMPORT over the others (structured external data vs. inline).
     Link to: [SET](SET.md), [SLURP](SLURP.md), [SIP](SIP.md), [SUP](SUP.md),
     [INCLUDE](INCLUDE.md), [TOC](TOC.md), [MERMAID](MERMAID.md)
+_prompt_checksum_: md5:95bc68de98a50129e0e4ab7680a16016
+_content_generated_: 2868:md5:198ba55dcbe64987e809a62a4063abc0
+# ⚠️ MANAGED CONTENT: Edits will be lost.
+# danger zone: Delete _content_generated_ to override.
 -->
 
 ## What IMPORT Does
