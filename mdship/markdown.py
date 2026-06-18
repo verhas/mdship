@@ -1000,14 +1000,27 @@ def _load_file_lines(filepath: str) -> list:
         raise ValueError(f"Error reading file {filepath}: {e}")
 
 
+def _normalize_heading(line: str):
+    """Return (level, bare_title) for a markdown heading line, or (None, None)."""
+    m = re.match(r'^(#+)\s+(.*)', line)
+    if not m:
+        return None, None
+    level = len(m.group(1))
+    text = m.group(2).strip()
+    # Strip common numbering prefixes: "1.", "1.2.", "1.2.3.", "1)", "1.2)", etc.
+    text = re.sub(r'^\d+(?:\.\d+)*[.)]\s+', '', text).strip()
+    return level, text
+
+
 def _extract_lines_from_file(filepath: str, config: dict) -> list:
     """Extract specific lines from a file based on config.
 
-    Supports three methods:
+    Supports four methods:
     - range: "x..y" - lines x through y (1-based, inclusive)
     - start: "regex" - start from line after first match
     - end: "regex" - end at line before last match
     - start and end together: extract between matches (multiple sections supported)
+    - section: "Title" - heading whose bare title matches, through end of that section
 
     Optional:
     - margin: int - indent lines so the leftmost line has this many spaces
@@ -1116,6 +1129,34 @@ def _extract_lines_from_file(filepath: str, config: dict) -> list:
                     extracted.append(line)
                 elif in_section:
                     extracted.append(line)
+
+    # Method 3: Section-based extraction
+    elif 'section' in config:
+        section_title = str(config['section']).strip()
+
+        # Find the heading whose bare title matches (case-insensitive).
+        start_idx = None
+        section_level = None
+        for i, line in enumerate(lines):
+            level, text = _normalize_heading(line)
+            if level is not None and text.lower() == section_title.lower():
+                start_idx = i
+                section_level = level
+                break
+
+        if start_idx is None:
+            raise ValueError(
+                f"Section '{section_title}' not found in {filepath}"
+            )
+
+        # Collect lines until a heading at the same or higher level (fewer #s).
+        extracted = []
+        for i in range(start_idx, len(lines)):
+            if i > start_idx:
+                level, _ = _normalize_heading(lines[i])
+                if level is not None and level <= section_level:
+                    break
+            extracted.append(lines[i])
 
     # If no extraction method specified, use all lines
     if extracted is None:

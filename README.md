@@ -638,9 +638,10 @@ range: "10..20"
 - `from`: File path relative to the markdown file (required)
 - `prefix`: String to insert before included content (e.g., `"```python"` for code fences)
 - `postfix`: String to insert after included content (e.g., `"```"`)
-- `range: "x..y"`: Include lines x through y (1-based, inclusive)
-- `start: "regex"`: Start including from line after first regex match
+- `range: "x..y"`: Include lines x through y (1-based, inclusive). Mutually exclusive with `start`/`end`/`section`.
+- `start: "regex"`: Start including from line after first regex match. Mutually exclusive with `range`/`section`.
 - `end: "regex"`: Stop including before first regex match (after start)
+- `section: "Title"`: Include a markdown section by heading title (without numbering). Includes from the matching heading through the end of that section. Case-insensitive. Mutually exclusive with `range`/`start`/`end`.
 - `margin: N`: Indent all lines so the leftmost line has exactly N spaces (preserves relative indentation)
 - `_terminate_`: Custom closing marker (default: `/INCLUDE`). When specified, use `<!--/CUSTOM-->` instead of `<!--/INCLUDE-->`
 

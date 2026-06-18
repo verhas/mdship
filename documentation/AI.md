@@ -47,6 +47,8 @@ deps:
   - path: src/auth.py
     start: "class SessionManager"            # regex anchor — start from this match
     end: "^class "                           # stop before this match
+  - path: docs/api.md
+    section: "Authentication"               # heading section by title
   - path: assets/diagram.png
     binary: true                             # binary file — returned as base64
 ```
@@ -54,9 +56,12 @@ deps:
 Each dep entry supports:
 
 - `path` *(required)*: File path, absolute or relative to the document's directory.
-- `range`: `"start..end"` line range (1-based, inclusive). Mutually exclusive with `start`/`end`.
-- `start`: Regex pattern. Content begins at (or after) the first matching line.
+- `range`: `"start..end"` line range (1-based, inclusive). Mutually exclusive with `start`/`end`/`section`.
+- `start`: Regex pattern. Content begins at (or after) the first matching line. Mutually exclusive with `range`/`section`.
 - `end`: Regex pattern. Content ends before (or at) the first matching line after `start`.
+- `section`: Heading title (without numbering). Selects the heading line whose bare title matches plus all following
+  lines until the next heading at the same or higher level (or end of file). Case-insensitive. Mutually exclusive with
+  `range`/`start`/`end`.
 - `binary: true`: Read the file as bytes and return base64 content with a MIME type.
 - `checksum:`: Written by mdship after `ai-fix`. Records the MD5 of the extracted slice so changes are detected on the
   next `ai_context` call.

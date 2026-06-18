@@ -22,6 +22,7 @@ from mdship.markdown import (
     update_tracking,
     validate_links,
     _validate_placeholder_structure,
+    _extract_lines_from_file,
     ai_fix_placeholders,
     ai_check_placeholders,
     ai_check_and_get_context,
@@ -2247,6 +2248,80 @@ class TestContentGeneratedHash:
         result1 = update_includes(content, str(tmp_path))
         result2 = update_includes(result1, str(tmp_path))
         assert result1 == result2
+
+    # ------------------------------------------------------------------
+    # section: key in INCLUDE / _extract_lines_from_file
+    # ------------------------------------------------------------------
+
+    def test_section_basic(self, tmp_path):
+        """section: includes heading line through end of its section."""
+        src = tmp_path / "doc.md"
+        src.write_text(
+            "# Intro\nIntro text.\n\n## Details\nDetail text.\n\n## Other\nOther text.\n"
+        )
+        content = f'<!--INCLUDE\nfrom: "{src}"\nsection: "Details"\n-->\n<!--/INCLUDE-->\n'
+        result = update_includes(content, str(tmp_path))
+        assert "## Details" in result
+        assert "Detail text." in result
+        assert "## Other" not in result
+        assert "# Intro" not in result
+
+    def test_section_runs_to_eof(self, tmp_path):
+        """section: with no following heading collects through end of file."""
+        src = tmp_path / "doc.md"
+        src.write_text("# Alpha\nAlpha.\n\n# Beta\nBeta line 1.\nBeta line 2.\n")
+        content = f'<!--INCLUDE\nfrom: "{src}"\nsection: "Beta"\n-->\n<!--/INCLUDE-->\n'
+        result = update_includes(content, str(tmp_path))
+        assert "# Beta" in result
+        assert "Beta line 1." in result
+        assert "Beta line 2." in result
+        assert "# Alpha" not in result
+
+    def test_section_strips_numbering(self, tmp_path):
+        """section: matches heading title even when the file has numbered headings."""
+        src = tmp_path / "doc.md"
+        src.write_text("# 1. First\nFirst text.\n\n# 2. Second\nSecond text.\n")
+        content = f'<!--INCLUDE\nfrom: "{src}"\nsection: "Second"\n-->\n<!--/INCLUDE-->\n'
+        result = update_includes(content, str(tmp_path))
+        assert "Second text." in result
+        assert "First text." not in result
+
+    def test_section_case_insensitive(self, tmp_path):
+        """section: match is case-insensitive."""
+        src = tmp_path / "doc.md"
+        src.write_text("## Overview\nOverview text.\n\n## Details\nDetail text.\n")
+        content = f'<!--INCLUDE\nfrom: "{src}"\nsection: "overview"\n-->\n<!--/INCLUDE-->\n'
+        result = update_includes(content, str(tmp_path))
+        assert "Overview text." in result
+        assert "Detail text." not in result
+
+    def test_section_subsection_stops_at_parent(self, tmp_path):
+        """section: on an h3 stops at the next h2 or h1."""
+        src = tmp_path / "doc.md"
+        src.write_text(
+            "## Chapter\n\n### Sub\nSub text.\n\n## Next Chapter\nNext text.\n"
+        )
+        content = f'<!--INCLUDE\nfrom: "{src}"\nsection: "Sub"\n-->\n<!--/INCLUDE-->\n'
+        result = update_includes(content, str(tmp_path))
+        assert "### Sub" in result
+        assert "Sub text." in result
+        assert "## Next Chapter" not in result
+
+    def test_section_not_found_raises(self, tmp_path):
+        """section: raises ValueError when the title is not found."""
+        src = tmp_path / "doc.md"
+        src.write_text("# Only Section\nContent.\n")
+        with pytest.raises(ValueError, match="not found"):
+            _extract_lines_from_file(str(src), {"section": "Missing Title"})
+
+    def test_section_with_margin(self, tmp_path):
+        """section: works together with margin: re-indentation."""
+        src = tmp_path / "doc.md"
+        src.write_text("## Snippet\n    indented\n    code\n\n## Next\nother\n")
+        content = f'<!--INCLUDE\nfrom: "{src}"\nsection: "Snippet"\nmargin: 0\n-->\n<!--/INCLUDE-->\n'
+        result = update_includes(content, str(tmp_path))
+        assert "indented" in result
+        assert "## Next" not in result
 
 
 class TestAIDepsExtension:

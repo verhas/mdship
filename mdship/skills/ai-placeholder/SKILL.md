@@ -55,9 +55,13 @@ deps:
   - path: src/auth.py
     start: "class SessionManager"            # regex anchor (pattern matching)
     end: "^class "
+  - path: docs/api.md
+    section: "Authentication"               # heading section by title (case-insensitive, strips numbering)
   - path: assets/diagram.png
     binary: true                             # binary file (returned as base64)
 ```
+
+Selection keys `range`, `start`/`end`, and `section` are mutually exclusive.
 
 Deps declare which files (or file slices) the agent needs to read when generating content. mdship extracts and checksums them automatically — **the agent never reads dep files directly**.
 
