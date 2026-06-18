@@ -108,7 +108,7 @@ Preserve accurate wording, structure, and examples from the existing content whe
 
 ### Step 4 — Call `mcp__mdship__ai_update`
 
-Call `mcp__mdship__ai_update` with the file path, the placeholder `name` (or line number), and the generated text as `new_content`. This replaces the content between the markers and records all checksums (`_content_generated_`, `_prompt_checksum_`, per-dep `checksum:`) atomically in a single file write.
+Call `mcp__mdship__ai_update` with the file path, the placeholder `name` (or line number), and the generated text as `new_content`. This replaces the content between the markers and records all checksums (`_content_generated_`, `_prompt_checksum_`, `_brief_checksum_`, per-dep `checksum:`) atomically in a single file write.
 
 **Do not write to the file yourself** — do not use Edit, Write, or any other file tool on the source document. `ai_update` is the only file write that should happen.
 
