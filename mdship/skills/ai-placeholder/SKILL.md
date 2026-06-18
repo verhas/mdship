@@ -8,7 +8,7 @@ The user has invoked `/ai-placeholder`. Parse the argument string to determine w
 - **`/ai-placeholder <file> <name>`** — process only the placeholder with the matching `name` field in `<file>`.
 - **No argument** — ask the user for the file (and optionally the placeholder name).
 
-After parsing, read the file, process each relevant placeholder following the rules below, and write results back using the Edit tool. Report what was updated (or skipped) when done.
+After parsing, process each relevant placeholder following the rules below. **Do not read or write the source file yourself** — all file I/O goes through the MCP tools. Report what was updated (or skipped) when done.
 
 ---
 
@@ -43,7 +43,7 @@ The placeholder contains a YAML body. Recognized fields:
 - `brief` *(optional)*: Path to a file containing shared writing instructions (style, audience, language, tone). Applied in addition to `prompt`. Path is absolute, or relative to the directory of the document.
 - `deps` *(optional)*: List of file dependency entries. Each entry has `path` and optionally `range`, `start`/`end`, or `binary: true`. These declare what external files the prompt depends on. See **Deps entries** below.
 - `_terminate_` *(optional)*: Custom closing marker name.
-- `_prompt_checksum_`, `_content_generated_`, and `checksum:` inside dep entries — written by mdship after each `ai_fix` call. Do not edit manually.
+- `_prompt_checksum_`, `_content_generated_`, and `checksum:` inside dep entries — written by mdship after each `ai_fix` or `ai_update` call. Do not edit manually.
 
 ### Deps entries
 
@@ -82,7 +82,7 @@ One or more inputs changed (prompt, brief, dep file, or cold start). Proceed to 
 
 ### Step 2 — Prepare to generate
 
-The `needs_update` response contains everything needed to regenerate — no further file reads are required:
+The `needs_update` response contains everything needed to regenerate — **no further file reads are required**:
 
 - `prompt` — the generation instruction from the marker.
 - `previous_content` — the text produced by the last generation run (what currently sits between the markers). Use this to understand what was written before and to preserve still-accurate wording.
@@ -106,26 +106,11 @@ Keep attention on `changed: true` deps — those are what triggered the update. 
 
 Preserve accurate wording, structure, and examples from the existing content where they still fit the prompt — avoid rewriting for its own sake.
 
-### Step 4 — Write
+### Step 4 — Call `mcp__mdship__ai_update`
 
-Replace the content between the opening placeholder and the closing marker (`<!--/AI-->` or the `_terminate_` value). Leave both markers unchanged.
+Call `mcp__mdship__ai_update` with the file path, the placeholder `name` (or line number), and the generated text as `new_content`. This replaces the content between the markers and records all checksums (`_content_generated_`, `_prompt_checksum_`, per-dep `checksum:`) atomically in a single file write.
 
-### Step 5 — Call `mcp__mdship__ai_fix`
-
-After writing, call `mcp__mdship__ai_fix` with the file path (and `name` if you updated a single placeholder). This records `_content_generated_`, `_prompt_checksum_`, and per-dep checksums so that the next `ai_context` call can detect whether anything has changed.
-
----
-
-## Determining the content boundary
-
-The generated content starts immediately after the opening `<!--AI ... -->` comment and ends at:
-
-1. `<!--/TERMINATE_VALUE-->` if `_terminate_` is set, or
-2. `<!--/AI-->` if present, or
-3. The next heading at the same or higher level, or
-4. End of file.
-
-Always keep the opening placeholder and the closing marker in place. Only replace the content between them.
+**Do not write to the file yourself** — do not use Edit, Write, or any other file tool on the source document. `ai_update` is the only file write that should happen.
 
 ---
 
