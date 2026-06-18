@@ -321,16 +321,19 @@ def main() -> None:
     def ai_context(path: str, name: str) -> str:
         """Check AI placeholder state and return everything needed for regeneration.
 
-        Performs a zero-token check: if all stored checksums match, returns
-        {"status": "up_to_date"} and the agent skips entirely.
+        Performs a zero-token check: if all stored checksums match AND deps are
+        declared, returns {"status": "up_to_date"} and the agent skips entirely.
 
-        Otherwise returns {"status": "needs_update", ...} with all inputs the
-        agent needs — no file reads required after this call:
+        Returns {"status": "needs_update", ...} when a checksum changed or on
+        cold start. Returns {"status": "may_need_update", ...} when all stored
+        checksums match but no deps: are declared — the prompt may reference
+        files that cannot be automatically verified.
+
+        Both needs_update and may_need_update include all inputs the agent needs:
           "prompt"           — the generation instruction from the marker
           "previous_content" — the content produced by the last generation run
           "brief"            — full text of the brief file (only if brief: is set)
-          "context"          — list of dep entries, each with "path", "changed",
-                               "type", and either "text" or "data"/"content_type"
+          "context"          — list of dep entries (empty for may_need_update)
 
         Returns {"status": "error", "message": ...} when the managed content
         was manually edited (regeneration is blocked until ai_fix is called).

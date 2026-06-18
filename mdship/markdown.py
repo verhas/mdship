@@ -833,7 +833,7 @@ def ai_check_and_get_context(content: str, name_or_line: str, markdown_dir: str)
 
         dep_contexts.append({'path': dep.get('path', ''), 'changed': changed, **dep_content})
 
-    if not needs_update:
+    if not needs_update and deps:
         return {'status': 'up_to_date'}
 
     # Collect brief content.
@@ -848,8 +848,13 @@ def ai_check_and_get_context(content: str, name_or_line: str, markdown_dir: str)
         except OSError:
             brief_text = None
 
+    # When no deps are declared and all stored checksums match, the prompt may
+    # reference files that cannot be automatically verified.  Use a distinct
+    # status so the agent knows it must check those files itself.
+    status = 'needs_update' if needs_update else 'may_need_update'
+
     result: dict = {
-        'status': 'needs_update',
+        'status': status,
         'prompt': config.get('prompt', ''),
         'previous_content': content[ph['start_pos']:ph['end_pos']],
         'context': dep_contexts,

@@ -2543,7 +2543,7 @@ class TestAIDepsExtension:
         fixed, _ = ai_fix_placeholders(content)
         result = ai_check_and_get_context(fixed, "1", "/tmp")
         # No _prompt_checksum_ should trigger needs_update or the line addressing works.
-        assert result['status'] in ('needs_update', 'up_to_date')
+        assert result['status'] in ('needs_update', 'up_to_date', 'may_need_update')
 
     def test_context_not_found_returns_error(self):
         """Returns error when name does not match any placeholder."""
@@ -2783,8 +2783,27 @@ class TestAIDepsExtension:
         result = ai_check_and_get_context(fixed, "sec", str(tmp_path))
         assert result['status'] == 'needs_update'
 
-    def test_context_up_to_date_with_unchanged_brief(self, tmp_path):
-        """ai_check_and_get_context returns up_to_date when brief is unchanged."""
+    def test_context_up_to_date_with_unchanged_brief_and_deps(self, tmp_path):
+        """ai_check_and_get_context returns up_to_date when brief and deps are unchanged."""
+        brief_file = tmp_path / "brief.md"
+        brief_file.write_text("Stable brief.\n")
+        dep_file = tmp_path / "dep.txt"
+        dep_file.write_text("stable dep\n")
+        content = (
+            "<!--AI\n"
+            "name: \"sec\"\n"
+            "prompt: Stable prompt.\n"
+            "brief: brief.md\n"
+            "deps:\n"
+            "  - path: dep.txt\n"
+            "-->\nbody\n<!--/AI-->\n"
+        )
+        fixed, _ = ai_fix_placeholders(content, markdown_dir=str(tmp_path))
+        result = ai_check_and_get_context(fixed, "sec", str(tmp_path))
+        assert result['status'] == 'up_to_date'
+
+    def test_context_may_need_update_with_unchanged_brief_no_deps(self, tmp_path):
+        """Without deps, brief-only placeholder returns may_need_update when everything matches."""
         brief_file = tmp_path / "brief.md"
         brief_file.write_text("Stable brief.\n")
         content = (
@@ -2796,7 +2815,51 @@ class TestAIDepsExtension:
         )
         fixed, _ = ai_fix_placeholders(content, markdown_dir=str(tmp_path))
         result = ai_check_and_get_context(fixed, "sec", str(tmp_path))
+        assert result['status'] == 'may_need_update'
+
+    # --- may_need_update ---
+
+    def test_may_need_update_cold_start_no_deps(self):
+        """Cold start with no deps returns needs_update, not may_need_update."""
+        content = "<!--AI\nname: \"x\"\nprompt: Do it.\n-->\nbody\n<!--/AI-->\n"
+        result = ai_check_and_get_context(content, "x", ".")
+        assert result['status'] == 'needs_update'
+
+    def test_may_need_update_after_fix_no_deps(self):
+        """After ai_fix with no deps, status is may_need_update."""
+        content = "<!--AI\nname: \"x\"\nprompt: Do it.\n-->\nbody\n<!--/AI-->\n"
+        fixed, _ = ai_fix_placeholders(content)
+        result = ai_check_and_get_context(fixed, "x", ".")
+        assert result['status'] == 'may_need_update'
+
+    def test_may_need_update_includes_prompt_and_previous_content(self):
+        """may_need_update response includes prompt and previous_content."""
+        content = "<!--AI\nname: \"x\"\nprompt: Do it.\n-->\nbody\n<!--/AI-->\n"
+        fixed, _ = ai_fix_placeholders(content)
+        result = ai_check_and_get_context(fixed, "x", ".")
+        assert 'prompt' in result
+        assert 'previous_content' in result
+        assert result['context'] == []
+
+    def test_may_need_update_not_returned_when_deps_present(self, tmp_path):
+        """With deps declared and all checksums matching, status is up_to_date."""
+        dep = tmp_path / "dep.txt"
+        dep.write_text("content\n")
+        content = (
+            "<!--AI\nname: \"x\"\nprompt: Do it.\n"
+            "deps:\n  - path: dep.txt\n-->\nbody\n<!--/AI-->\n"
+        )
+        fixed, _ = ai_fix_placeholders(content, markdown_dir=str(tmp_path))
+        result = ai_check_and_get_context(fixed, "x", str(tmp_path))
         assert result['status'] == 'up_to_date'
+
+    def test_needs_update_not_downgraded_to_may_need_update_on_prompt_change(self):
+        """Changing the prompt while having no deps still returns needs_update."""
+        content = "<!--AI\nname: \"x\"\nprompt: Do it.\n-->\nbody\n<!--/AI-->\n"
+        fixed, _ = ai_fix_placeholders(content)
+        changed = fixed.replace("prompt: Do it.", "prompt: Do something else.")
+        result = ai_check_and_get_context(changed, "x", ".")
+        assert result['status'] == 'needs_update'
 
 
 class TestAIUpdatePlaceholder:

@@ -69,10 +69,10 @@ Deps declare which files (or file slices) the agent needs to read when generatin
 
 Before doing anything else, call `mcp__mdship__ai_context` with the file path and the placeholder's `name` (or its opening line number as a string if it has no name). This is the core gating call.
 
-The tool returns one of three responses:
+The tool returns one of four responses:
 
 **`{"status": "up_to_date"}`**
-All stored checksums match the current content, prompt, and dep files. **Skip this placeholder entirely** — report it as skipped to the user. Do not read any dep files and do not regenerate content.
+All stored checksums match the current content, prompt, brief, and dep files, and at least one dep is declared. **Skip this placeholder entirely** — report it as skipped to the user. Do not read any dep files and do not regenerate content.
 
 **`{"status": "error", "message": "..."}`**
 The managed content was manually edited since the last `ai_fix` run. **Stop and report the error to the user.** Do not overwrite the manual edits unless the user explicitly asks you to. The user must run `mdship ai-fix` to accept or discard the manual changes first.
@@ -80,14 +80,17 @@ The managed content was manually edited since the last `ai_fix` run. **Stop and 
 **`{"status": "needs_update", "prompt": "...", "previous_content": "...", "brief": "...", "context": [...]}`**
 One or more inputs changed (prompt, brief, dep file, or cold start). Proceed to Step 2.
 
-### Step 2 — Prepare to generate
+**`{"status": "may_need_update", "prompt": "...", "previous_content": "...", "brief": "...", "context": []}`**
+All stored checksums match, but **no `deps:` are declared** in this placeholder. The prompt may reference files or instruct you to read something — those sources cannot be automatically verified. Proceed to Step 2a.
+
+### Step 2 — Prepare to generate (`needs_update`)
 
 The `needs_update` response contains everything needed to regenerate — **no further file reads are required**:
 
 - `prompt` — the generation instruction from the marker.
 - `previous_content` — the text produced by the last generation run (what currently sits between the markers). Use this to understand what was written before and to preserve still-accurate wording.
 - `brief` — full text of the brief file *(only present when `brief:` is set in the marker)*. Use it as standing writing instructions alongside the prompt.
-- `context` — list of dep content entries *(empty when no `deps:` are declared)*. Each entry contains:
+- `context` — list of dep content entries. Each entry contains:
   - `path` — dep file path
   - `changed` — `true` if this specific dep's checksum differed (prioritise attention here)
   - `type` — `"text"` or `"binary"`
@@ -98,11 +101,22 @@ The `needs_update` response contains everything needed to regenerate — **no fu
 
 If the `prompt` references files that are not in `deps:`, those are the only files you may still need to read yourself (see **Reading files referenced in the prompt** below).
 
+### Step 2a — Prepare to generate (`may_need_update`)
+
+No deps are declared. The `context` array is empty. You must read any sources the `prompt` mentions yourself before generating:
+
+1. Read the `prompt` field from the response carefully.
+2. Identify every file or resource the prompt refers to or instructs you to read.
+3. Read those files using your available tools.
+4. Also use `previous_content` and `brief` (if present) as context.
+
+After generating (Step 3), you must also **suggest `deps:` entries** to the user — see **Suggesting deps** below.
+
 ### Step 3 — Generate
 
-Generate content based on the `prompt`, `previous_content`, `brief` (if present), and any `context` entries.
+Generate content based on the `prompt`, `previous_content`, `brief` (if present), and any sources from `context` or files you read in Step 2a.
 
-Keep attention on `changed: true` deps — those are what triggered the update. Unchanged deps are included in context for completeness but may not require changes to the generated content.
+For `needs_update`: keep attention on `changed: true` deps — those are what triggered the update. Unchanged deps are included for completeness but may not require content changes.
 
 Preserve accurate wording, structure, and examples from the existing content where they still fit the prompt — avoid rewriting for its own sake.
 
@@ -111,6 +125,23 @@ Preserve accurate wording, structure, and examples from the existing content whe
 Call `mcp__mdship__ai_update` with the file path, the placeholder `name` (or line number), and the generated text as `new_content`. This replaces the content between the markers and records all checksums (`_content_generated_`, `_prompt_checksum_`, `_brief_checksum_`, per-dep `checksum:`) atomically in a single file write.
 
 **Do not write to the file yourself** — do not use Edit, Write, or any other file tool on the source document. `ai_update` is the only file write that should happen.
+
+---
+
+## Suggesting deps
+
+When the status was `may_need_update`, after writing the content suggest a `deps:` block to the user. Base it on the files you read in Step 2a. Example:
+
+```yaml
+deps:
+  - path: src/api.py
+  - path: docs/spec.md
+    range: "1..40"
+```
+
+Explain that adding this block to the placeholder marker will let mdship track those files automatically — so future runs can detect changes and return `needs_update` instead of `may_need_update`, and the agent will no longer need to read files itself.
+
+The suggestion is advisory. Do not add it to the file yourself.
 
 ---
 
@@ -151,7 +182,7 @@ prompt: |
 "Update the AI placeholder named examples" → only process the second one.
 "Update all AI placeholders" → process all of them in document order.
 
-When processing multiple placeholders, call `mcp__mdship__ai_context` separately for each one. Skip those that return `up_to_date`; stop on `error`; generate for `needs_update`.
+When processing multiple placeholders, call `mcp__mdship__ai_context` separately for each one. Skip those that return `up_to_date`; stop on `error`; generate for `needs_update` or `may_need_update`.
 
 ---
 
@@ -165,6 +196,6 @@ The existing content between the placeholder markers is **always treated as pote
 
 Process AI placeholders when the user asks you to:
 - **Update** the document or fill in sections — generate or rewrite the content.
-- **Check** whether the content is up to date — call `mcp__mdship__ai_context`. If `up_to_date`, report that; if `needs_update`, report what changed and ask whether to proceed.
+- **Check** whether the content is up to date — call `mcp__mdship__ai_context`. If `up_to_date`, report that; if `needs_update` or `may_need_update`, report what changed and ask whether to proceed.
 
 Do not process AI placeholders silently unless the user explicitly asks.
