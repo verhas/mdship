@@ -2,11 +2,13 @@
 
 <!--AI
 name: "mermaid"
+deps:
+  - path: ../README.md
+    start: Rendering Mermaid Diagrams
+    end: ^###
+    checksum: md5:10aa7a46f74adfdf421d6de15805d0c1
 prompt: |
     Write documentation for the MERMAID placeholder in mdship.
-
-    Read /Users/verhasp/github/mdship/README.md section 1.3.11 (Rendering Mermaid Diagrams)
-    for the reference material.
 
     Cover:
     - What MERMAID does: renders a Mermaid diagram definition to an image file and
@@ -29,8 +31,11 @@ prompt: |
     that it uniquely supports variable substitution inside the diagram source.
     Link to: [SET](SET.md), [IMPORT](IMPORT.md), [SLURP](SLURP.md), [SIP](SIP.md),
     [SUP](SUP.md), [INCLUDE](INCLUDE.md), [TOC](TOC.md)
+_prompt_checksum_: md5:aa40698f9a4f96de8ba52aa5b74cf5fb
+_content_generated_: 4211:md5:ee70e615c1ddd886d182f632ff770c08
+# ⚠️ MANAGED CONTENT: Edits will be lost.
+# danger zone: Delete _content_generated_ to override.
 -->
-
 ## What MERMAID Does
 
 The `MERMAID` placeholder renders a Mermaid diagram definition to an image file (SVG or PNG) and writes a markdown image reference on the single managed line immediately after the opening marker. Variables from [SET](SET.md), [IMPORT](IMPORT.md), and other sources are substituted in the diagram source before rendering.

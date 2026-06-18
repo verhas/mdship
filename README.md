@@ -69,10 +69,15 @@ _content_generated_: 1840:md5:77782b81984df2fce357d190509fb0b4
 - **Render Mermaid diagrams**: Generate SVG/PNG diagrams from Mermaid source code with variable substitution
 - **Template placeholders**: Insert dynamic content with variable substitution (useful for code blocks with dynamic values)
 - **Pattern dictionary**: Built-in patterns for common extraction tasks (@heading, @version) and support for custom patterns
-- **Placeholder validation**: Early detection of mistyped closing tags and unclosed placeholders before processing
+- **Placeholder validation**: Early detection of mistyped closing tags, unclosed placeholders, and duplicate AI placeholder names before processing
 - **Managed content integrity**: Hash-based protection against accidental manual edits inside managed blocks (TOC, INCLUDE, MERMAID)
 - **Track changes**: Automatically maintain `last-updated` timestamp and operation logs in front-matter (use `--track` or `-t` flag)
 - **Validate links**: Check for broken anchor references, missing file references, and unused anchors
+- **AI placeholders**: Embed generation prompts in markdown documents for Claude to fill or update
+  - **`deps:`**: Declare file dependencies; mdship extracts content and computes checksums so Claude never reads source files directly
+  - **`brief:`**: Shared writing instructions (style, tone, audience) applied to every generation run
+  - **`ai-fix`**: Record content, prompt, brief, and dep checksums after generation so accidental edits are detectable
+  - **`ai-check`**: Verify that all stored checksums still match — use in CI or pre-commit hooks
 
 ## 1.2. Installation
 
@@ -1141,7 +1146,87 @@ Delete _content_generated_ line to override and accept data loss.
 - The length-based check makes the parser resilient to generated content that itself contains a closing-tag-like string (e.g. an INCLUDE that pulls in a file mentioning `<!--/INCLUDE-->`).
 - You can freely edit the YAML configuration keys inside the opening marker (e.g. `min-level`, `from`, `file`) — those are outside the managed block and are never overwritten.
 
-### 1.3.18. MCP Server
+### 1.3.18. AI Placeholders
+
+The `<!--AI-->` placeholder embeds a generation prompt directly in a markdown document. Claude reads the prompt, generates the content, and writes it between the markers. Unlike all other placeholders, **AI placeholders are not processed by `mdship update`** — they are handled by Claude through the `/ai-placeholder` skill.
+
+**Basic example:**
+
+```markdown
+<!--AI
+name: "intro"
+prompt: |
+    Write a two-paragraph introduction explaining what this tool does.
+    Keep it concise and aimed at developers.
+-->
+
+Content Claude generates goes here.
+
+<!--/AI-->
+```
+
+**Declaring file dependencies with `deps:`:**
+
+```markdown
+<!--AI
+name: "api-summary"
+prompt: |
+    Summarise the public API from the source files below.
+deps:
+  - path: src/api.py
+  - path: src/models.py
+    range: "1..80"
+-->
+
+<!--/AI-->
+```
+
+mdship extracts the file content and checksums each dep. Claude receives the content without reading the files itself. If a dep changes, the next `ai_context` check detects it automatically.
+
+**Shared writing instructions with `brief:`:**
+
+```markdown
+<!--AI
+name: "overview"
+brief: docs/brief.md
+prompt: |
+    Write a high-level overview of this module.
+-->
+
+<!--/AI-->
+```
+
+The brief file is read once per generation run and provides standing style/tone/audience instructions that apply to every AI placeholder referencing it.
+
+**Protecting generated content:**
+
+After Claude writes content, run `ai-fix` to record checksums of the content, prompt, brief, and all deps:
+
+```bash
+mdship ai-fix file.md               # Record checksums for all AI placeholders
+mdship ai-fix file.md --name intro  # Record for a specific placeholder
+```
+
+Verify that nothing was accidentally edited since the last generation:
+
+```bash
+mdship ai-check file.md             # Verify all AI placeholder checksums
+mdship ai-check file.md --name api-summary
+```
+
+`ai-check` exits with code 0 on success and code 1 with error messages if any content, prompt, brief, or dep has changed.
+
+**Validate AI placeholder names:**
+
+The `validate` command now also checks AI placeholder name uniqueness:
+
+```bash
+mdship validate file.md
+```
+
+For full details on deps, brief, the MCP tools (`ai_context`, `ai_update`), and the Claude workflow see [documentation/AI.md](documentation/AI.md).
+
+### 1.3.19. MCP Server
 
 Configure in your Claude settings:
 
@@ -1156,7 +1241,16 @@ Configure in your Claude settings:
 }
 ```
 
-Then use the available tools in Claude with markdown content.
+Available tools include all CLI operations plus four AI-specific tools:
+
+| Tool | Description |
+|------|-------------|
+| `ai_fix` | Record content, prompt, brief, and dep checksums after generation |
+| `ai_check` | Verify all stored checksums still match |
+| `ai_context` | Gate call: returns `up_to_date`, `needs_update` (with prompt, deps, brief, previous content), or `error` |
+| `ai_update` | Write new content and record all checksums atomically — agent never reads or writes the file directly |
+
+The `/ai-placeholder` skill uses `ai_context` → generate → `ai_update` so the full source document never enters the agent's context window.
 
 ## 1.4. Design
 

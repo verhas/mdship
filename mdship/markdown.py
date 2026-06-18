@@ -488,7 +488,10 @@ def _find_ai_placeholders(content: str, name: Optional[str] = None) -> list:
         config = {}
         if config_text and yaml:
             try:
-                config = yaml.safe_load(config_text) or {}
+                # Append '\n' so YAML literal blocks (|) at the end of config_text
+                # always get their trailing newline, matching how they parse once
+                # _prompt_checksum_ / _content_generated_ keys are present after them.
+                config = yaml.safe_load(config_text + '\n') or {}
             except yaml.YAMLError:
                 config = {}
 
