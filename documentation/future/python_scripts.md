@@ -3,56 +3,56 @@
 ## Overview
 
 mdship is extensible via Python scripts stored in a project-local `.mdship/scripts/` directory.
-Scripts can generate placeholder content and transform the output of any content-manager placeholder.
-Execution is gated by a user-maintained allow-list file — no script ever runs without the user's
-explicit, deliberate opt-in.
+Scripts can generate placeholder content, transform the output of content-manager placeholders,
+and audit variable-source placeholders. Execution is gated by a user-maintained allow-list file
+— no script ever runs without the user's explicit, deliberate opt-in.
 
 ---
 
 ## Feature 1: `<!--PYTHON-->` Placeholder
 
-A content-manager placeholder that calls a Python script to generate its content. Like `INCLUDE`
-and `MERMAID`, it has an opening and closing marker and its output is protected by
-`_content_generated_`.
+`<!--PYTHON-->` operates in one of two modes determined by which key is present in the YAML:
 
-### Syntax
+- **`run:` mode** — content-generating. Requires a closing `<!--/PYTHON-->` tag. Runs during
+  the content phase. Output is protected by `_content_generated_`.
+- **`define:` mode** — variable-source. No closing tag. Runs during the variable phase alongside
+  SET, IMPORT, SLURP, SIP, and SUP. Produces no document content.
+
+### `run:` mode — content generation
 
 ```markdown
 <!--PYTHON
-script: "generate_table.py"
+run: "generate_table.py"
 source: "metrics.json"
 threshold: 0.95
 -->
 <!--/PYTHON-->
 ```
 
-Since there is only one script in a `<!--PYTHON-->` placeholder, its configuration sits at the
-top level of the YAML directly. The script reads straight from `args` — no named subsection
-needed. `<!--PYTHON-->` does not support `postprocess:` — any transformation of the generated
-content belongs inside the `run` function itself.
+The script's configuration sits at the top level of the YAML — no named subsection needed.
+`run:` mode does not support `transform:` or `audit:` — any transformation belongs inside the
+`run` function itself.
 
-### Previous content
+#### Previous content
 
-The `run` function receives the current content between the markers as `previous_content`. On
-the first run this is an empty string. On subsequent runs it is whatever was written last time.
-This allows incremental generation — for example, appending new rows to an existing table rather
-than rebuilding it from scratch.
+`run(content, ctx)` receives the current text between the markers as `content`. On the first
+run this is an empty string; on subsequent runs it is whatever was written last time. This allows
+incremental generation — for example, appending new rows to an existing table rather than
+rebuilding it from scratch.
 
 This is intentionally non-idempotent: running `mdship update` twice may produce different results
-if the script uses `previous_content`. That is the script author's responsibility to manage.
+if the script uses `content`. That is the script author's responsibility to manage.
 
-
-//AI: rename it to _yolo_, it is more cathcy
-### Bypassing integrity protection: `_live_dangerous_`
+#### Bypassing integrity protection: `_yolo_`
 
 Normally, if the content between the markers was manually edited since the last run, mdship
-detects the hash mismatch and aborts. The `_live_dangerous_: true` key bypasses this check:
-the script is called anyway, with the manually-edited text passed as `previous_content`.
+detects the hash mismatch and aborts. The `_yolo_: true` key bypasses this check: the script is
+called anyway, with the manually-edited text passed as `content`.
 
 ```markdown
 <!--PYTHON
-script: "changelog.py"
-_live_dangerous_: true
+run: "changelog.py"
+_yolo_: true
 -->
 <!--/PYTHON-->
 ```
@@ -61,40 +61,60 @@ The name is deliberately alarming. Using this key means the script may silently 
 overwrite manual edits on every `mdship update` run. It makes sense only for scripts designed
 to incrementally consume or incorporate the existing content rather than ignore it.
 
-### Introducing variables
+### `define:` mode — variable source
 
-A PYTHON script may introduce new variables that become available to the rest of the document,
-exactly like SET or IMPORT. A script may not overwrite a variable name that already exists —
-declared variables remain authoritative.
+```markdown
+<!--PYTHON
+define: "compute_vars.py"
+source: "data.csv"
+-->
+```
+
+No closing tag. Runs in the variable phase — before any content-generating placeholder. The
+script calls `ctx.define(name, value)` to introduce new document variables, exactly like SET or
+IMPORT. `ctx.define` raises immediately if the variable already exists — declared variables
+remain authoritative. `ctx.vars` is not available: variable sources are order-independent
+and other sources may not have run yet.
+
+`define:` mode supports `audit:` as a postprocess step, consistent with other variable-source
+placeholders.
 
 ---
 
-## Feature 2: `postprocess:` Field
+## Feature 2: `transform:` and `audit:` Fields
 
-Any content-manager placeholder (`INCLUDE`, `TOC`, `MERMAID`, `TEMPLATE`) may include
-a `postprocess:` field naming one or more scripts to run on the generated content before it is
-written to the file.
+Any placeholder may include a script hook field to run after the placeholder has been processed:
+
+- **Content-manager placeholders** (`INCLUDE`, `TOC`, `MERMAID`, `TEMPLATE`, `PYTHON` excluded
+  — see Feature 1): use `transform:` — scripts receive the generated content and their return
+  value replaces it before being written to the file. `MERMAID` transform scripts must return
+  exactly one line — MERMAID's managed content is always a single image reference and mdship
+  errors if the return value contains newlines.
+- **Variable-source placeholders** (`SET`, `IMPORT`, `SLURP`, `SIP`, `SUP`, and `PYTHON` in
+  `define:` mode): use `audit:` — scripts run after the variables have been collected and added
+  to the variable dictionary. They have no `content` parameter and their return value is ignored.
+  Their purpose is to audit, validate, or produce side effects — not to alter document content.
 
 ### Syntax
 
-Single script:
+`transform:` — single script:
 
 ```markdown
 <!--INCLUDE
 from: "api_reference.md"
 section: "Endpoints"
-postprocess: "inject_badges.py"
+transform: "inject_badges.py"
 -->
 <!--/INCLUDE-->
 ```
 
-Pipeline (array):
+`transform:` — pipeline (array):
 
 ```markdown
 <!--INCLUDE
 from: "api_reference.md"
 section: "Endpoints"
-postprocess:
+transform:
   - "normalize_whitespace.py"
   - "inject_badges.py"
 
@@ -109,100 +129,202 @@ inject_badges:
 <!--/INCLUDE-->
 ```
 
-Each script in the array receives the output of the previous one. Each script reads its own
-named subsection of the placeholder YAML — named after the script filename without the `.py`
-extension. This convention avoids key collisions between scripts and with mdship's own reserved
-keys. mdship does not enforce it; scripts may read any key from `args`.
+`audit:` — validate imported data:
+
+```markdown
+<!--IMPORT
+name: "config"
+from: "settings.json"
+audit: "validate_config.py"
+-->
+```
+
+`audit:` — pipeline:
+
+```markdown
+<!--IMPORT
+name: "config"
+from: "settings.json"
+audit:
+  - "validate_schema.py"
+  - "check_dependencies.py"
+-->
+```
+
+Each script in a `transform:` pipeline receives the output of the previous one. Each script
+reads its own named subsection of the placeholder YAML — named after the script filename without
+the `.py` extension. This convention avoids key collisions between scripts and with mdship's own
+reserved keys. mdship does not enforce it; scripts may read any key from `ctx.args`.
+
+### `audit:` on variable-source placeholders
+
+When `audit:` is attached to `SET`, `IMPORT`, `SLURP`, `SIP`, or `SUP`, the placeholder's
+variables have already been added by the time the scripts run. Scripts have no `content`
+parameter and no return value. Use `ctx.var(name)` to read variables.
+
+Intended uses:
+
+- **Validation** — inspect the collected variables and raise an exception to abort processing if
+  a required key is missing, a value is out of range, or a constraint is violated.
+- **Side effects** — write a derived file, update a cache, log a summary.
+- **Cross-checking** — compare variables from multiple sources (possible because `ctx.vars`
+  contains everything collected so far in the document, not just what this placeholder produced).
+
+```python
+# validate_config.py — abort if required keys are missing
+def audit(ctx):
+    cfg = ctx.vars.get("config", {})
+    required = ["database.host", "database.port", "app.secret"]
+    missing = [k for k in required if not cfg.get(k)]
+    if missing:
+        raise ValueError(f"Config missing required keys: {', '.join(missing)}")
+    ctx.log("Config validated OK")
+```
 
 ### Inter-script communication
 
-A shared `pipe` dict is passed through every script in the chain. It is empty at the start and
-scripts may read and write it freely to pass state to downstream scripts:
+A shared `ctx.pipe` dict is passed through every script in a chain (`transform:` or `audit:`).
+It is empty at the start and scripts may read and write it freely to pass state to downstream
+scripts:
 
 ```python
 # normalize_whitespace.py sets a flag
-pipe["blank_lines_removed"] = True
+ctx.pipe["blank_lines_removed"] = True
 
 # inject_badges.py reads it
-if pipe.get("blank_lines_removed"):
+if ctx.pipe.get("blank_lines_removed"):
     ...
 ```
 
-`pipe` is fresh for each placeholder. It does not carry over between separate placeholders in
-the same document run.
+`ctx.pipe` is fresh for each placeholder. It does not carry over between separate placeholders
+in the same document run.
 
-### postprocess scripts cannot introduce variables
+### Scripts cannot introduce variables
 
-`postprocess` scripts receive variables as read-only context. A transform that needs to expose
-computed values should be restructured as a `<!--PYTHON-->` placeholder instead.
+`transform:` and `audit:` scripts may read variables via `ctx.vars` but neither has access to
+`ctx.define`. A script that needs to expose computed values should be restructured as a
+`<!--PYTHON-->` placeholder in `define:` mode instead.
 
 ### Error handling
 
-If any script in the postprocess chain raises an exception, the entire placeholder update is
-aborted. The file is not modified. mdship prints the script name, the exception, and a traceback.
-No partial output is written. The same applies to `<!--PYTHON-->`.
+If any script raises an exception, processing is aborted. The file is not modified. mdship
+prints the script name, the exception, and a traceback. No partial output is written. The same
+applies to `<!--PYTHON-->`.
 
 ---
 
 ## Python API
 
-### PYTHON placeholder — `run`
+All script types receive a `ctx` context object — a `types.SimpleNamespace` instance. Access
+its fields as attributes. mdship may add new fields to `ctx` in future versions; scripts that
+do not use them are unaffected.
+
+### Context fields
+
+| Field | Type | `run` | `define` | `transform` | `audit` | Description |
+|---|---|---|---|---|---|---|
+| `ctx.args` | `dict` | yes | yes | yes | yes | The full YAML body of the placeholder |
+| `ctx.vars` | `dict` | yes | **no** | yes | yes | All frozen document variables — read-only by convention; do not modify |
+| `ctx.log` | callable | yes | yes | yes | yes | `ctx.log(msg)` — send a message to the user |
+| `ctx.define` | callable | no | yes | no | no | `ctx.define(name, value)` — define a new variable; raises if already defined |
+| `ctx.pipe` | `dict` | no | no | yes (mutable) | yes (mutable) | Shared state passed through the script chain |
+| `ctx.__FILE__` | `str` | yes | yes | yes | yes | Absolute path of the markdown file being processed |
+| `ctx.__LINE__` | `int` | yes | yes | yes | yes | Line number of the placeholder's opening marker |
+
+Fields marked "no" are not set on the namespace — accessing them raises `AttributeError`.
+
+`define` scripts intentionally have no access to `ctx.vars`. Variable sources are
+order-independent — all run in the same phase, so other sources may not have executed yet.
+Reading variables from a `define` script would create a hidden ordering dependency that mdship
+cannot detect or enforce.
+
+### PYTHON `run:` mode — `run`
 
 ```python
-def run(args: dict, variables: dict, new_variables: dict,
-        previous_content: str, log) -> str:
+def run(content: str, ctx) -> str:
     ...
     return "generated content as a string"
 ```
 
-| Parameter          | Description                                                                  |
-|--------------------|------------------------------------------------------------------------------|
-| `args`             | The full YAML body of the placeholder as a parsed dict                       |
-| `variables`        | All current mdship variables (from SET, IMPORT, SLURP, SIP, SUP) — read-only |
-| `new_variables`    | Empty dict; script may populate it to introduce new document variables       |
-| `previous_content` | Current text between the markers; empty string on first run                  |
-| `log`              | Callable — `log(message: str)` sends a message to the user during processing |
-
-The return value is the content string written between the markers.
+`content` is the current text between the markers — empty string on the first run, whatever was
+written last time on subsequent runs.
 
 Example:
 
 ```python
-def run(args, variables, new_variables, previous_content, log):
-    log("Loading data from " + args["source"])
-    rows = load(args["source"])
-    new_variables["row_count"] = len(rows)
-    log(f"{len(rows)} rows loaded")
-    return render_table(rows)
+def run(content, ctx):
+    ctx.log("Loading data from " + ctx.args["source"])
+    rows = load(ctx.args["source"])
+    threshold = float(ctx.vars["config"]["threshold"])
+    ctx.log(f"{len(rows)} rows loaded")
+    return render_table(rows, threshold)
 ```
 
-### postprocess — `transform`
+### PYTHON `define:` mode — `define`
 
 ```python
-def transform(content: str, args: dict, variables: dict, pipe: dict, log) -> str:
+def define(ctx) -> None:
+    ...
+```
+
+No `content` parameter and no `ctx.variables` — this mode runs in the variable phase alongside
+SET, IMPORT, and the other variable sources. Use `ctx.define(name, value)` to introduce
+variables; it raises immediately if a variable with that name already exists. Return value is
+ignored.
+
+Example:
+
+```python
+def define(ctx):
+    ctx.log("Computing variables from " + ctx.args["source"])
+    rows = load(ctx.args["source"])
+    ctx.define("row_count", len(rows))
+    ctx.define("columns", list(rows[0].keys()) if rows else [])
+    ctx.log(f"{len(rows)} rows processed")
+```
+
+### Content-manager placeholder — `transform`
+
+```python
+def transform(content: str, ctx) -> str:
     ...
     return modified_content
 ```
 
-| Parameter   | Description                                                                        |
-|-------------|------------------------------------------------------------------------------------|
-| `content`   | Output of the previous step (or the placeholder's own output for the first script) |
-| `args`      | The full YAML body of the placeholder — same dict for every script in the chain    |
-| `variables` | All current mdship variables — read-only                                           |
-| `pipe`      | Shared mutable dict, empty at chain start, passed through every script             |
-| `log`       | Callable — `log(message: str)` sends a message to the user during processing       |
-
-The return value is passed to the next script, or written to the file if this is the last script.
+`content` is the output of the previous step, or the placeholder's own output for the first
+script in the chain. The return value is passed to the next script, or written to the file if
+this is the last script.
 
 Example:
 
 ```python
-def transform(content, args, variables, pipe, log):
-    cfg = args.get("normalize_whitespace", {})
+def transform(content, ctx):
+    cfg = ctx.args.get("normalize_whitespace", {})
     result = collapse_blank_lines(content, cfg.get("max_blank_lines", 1))
-    pipe["blank_lines_removed"] = True
-    log("Whitespace normalized")
+    ctx.pipe["blank_lines_removed"] = True
+    ctx.log("Whitespace normalized")
     return result
+```
+
+### Variable-source placeholder — `audit`
+
+```python
+def audit(ctx) -> None:
+    ...
+```
+
+No `content` parameter. Return value is ignored. Raise an exception to abort processing.
+
+Example:
+
+```python
+def audit(ctx):
+    cfg = ctx.variables.get("config", {})
+    required = ["database.host", "database.port", "app.secret"]
+    missing = [k for k in required if not _nested_get(cfg, k)]
+    if missing:
+        raise ValueError(f"Config missing required keys: {', '.join(missing)}")
+    ctx.log("Config validated OK")
 ```
 
 ---
@@ -345,7 +467,7 @@ factory version, use `install --force` instead.
 
 | Current file vs `.meta` | Current file vs factory | Action                                                                              |
 |-------------------------|-------------------------|-------------------------------------------------------------------------------------|
-| Not installed           | —                       | Skip — nothing to update,, suggest `install`                                        |
+| Not installed           | —                       | Skip — nothing to update; suggest `install`                                         |
 | Unchanged               | Same version            | Already up to date — print notice, nothing to do                                    |
 | Unchanged               | Newer in factory        | Copy factory version, write new `.meta` — no prompt                                 |
 | Modified                | Any version             | Skip — print notice that the script was locally modified; suggest `install --force` |
@@ -524,9 +646,131 @@ The feature works identically on Unix and Windows. The only platform difference 
 | `trusted_projects` is writable                         | Script execution disabled; placeholder aborts with message                    |
 | Project not in `trusted_projects`                      | Script execution disabled; placeholder aborts with message                    |
 | Script file not found in `.mdship/scripts/`            | Placeholder aborts with clear error                                           |
-| Script does not define `run` / `transform`             | Placeholder aborts with clear error                                           |
+| Script does not define `run` / `define` / `transform` / `audit` | Placeholder aborts with clear error                                |
 | Script raises an exception                             | Placeholder aborts; traceback printed; file not modified                      |
-| `new_variables` key collides with existing variable    | Placeholder aborts with clear error                                           |
-| Hash mismatch (manual edits), no `_live_dangerous_`    | Placeholder aborts with hash mismatch error; file not modified                |
-//AI: this is not an error condition
-| Hash mismatch (manual edits), `_live_dangerous_: true` | `run` is called with the manually-edited text as `previous_content`; proceeds |
+| `ctx.define` called with an already-defined variable name | `define` script aborts with clear error; file not modified                 |
+| Hash mismatch (manual edits), no `_yolo_`             | Placeholder aborts with hash mismatch error; file not modified                |
+| MERMAID `transform:` returns more than one line        | Placeholder aborts with clear error; file not modified                        |
+
+---
+
+## Possible Future Evolution: Configurable Placeholder Framework
+
+> This section describes a potential direction, not a planned feature.
+
+The current design hard-codes the set of placeholder names (INCLUDE, TOC, MERMAID, SET, etc.)
+in mdship itself. A natural evolution would be to make those built-ins special cases of a
+general registration mechanism, turning mdship into a markdown processing framework where
+placeholder behaviour is fully configurable per project.
+
+### Concept
+
+A project configuration file — `.mdship/config` — maps placeholder names to script invocations:
+
+```
+MERMAID  = run:    ".built-in/mermaid.py"
+INCLUDE  = run:    ".built-in/include.py"
+TOC      = run:    ".built-in/toc.py"
+SET      = define: ".built-in/set.py"
+IMPORT   = define: ".built-in/import.py"
+SLURP    = define: ".built-in/slurp.py"
+SIP      = define: ".built-in/sip.py"
+SUP      = define: ".built-in/sup.py"
+```
+
+The `run:` / `define:` key determines the processing phase, exactly as with `<!--PYTHON-->`.
+Only `run:` and `define:` can be configured — `transform:` and `audit:` are inline script
+hooks on individual placeholder invocations, not registerable placeholder names.
+
+The built-in registrations (MERMAID, INCLUDE, TOC, SET, IMPORT, SLURP, SIP, SUP) are
+**implicit** — they do not need to appear in `.mdship/config`. An empty or absent config file
+means all built-ins behave as normal. Only overrides of built-ins or new custom placeholder
+names need to be listed:
+
+```
+BADGE     = run:    "badge.py"
+CHANGELOG = run:    "changelog.py"
+VERSION   = define: "version.py"
+```
+
+To override a built-in with a custom implementation, add a line with the same name:
+
+```
+MERMAID = run: "my_mermaid.py"
+```
+
+### Script resolution
+
+The `.built-in/` prefix is virtual — it is a convention in the config file only. Scripts
+prefixed with `.built-in/` are resolved from inside the mdship wheel's resource directory.
+They are never copied to the project. The project repository cannot contain or override them.
+
+Scripts without the `.built-in/` prefix are resolved from `.mdship/scripts/` in the project
+directory. `badge.py` means `.mdship/scripts/badge.py`.
+
+### Security
+
+Because `.built-in/` scripts live inside the installed mdship wheel — which is read-only and
+outside the project repository — they cannot be tampered with by cloning or modifying the
+project. A malicious repository has no way to substitute a different script under the
+`.built-in/` prefix.
+
+User scripts in `.mdship/scripts/` still require the project to be listed in `trusted_projects`
+before they execute. Overriding a built-in placeholder name with a user script (e.g.
+`MERMAID = run: "my_mermaid.py"`) is possible but still gated by `trusted_projects` — a
+deliberate act by the user, not something that can happen by accident from a cloned repo.
+
+### Changes to `install` and `update`
+
+Installation becomes a two-step operation: copy the script to `.mdship/scripts/` and
+optionally register it in `.mdship/config`. The config can always be edited manually; `install`
+is a convenience.
+
+**Auto-detection of mode** — mdship inspects the script file to see which function it defines
+(`run`, `define`, `transform`, or `audit`) and determines the mode automatically. A script
+defining `def run(...)` is a content-generating placeholder; one defining `def define(...)` is
+a variable-source placeholder; `transform` and `audit` scripts are helpers used inline and need
+no config registration.
+
+**`--as NAME`** — registers the script as a named placeholder in `.mdship/config`:
+
+```bash
+mdship scripts install badge.py --as BADGE
+# copies badge.py to .mdship/scripts/ and adds:
+# BADGE = run: "badge.py"
+# to .mdship/config
+
+mdship scripts install version.py --as VERSION
+# detects def define(...), adds:
+# VERSION = define: "version.py"
+```
+
+Without `--as`, the script is copied but not registered — useful for `transform` and `audit`
+helpers that are referenced directly in placeholder YAML.
+
+**`--file path`** — install from an arbitrary file rather than the factory:
+
+```bash
+mdship scripts install --file ~/shared/badge.py --as BADGE
+```
+
+Copies the file into `.mdship/scripts/` under the given filename and registers it. No `.meta`
+shadow file is written — the script did not originate from the factory.
+
+**`mdship scripts update`** — for scripts registered in `.mdship/config`, update also checks
+whether the registered mode still matches the function the script defines. If the script was
+modified to change its primary function (e.g. `run` changed to `define`), update warns and
+suggests correcting the config line.
+
+### The `<!--PYTHON-->` placeholder in this model
+
+`<!--PYTHON-->` remains as the anonymous/inline variant — useful for one-off scripts in a
+single document where registering a named placeholder would be overkill. Named registrations
+are for behaviour that recurs across many documents in the project.
+
+### Impact
+
+This direction shifts mdship from "a tool with specific built-in commands" to "a framework for
+markdown-embedded scripts, with a standard library of built-ins." The answer to "what does
+mdship do?" becomes "whatever is configured." That is a significant identity change and should
+be a deliberate product decision before implementation begins.
