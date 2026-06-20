@@ -37,6 +37,82 @@ prompt: |
       the sequence as a real comment delimiter, while remaining invisible in rendered output.
 -->
 
+## 1.1.4 — 2026-06-20
+
+### Global `--dry-run` Option
+
+A new `--dry-run` flag is available on all modifying commands. When set, mdship computes what the output would be but does not write any file or create any backup. Instead it prints a colored unified diff to the terminal — additions in green, deletions in red, context lines in plain text. For `mdship update`, MERMAID diagram rendering is also skipped so no SVG files are written.
+
+```bash
+mdship --dry-run update file.md
+mdship --dry-run reflow --width 80 file.md
+```
+
+### INCLUDE: `section:` Parameter
+
+The `<!​--INCLUDE-->` placeholder gains a `section:` parameter for extracting a named section from another markdown file. Specify the heading title (without numbering); mdship locates the first heading whose bare title matches (case-insensitive, numbering prefixes stripped) and includes that heading plus all content until the next heading at the same or higher level.
+
+```markdown
+<!​--INCLUDE
+from: "reference.md"
+section: "Configuration"
+-->
+<!​--/INCLUDE-->
+```
+
+This matches `## Configuration`, `## 2.3. Configuration`, or `## 2.3) Configuration` equally. The parameter is mutually exclusive with `range`, `start`, and `end`.
+
+### AI Placeholder: `deps:` Field and Dependency Tracking
+
+AI placeholders now accept a `deps:` list that declares which external files (or file slices) the prompt depends on. mdship checksums each dep and stores the result inside the placeholder marker. On subsequent runs it compares the stored checksums against the current files and tells the agent exactly which deps changed — without the agent reading any files itself.
+
+Dep entries support the same `range`, `start`/`end` selectors as `<!​--INCLUDE-->`, plus a `binary: true` flag for non-text assets (images, compiled artifacts). Binary deps are returned to the agent as base64 with a MIME type.
+
+```yaml
+<!​--AI
+name: "api-docs"
+prompt: "Document the public API surface below."
+deps:
+  - path: src/api.py
+  - path: src/api.py
+    range: "1..50"
+  - path: assets/diagram.png
+    binary: true
+-->
+```
+
+### New MCP Tools: `ai_context` and `ai_update`
+
+Two new MCP tools replace the previous pattern of having the agent read the file, extract the prompt, read dep files, write back, and call `ai_fix` separately:
+
+- **`ai_context(path, name)`** — a zero-token gating call. Returns `"status": "up_to_date"` (skip), `"status": "may_need_update"` (no deps declared, cannot auto-verify), `"status": "needs_update"` (a dep or the prompt changed), or `"status": "error"` (manual edit detected). The `needs_update` and `may_need_update` responses include the full `prompt`, `previous_content`, `brief` text, and pre-extracted dep contents — **the agent never reads dep files or the source document directly**.
+
+- **`ai_update(path, name, new_content)`** — writes generated content into the placeholder and atomically records `_content_generated_`, `_prompt_checksum_`, `_brief_checksum_`, and per-dep `checksum:` fields in a single file write.
+
+The `/ai-placeholder` skill is updated to use this two-call workflow: `ai_context` first (skip if up to date, stop if manually edited), then generate, then `ai_update`.
+
+### AI Placeholder: Checksum Tracking Extended
+
+In addition to `_content_generated_` (content hash), mdship now also tracks:
+
+- `_prompt_checksum_` — hash of the `prompt:` field; a prompt edit triggers regeneration even if no dep changed.
+- `_brief_checksum_` — hash of the brief file; a brief edit triggers regeneration.
+- `checksum:` inside each dep entry — per-dep hash; only the changed dep is flagged in the `ai_context` response.
+
+### AI Placeholder: `may_need_update` Status
+
+When a placeholder has no `deps:` declared, stored checksums may match but the prompt could reference files that cannot be automatically verified. `ai_context` returns `"status": "may_need_update"` in this case instead of `"status": "up_to_date"`, signalling the agent to regenerate rather than skip.
+
+### AI Placeholder: Structural Validation
+
+The `mdship validate` command now also checks AI placeholder blocks for structural errors: duplicate names within a file, names that are pure integers (reserved for line-number addressing), `binary: true` combined with `range`/`start`/`end`, and mutually exclusive selectors.
+
+### AI Placeholder: YAML Parsing Bug Fixed
+
+Config text at the end of a placeholder block was parsed without a trailing newline, causing YAML literal blocks (`|`) at the very end to be silently truncated. The fix appends `\n` before parsing, matching the behavior seen once checksum keys are present.
+
+---
+
 ## 1.1.3 — 2026-06-16
 
 ### MERMAID: No Closing Tag Required
