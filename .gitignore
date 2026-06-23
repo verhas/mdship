@@ -29,3 +29,5 @@ tests/**/*.svg
 venv/
 env/
 .DS_Store
+
+.perag/perag.db
