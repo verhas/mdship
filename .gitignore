@@ -30,4 +30,4 @@ venv/
 env/
 .DS_Store
 
-.perag/perag.db
+.perag/**/*
