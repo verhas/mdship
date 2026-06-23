@@ -221,6 +221,35 @@ class TestAddHeadingNumbers:
         assert "## Second" in unnumbered
         assert "### Third" in unnumbered
 
+    def test_skip_title_excludes_h1_from_numbering(self):
+        content = "# Document Title\n## Introduction\n## Usage\n### Example"
+        result = add_heading_numbers(content, style="period", skip_title=True)
+        assert "# Document Title" in result          # h1 untouched
+        assert "1. Document Title" not in result      # h1 not numbered
+        assert "## 1. Introduction" in result
+        assert "## 2. Usage" in result
+        assert "### 2.1. Example" in result
+
+    def test_skip_title_multiple_h1_raises(self):
+        content = "# Title One\n## Section\n# Title Two"
+        with pytest.raises(ValueError, match="--skip-title requires exactly one h1"):
+            add_heading_numbers(content, style="period", skip_title=True)
+
+    def test_skip_title_no_h1_is_fine(self):
+        content = "## Introduction\n### Detail\n## Summary"
+        result = add_heading_numbers(content, style="period", skip_title=True)
+        assert "## 1. Introduction" in result
+        assert "### 1.1. Detail" in result
+        assert "## 2. Summary" in result
+
+    def test_skip_title_with_line_range(self):
+        # h1 is outside the numbered range — skip_title should still work
+        content = "# Title\n\n## Section A\n## Section B"
+        result = add_heading_numbers(content, style="period", start_line=3, skip_title=True)
+        assert "# Title" in result
+        assert "## 1. Section A" in result
+        assert "## 2. Section B" in result
+
 
 class TestTableOfContents:
     def test_generate_toc_all_levels(self):

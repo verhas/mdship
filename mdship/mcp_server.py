@@ -138,6 +138,7 @@ def main() -> None:
         style: str = "period",
         start_line: int | None = None,
         end_line: int | None = None,
+        skip_title: bool = False,
         backup: bool = True,
     ) -> str:
         """Add hierarchical numbering to headings.
@@ -147,11 +148,12 @@ def main() -> None:
             style: Numbering style (period, space, or parenthesis)
             start_line: Starting line number (1-based, inclusive)
             end_line: Ending line number (1-based, inclusive)
+            skip_title: Treat a single h1 as a document title and exclude it from numbering
             backup: Create a .bak backup before modifying (default: True)
         """
         from mdship.markdown import add_heading_numbers
         p, content = _read(path)
-        _write(p, add_heading_numbers(content, style=style, start_line=start_line, end_line=end_line), backup)
+        _write(p, add_heading_numbers(content, style=style, start_line=start_line, end_line=end_line, skip_title=skip_title), backup)
         return f"OK: processed {path}"
 
     @server.tool()

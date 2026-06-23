@@ -1990,7 +1990,13 @@ def _reflow_paragraph(lines: list[str], width: Optional[int] = None) -> list[str
         return result
 
 
-def add_heading_numbers(content: str, style: str = "period", start_line: Optional[int] = None, end_line: Optional[int] = None) -> str:
+def add_heading_numbers(
+    content: str,
+    style: str = "period",
+    start_line: Optional[int] = None,
+    end_line: Optional[int] = None,
+    skip_title: bool = False,
+) -> str:
     """Add hierarchical numbering to headings.
 
     Removes any existing numbering first, then applies fresh numbering.
@@ -2001,6 +2007,8 @@ def add_heading_numbers(content: str, style: str = "period", start_line: Optiona
         style: Numbering style ("period" for "1.1.", "space" for "1 1", "parenthesis" for "1)")
         start_line: Optional starting line (1-based, inclusive)
         end_line: Optional ending line (1-based, inclusive)
+        skip_title: If True, treat a single h1 heading as a document title and exclude it
+                    from numbering. Raises ValueError if more than one h1 is found.
     """
     if style not in ("period", "space", "parenthesis"):
         raise ValueError(f"Unknown style: {style}. Must be 'period', 'space', or 'parenthesis'")
@@ -2009,6 +2017,31 @@ def add_heading_numbers(content: str, style: str = "period", start_line: Optiona
     content = remove_heading_numbers(content, start_line=start_line, end_line=end_line)
 
     lines = content.split("\n")
+
+    if skip_title:
+        # Count h1 headings in the active range, respecting code blocks and HTML comments
+        h1_count = 0
+        _in_code = False
+        _in_html = False
+        for ln, l in enumerate(lines, 1):
+            if l.startswith("```"):
+                _in_code = not _in_code
+            _was_in_html = _in_html
+            if _in_html:
+                if "-->" in l:
+                    _in_html = False
+            else:
+                op = l.find("<!--")
+                if op >= 0 and l.find("-->", op + 4) < 0:
+                    _in_html = True
+            in_range = (start_line is None or ln >= start_line) and (end_line is None or ln <= end_line)
+            if in_range and not _in_code and not _was_in_html and re.match(r"^# ", l):
+                h1_count += 1
+        if h1_count > 1:
+            raise ValueError(
+                f"--skip-title requires exactly one h1 heading, but found {h1_count}"
+            )
+
     result = []
     level_numbers = {}  # Track numbers at each level
     in_code_block = False
@@ -2043,6 +2076,11 @@ def add_heading_numbers(content: str, style: str = "period", start_line: Optiona
         if match and should_number and not in_code_block and not was_in_html_comment:
             level = len(match.group(1))
             text = match.group(2)
+
+            # With --skip-title, leave the sole h1 unnumbered
+            if skip_title and level == 1:
+                result.append(line)
+                continue
 
             # Track numbering for this level
             if level not in level_numbers:
