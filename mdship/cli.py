@@ -343,6 +343,7 @@ def number(
     files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")] = [],
     style: Annotated[str, typer.Option("--style", "-s", help="Numbering style: period (1.1.), space (1 1), parenthesis (1))")] = "period",
     lines: Annotated[str | None, typer.Option("--lines", help="Line range to process (e.g., '10:50', '10:', ':50')")] = None,
+    skip_title: Annotated[bool, typer.Option("--skip-title", help="Treat a single h1 heading as the document title and exclude it from numbering")] = False,
 ) -> None:
     """Add hierarchical numbering to headings."""
     if style not in ("period", "space", "parenthesis"):
@@ -366,7 +367,37 @@ def number(
             errors.append((file, "file not found"))
             continue
         content = file.read_text()
-        numbered_content = add_heading_numbers(content, style=style, start_line=start_line, end_line=end_line)
+
+        if not skip_title:
+            # Count h1 headings in the active range; suggest --skip-title when there is exactly one
+            h1_count = 0
+            in_code = False
+            for i, ln in enumerate(content.split("\n"), 1):
+                if ln.startswith("```"):
+                    in_code = not in_code
+                if in_code:
+                    continue
+                if start_line is not None and i < start_line:
+                    continue
+                if end_line is not None and i > end_line:
+                    continue
+                if ln.startswith("# "):
+                    h1_count += 1
+            if h1_count == 1:
+                err.print(
+                    f"[yellow]hint:[/yellow] {file}: document has a single h1 heading that looks like a title — "
+                    "consider using --skip-title to exclude it from numbering"
+                )
+
+        try:
+            numbered_content = add_heading_numbers(
+                content, style=style, start_line=start_line, end_line=end_line, skip_title=skip_title
+            )
+        except ValueError as e:
+            err.print(f"[red]Error:[/red] {file}: {e}")
+            errors.append((file, str(e)))
+            continue
+
         if _write_file(file, numbered_content, f"number: added heading numbers with {style} style"):
             err.print(f"[green]✓[/green] Processed {file}")
         if "<!--TOC-->" in numbered_content:
@@ -685,6 +716,8 @@ def init() -> None:
     err.print(f"[green]✓[/green] Updated {settings_file}")
 
     # .claude/skills/*/ — install all bundled skills
+    # .github/prompts/*.prompt.md — same skills for GitHub Copilot
+    github_prompts_dir = cwd / ".github" / "prompts"
     skills_pkg = pkg_resources.files("mdship").joinpath("skills")
     for skill_entry in skills_pkg.iterdir():
         skill_md = skill_entry.joinpath("SKILL.md")
@@ -697,6 +730,11 @@ def init() -> None:
         dest_file = dest_dir / "SKILL.md"
         dest_file.write_text(content)
         err.print(f"[green]✓[/green] Created {dest_file}")
+
+        github_prompts_dir.mkdir(parents=True, exist_ok=True)
+        prompt_file = github_prompts_dir / f"{skill_entry.name}.prompt.md"
+        prompt_file.write_text(content)
+        err.print(f"[green]✓[/green] Created {prompt_file}")
 
 
 @app.command()
