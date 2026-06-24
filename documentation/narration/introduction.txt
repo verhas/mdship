@@ -1,0 +1,49 @@
+If you work with Markdown files, you've probably run into this: headings that skip levels, paragraphs that wrap at inconsistent widths, a table of contents that's three versions behind the actual document, or a code snippet in the docs that no longer matches the source file it came from. These are small problems, but they accumulate — and fixing them by hand is the kind of work that nobody enjoys.
+
+mdship is a command-line tool that handles exactly this class of problem. It takes a Markdown file, fixes what needs fixing, and puts it back. No configuration files, no build system, no external services. Just a command and a file.
+
+---
+
+Let's start with the basics.
+
+mdship fix-headings corrects heading hierarchies. Markdown renderers don't enforce any structure, so it's easy to accidentally jump from a level-one heading straight to a level-three. mdship finds those gaps and closes them, adjusting each heading to the nearest valid level below the one that came before it.
+
+shift-headings moves every heading in a file up or down by a fixed number of levels. This is useful when you write a section as a standalone document with a top-level title, then include it inside a larger document where everything needs to be one level deeper. You can shift the entire file, or target just a line range.
+
+reflow and semantic-line-breaks handle paragraph text. reflow wraps prose to a target column width. semantic-line-breaks does something more specific: it puts each sentence on its own line. That might look unusual in a text editor, but it produces dramatically cleaner diffs in version control — a single changed sentence shows as one changed line, not an entire reflowed paragraph.
+
+number adds hierarchical section numbers to headings — 1, 1.1, 1.1.1 — in your choice of three styles. And if your document begins with a single title heading that shouldn't be numbered, the --skip-title flag excludes it and starts counting from the first real section.
+
+---
+
+So far these are focused, single-purpose commands. But mdship's most powerful feature is its placeholder system.
+
+Placeholders are HTML comments embedded in your Markdown. Because HTML comments are invisible in any rendered output, they leave the document perfectly clean while carrying instructions that mdship acts on when you run mdship update.
+
+The simplest placeholder is SET, which defines variables:
+
+  app name: "MyApp", version: "2.1.0"
+
+Once defined, those variables can be referenced anywhere in the document. mdship update replaces each reference with the current value. Change the version number in one place, run update, and every occurrence throughout the document is refreshed.
+
+IMPORT goes further — it loads variables from an external JSON, YAML, TOML, or XML file. Your documentation can pull its version number directly from your project's configuration file. The document and the source of truth are always in sync.
+
+INCLUDE embeds content from another file. You define where the content should appear, optionally wrap it in a fenced code block, and optionally select a specific line range or a named section. The actual source file is the single source of truth — the documentation never drifts from it.
+
+TOC generates a table of contents from the document's headings and keeps it current. MERMAID renders diagrams from Mermaid source code embedded in the document.
+
+All of these are processed in a single command: mdship update.
+
+---
+
+mdship also integrates directly with Claude, Anthropic's AI assistant, through the Model Context Protocol.
+
+When you run mdship init in a project directory, it registers itself as an MCP server. From that point on, Claude can call mdship's tools directly — fix a heading hierarchy, regenerate a table of contents, render a diagram — without writing any files itself and without needing shell access.
+
+There is also an AI placeholder. You embed a prompt inside a Markdown comment, and Claude fills in the section it describes. The generated content is protected by a checksum: if anything the content depends on changes — the prompt, a source file, or a shared style brief — Claude detects it and offers to regenerate. If someone edits the content by hand, that's detected too.
+
+---
+
+mdship is available on PyPI. Install it with pip or uv, run mdship init in your project, and it's ready to use — both as a CLI tool and as an MCP server for Claude.
+
+For the full documentation, see the project's README or the documentation directory.

@@ -1,0 +1,39 @@
+Hierarchical documents — technical specifications, reference manuals, formal reports — need numbered sections. Reviewers cite them, readers navigate by them, and tables of contents depend on them. Maintaining those numbers by hand as the document grows is error-prone and tedious. mdship automates the entire process with a single command.
+
+The number command adds hierarchical numbering to every heading in a file. At the top level, the first heading gets 1, the next gets 2. Each child level inherits its parent's number: 1.1, 1.2, 1.3. Going deeper adds another component: 1.2.1, 1.2.2. The command strips any existing numbers first, so running it again to refresh after edits is always safe.
+
+---
+
+Three numbering styles are available.
+
+The default is period: each number ends with a dot — 1. then 1.1. then 1.1.1. This is the most common format in software documentation and technical writing.
+
+The space style omits the trailing dot — 1, then 1.1, then 1.1.1. Cleaner for shorter documents or when the dot feels redundant.
+
+The parenthesis style adds a closing parenthesis after the last component — 1), then 1.1), then 1.1.1). This format is common in legal and administrative writing.
+
+Choose a style with the --style flag. The default is period if the flag is omitted.
+
+---
+
+There is one situation that comes up in almost every document. Most Markdown files begin with a single hash heading — the document title. Without special handling, that title gets numbered 1, turning every real section into 1.1, 1.2, and so on. That is almost never the intended result.
+
+The --skip-title flag solves this. It treats the sole h1 heading as the document title, excludes it from numbering entirely, and starts the section counter at the first h2 heading. The rest of the hierarchy numbers naturally from there.
+
+Two guard rails are built in. If the document has more than one h1 heading, mdship stops with an error — two h1 headings cannot both be the title, so it is safer not to guess. And if there is exactly one h1 but you forgot --skip-title, mdship prints a hint suggesting you probably wanted it.
+
+---
+
+Sometimes only part of a document needs numbering — a section that was just added, for example, or an appendix that uses a separate numbering scheme. The --lines flag limits processing to a specific range of lines. Both the start and the end are optional: omit the start to mean the beginning of the file, omit the end to mean the final line.
+
+---
+
+To remove numbering, use unnumber. It recognizes all three styles automatically, so you do not need to specify which style was originally applied. The --lines flag works here too, letting you strip numbers from a selected range without touching the rest.
+
+If the document contains a table-of-contents placeholder, mdship prints a reminder to run mdship update so the TOC stays in sync with the new heading text.
+
+---
+
+Both commands are available through the MCP interface when mdship is registered as a server. The number tool accepts path, style, start_line, end_line, skip_title, and backup. The unnumber tool accepts path, start_line, end_line, and backup.
+
+The MCP interface is particularly useful when Claude is composing or reorganizing a formal document. After writing the headings, it can number them in a single tool call — applying the right style and handling the title heading correctly — without needing shell access and without pulling the file into the conversation context.
