@@ -1,3 +1,8 @@
+---
+name: ai-placeholder
+description: "Use when the user invokes /ai-placeholder or asks to process, update, fill, check, or regenerate mdship AI placeholders in markdown files. Handles <!--AI ... --> sections through mdship MCP tools, including dependency-aware context checks and atomic updates."
+---
+
 # AI Placeholder Skill
 
 ## Invocation

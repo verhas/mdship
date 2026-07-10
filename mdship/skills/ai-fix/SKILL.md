@@ -1,3 +1,8 @@
+---
+name: ai-fix
+description: "Use when the user invokes /ai-fix or asks to apply existing //AI: review annotations in a markdown document, modify the nearby content accordingly, remove the comments, and report what changed."
+---
+
 # AI Fix Skill
 
 ## Invocation

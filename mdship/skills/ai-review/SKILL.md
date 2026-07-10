@@ -1,3 +1,8 @@
+---
+name: ai-review
+description: "Use when the user invokes /ai-review or asks to review a markdown document by inserting actionable //AI: annotations for correctness, clarity, accuracy, completeness, tone, or structure without directly changing the reviewed content."
+---
+
 # AI Review Skill
 
 ## Invocation
