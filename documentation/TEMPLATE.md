@@ -30,48 +30,83 @@ prompt: |
     At the end, add a "See Also" section that explains how TEMPLATE differs from
     all other placeholders: it is neither a variable source nor a content importer —
     it is a variable consumer that renders an inline template. Contrast with:
+    - JINJA2
     - Variable sources (SET, IMPORT, SLURP, SIP, SUP): they define variables;
       TEMPLATE uses them
     - INCLUDE: embeds an external file; TEMPLATE embeds an inline template string
     - MERMAID: also substitutes variables, but for diagram rendering specifically
     Link to: [SET](SET.md), [IMPORT](IMPORT.md), [SLURP](SLURP.md), [SIP](SIP.md),
     [SUP](SUP.md), [INCLUDE](INCLUDE.md), [TOC](TOC.md), [MERMAID](MERMAID.md)
+_prompt_checksum_: md5:4fdb02024df58cb035c66ce77145707e
+_content_generated_: 4334:md5:4a92966517b53c96bcb406337fbef7dc
+# ⚠️ MANAGED CONTENT: Edits will be lost.
+# danger zone: Delete _content_generated_ to override.
 -->
-
 ## What TEMPLATE Does
 
-The `TEMPLATE` placeholder takes a content string written inline in the placeholder, substitutes `$variable` references in it, and replaces the region between the opening and closing markers with the rendered result.
+`TEMPLATE` renders an inline template string with mdship variable substitution and writes the result into the managed region between its opening marker and closing marker. It is a variable consumer: it uses variables already collected by mdship, substitutes references in the placeholder's `content` field, and replaces the current generated output on each run.
 
-The closing `<!--/TEMPLATE-->` (or a custom terminator) is required.
-
-## Why TEMPLATE Exists
-
-Normal variable substitution (`<!--$var-->value`) is deliberately **skipped inside fenced code blocks** (between ` ``` ` markers). This protects code examples that genuinely use `$variable` notation. TEMPLATE is the solution when you need variable values to appear inside a code block: the template content lives in the placeholder's YAML body — outside any code fence — and the rendered output (including the code fence) is inserted between the markers.
+Use `TEMPLATE` when you need explicit `$variable` replacement inside a contained block of generated content. Normal mdship variable replacement is intentionally skipped inside fenced code blocks so code examples that use `$var` syntax remain unchanged. `TEMPLATE` solves that by keeping the template source in the placeholder YAML and inserting the rendered result, including fenced code blocks if needed.
 
 ## Syntax
+
+A `TEMPLATE` placeholder has an opening HTML comment with YAML configuration, a managed output region, and a required closing tag:
 
 ````markdown
 <!--TEMPLATE
 content: |
   ```python
-  app = "$appName"
-  version = "$version"
+  APP_NAME = "$appName"
+  VERSION = "${version}"
   ```
 -->
-(old content is replaced here)
+previous output
 <!--/TEMPLATE-->
 ````
 
-## Configuration Parameters
+The `content` field is required and must be a string. It is usually written as a YAML literal block (`|`) so the template can span multiple lines. When `mdship update` runs, mdship substitutes variables in that string and replaces everything between `-->` and `<!--/TEMPLATE-->` with the rendered output.
 
-- `content` *(required)*: The template string as a YAML literal block. All `$var`, `${var}`, `$nested.field`, and `$array[0]` references are substituted before insertion.
-- `_terminate_` *(optional)*: Custom closing marker name.
+The generated region is fully replaced on each run. Do not hand-edit the content between the markers after mdship has generated it; edit the `content` template or the variables that feed it instead.
+
+## Template Variables
+
+`TEMPLATE` supports mdship-style variable references in the `content` field:
+
+```text
+$appName
+${appName}
+$config.database.host
+$items[0]
+```
+
+Nested dot notation and array indexing use the same lookup behavior as other mdship variable consumers. If a referenced variable is not found, mdship leaves the original `$variable` text in place instead of replacing it with an empty value.
+
+`TEMPLATE` performs simple `$var` and `${var}` substitution. It does not evaluate Jinja2 expressions, loops, conditionals, or filters. Use `JINJA2` when generated content needs template control flow.
+
+## Custom Closing Marker
+
+`TEMPLATE` supports `_terminate_` for a custom closing marker name. This follows the same convention as other managed mdship placeholders:
+
+```markdown
+<!--TEMPLATE
+_terminate_: "END_TEMPLATE"
+content: |
+  Name: $appName
+-->
+previous output
+<!--/END_TEMPLATE-->
+```
+
+Use a custom closing marker only when the generated output might contain the default `<!--/TEMPLATE-->` text.
 
 ## Example
 
-```markdown
+This example renders a fenced code block from variables. The values appear inside the generated code block because the substitution happens inside the inline `content` template before the result is inserted into the document.
+
+````markdown
 <!--SET
 appName: "MyApp"
+version: "1.2.0"
 config:
   debug: true
   port: 8000
@@ -79,50 +114,35 @@ config:
 
 <!--TEMPLATE
 content: |
-  Application Configuration
-  =======================
-  - Name: $appName
-  - Debug: $config.debug
-  - Port: $config.port
+  ```python
+  APP_NAME = "$appName"
+  VERSION = "${version}"
+  DEBUG = $config.debug
+  PORT = $config.port
+  ```
 -->
-old documentation
+old generated code
 <!--/TEMPLATE-->
+````
+
+After `mdship update`, the managed region becomes:
+
+```python
+APP_NAME = "MyApp"
+VERSION = "1.2.0"
+DEBUG = true
+PORT = 8000
 ```
 
-After `mdship update`:
-
-```markdown
-<!--TEMPLATE
-content: |
-  Application Configuration
-  =======================
-  - Name: $appName
-  - Debug: $config.debug
-  - Port: $config.port
--->
-Application Configuration
-=======================
-- Name: MyApp
-- Debug: true
-- Port: 8000
-<!--/TEMPLATE-->
-```
-
-Running `mdship update` again produces the same result — TEMPLATE is idempotent.
+Running `mdship update` again produces the same generated region unless the template or input variables change.
 
 ## See Also
 
-**When to choose TEMPLATE:** use TEMPLATE specifically when you need variable values rendered inside a fenced code block, or in any content region where HTML comment markers would interfere. It is the only placeholder that carries its template inline as a YAML field rather than reading from an external file.
+`TEMPLATE` is neither a variable source nor a content importer. It does not define variables and it does not read an external file; it consumes variables that already exist and renders an inline template string.
 
-| Placeholder | Role | Relationship to TEMPLATE |
-|---|---|---|
-| [SET](SET.md) | Defines variables | TEMPLATE *consumes* what SET defines |
-| [IMPORT](IMPORT.md) | Loads variables from a file | TEMPLATE *consumes* what IMPORT loads |
-| [SLURP](SLURP.md) | Extracts key/value pairs from a file | TEMPLATE *consumes* what SLURP extracts |
-| [SIP](SIP.md) | Extracts predefined variables from a file | TEMPLATE *consumes* what SIP extracts |
-| [SUP](SUP.md) | Captures a value from the document | TEMPLATE *consumes* what SUP captures |
-| [INCLUDE](INCLUDE.md) | Embeds an external file as text | INCLUDE inserts raw content; TEMPLATE renders an inline template |
-| [MERMAID](MERMAID.md) | Renders a diagram with variable substitution | MERMAID substitutes variables in diagram source specifically |
-| [TOC](TOC.md) | Generates a table of contents | Unrelated |
-
+- [JINJA2](JINJA2.md): also renders an inline template, but uses Jinja2 syntax, loops, conditionals, filters, and `{{ variable }}` expressions instead of mdship `$var` substitution.
+- [SET](SET.md), [IMPORT](IMPORT.md), [SLURP](SLURP.md), [SIP](SIP.md), and [SUP](SUP.md): define variables. `TEMPLATE` uses those variables after they have been collected.
+- [INCLUDE](INCLUDE.md): embeds content from an external file. `TEMPLATE` embeds the rendered result of an inline `content` template.
+- [TOC](TOC.md): generates a table of contents from headings rather than rendering an arbitrary template.
+- [MERMAID](MERMAID.md): also substitutes variables during processing, but specifically to render diagram output rather than general markdown content.
 <!--/AI-->

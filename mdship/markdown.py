@@ -2533,6 +2533,111 @@ def process_template(content: str, variables: Optional[dict] = None, force: bool
     return content
 
 
+def process_jinja2(content: str, variables: Optional[dict] = None, force: bool = False) -> str:
+    """Process JINJA2 placeholders by rendering template content with variables.
+
+    Configuration in the marker:
+    <!--JINJA2
+    content: |
+      {% for item in items %}
+      - {{ item.name }}
+      {% endfor %}
+    -->
+    old content here
+    <!--/JINJA2-->
+
+    Args:
+        content: Markdown content
+        variables: Dictionary of available variables for template rendering
+
+    Returns:
+        Content with JINJA2 placeholders processed
+    """
+    import re as regex_module
+    import yaml as yaml_module
+
+    try:
+        from jinja2 import Environment
+    except ImportError as e:
+        raise ValueError("JINJA2 placeholders require the jinja2 package to be installed") from e
+
+    if not variables:
+        variables = {}
+
+    placeholder_pattern = r'<!--JINJA2(.*?)-->(.*?)<!--/JINJA2-->'
+    all_matches = list(regex_module.finditer(placeholder_pattern, content, regex_module.DOTALL))
+
+    if not all_matches:
+        return content
+
+    env = Environment(autoescape=False)
+
+    for match in reversed(all_matches):
+        config_str = match.group(1)
+        match_pos = match.start()
+        line_num = content[:match_pos].count('\n') + 1
+
+        if _is_in_code_block(content, match_pos):
+            continue
+
+        try:
+            if yaml_module:
+                config = yaml_module.safe_load(config_str) or {}
+            else:
+                config = {}
+        except Exception as e:
+            raise ValueError(f"Line {line_num}: JINJA2 placeholder has YAML parsing error: {e}")
+
+        if 'content' not in config:
+            raise ValueError(f"Line {line_num}: JINJA2 placeholder requires 'content' parameter")
+
+        template_content = config['content']
+        if not isinstance(template_content, str):
+            raise ValueError(f"Line {line_num}: JINJA2 'content' must be a string")
+
+        try:
+            processed_content = env.from_string(template_content).render(**variables)
+        except Exception as e:
+            raise ValueError(f"Line {line_num}: JINJA2 template rendering error: {e}") from e
+
+        opening_marker = match.group(0)[:match.group(0).find('-->') + 3]
+        opening_end = match.start() + len(opening_marker)
+        closing_start = match.end() - len('<!--/JINJA2-->')
+
+        terminate = config.get('_terminate_', 'JINJA2')
+        expected_close = f"<!--/{terminate}-->"
+        stored_entry = config.get(_CONTENT_GENERATED_KEY)
+        stored_length = _parse_stored_length(stored_entry) if stored_entry is not None else None
+
+        if stored_length is not None:
+            closing_start = opening_end + stored_length
+            actual = content[closing_start:closing_start + len(expected_close)]
+            if actual != expected_close:
+                if force:
+                    closing_start = match.end() - len('<!--/JINJA2-->')
+                else:
+                    raise ValueError(
+                        f"Line {line_num}: JINJA2 placeholder document integrity compromised. "
+                        "Closing tag not found at expected position. "
+                        "Delete _content_generated_ line to override and accept data loss."
+                    )
+
+        current_body = content[opening_end:closing_start]
+        _check_content_hash('JINJA2', opening_marker, config, current_body, force=force)
+
+        new_body = '\n' + processed_content + '\n'
+        new_open_marker = _apply_content_hash(opening_marker, new_body)
+
+        content = (
+            content[:match.start()] +
+            new_open_marker +
+            new_body +
+            content[closing_start:]
+        )
+
+    return content
+
+
 def update_mermaid(content: str, markdown_dir: str, variables: Optional[dict] = None, force: bool = False,
                    written_files: Optional[list] = None, dry_run: bool = False) -> str:
     """Update MERMAID placeholders by rendering diagram source to files.
@@ -2956,7 +3061,7 @@ def _validate_placeholder_structure(content: str, force: bool = False) -> None:
     import re as regex_module
 
     # Placeholders that require closing tags (MERMAID uses a single managed line, no closing tag)
-    PLACEHOLDERS_WITH_CLOSING = {'TEMPLATE', 'INCLUDE', 'TOC'}
+    PLACEHOLDERS_WITH_CLOSING = {'TEMPLATE', 'JINJA2', 'INCLUDE', 'TOC'}
 
     # Skip validation if this looks like documentation (many code block examples)
     # Count opening/closing code blocks to detect documentation files
@@ -3041,7 +3146,7 @@ def _validate_placeholder_structure(content: str, force: bool = False) -> None:
 
         # --- Opening tags ---
         if stripped.startswith('<!--'):
-            if match := regex_module.search(r'<!--(TEMPLATE|INCLUDE|TOC)(?:\s|-->|$)', line):
+            if match := regex_module.search(r'<!--(TEMPLATE|JINJA2|INCLUDE|TOC)(?:\s|-->|$)', line):
                 ptype = match.group(1)
 
                 if '-->' in line:

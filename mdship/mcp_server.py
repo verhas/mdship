@@ -226,6 +226,7 @@ def main() -> None:
         from mdship.markdown import (
             collect_set_variables,
             insert_table_of_contents,
+            process_jinja2,
             process_template,
             replace_variables_in_document,
             update_includes,
@@ -238,6 +239,7 @@ def main() -> None:
         content = update_includes(content, markdown_dir)
         content = replace_variables_in_document(content, variables, file_path=str(p))
         content = process_template(content, variables=variables)
+        content = process_jinja2(content, variables=variables)
         try:
             content = insert_table_of_contents(content)
         except ValueError:

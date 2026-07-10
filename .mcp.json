@@ -5,12 +5,6 @@
       "args": [
         "mcp"
       ]
-    },
-    "perag": {
-      "command": "perag",
-      "args": [
-        "mcp"
-      ]
     }
   }
 }

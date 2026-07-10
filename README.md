@@ -67,10 +67,10 @@ _content_generated_: 1840:md5:77782b81984df2fce357d190509fb0b4
 - **Table of contents**: Generate and insert a TOC with anchor links between markers
 - **Include files**: Embed code snippets and content from other files with flexible line selection
 - **Render Mermaid diagrams**: Generate SVG/PNG diagrams from Mermaid source code with variable substitution
-- **Template placeholders**: Insert dynamic content with variable substitution (useful for code blocks with dynamic values)
+- **Template placeholders**: Insert dynamic content with `$variable` substitution or Jinja2 rendering
 - **Pattern dictionary**: Built-in patterns for common extraction tasks (@heading, @version) and support for custom patterns
 - **Placeholder validation**: Early detection of mistyped closing tags, unclosed placeholders, and duplicate AI placeholder names before processing
-- **Managed content integrity**: Hash-based protection against accidental manual edits inside managed blocks (TOC, INCLUDE, MERMAID)
+- **Managed content integrity**: Hash-based protection against accidental manual edits inside managed blocks (TOC, INCLUDE, TEMPLATE, JINJA2, MERMAID)
 - **Track changes**: Automatically maintain `last-updated` timestamp and operation logs in front-matter (use `--track` or `-t` flag)
 - **Validate links**: Check for broken anchor references, missing file references, and unused anchors
 - **AI placeholders**: Embed generation prompts in markdown documents for Claude to fill or update
@@ -485,6 +485,48 @@ After running `mdship update`:
 - Idempotent: running update multiple times produces the same result
 - Perfect for code examples with dynamic values
 
+#### 1.3.7.1. Jinja2 Template Placeholders
+
+Use `JINJA2` when the generated content needs real template logic such as loops, conditionals, filters, or nested object access. It works like `TEMPLATE`: the rendered result is inserted between the opening and closing markers and protected as managed content.
+
+```markdown
+<!--SET
+appName: "MyApp"
+authors:
+  - "Alice"
+  - "Bob"
+-->
+
+<!--JINJA2
+content: |
+  # {{ appName }} Authors
+
+  {% for author in authors %}
+  - {{ author }}
+  {% endfor %}
+-->
+old documentation
+<!--/JINJA2-->
+```
+
+After running `mdship update`:
+
+```markdown
+# MyApp Authors
+
+- Alice
+- Bob
+```
+
+**Configuration:**
+
+- `content`: The Jinja2 template content (multi-line YAML literal block, required)
+  - All mdship variables are available as Jinja2 template variables
+  - Nested dictionaries can be accessed using Jinja2 dot syntax, such as `{{ config.database.host }}`
+  - Lists can be iterated using normal Jinja2 syntax
+
+Use `TEMPLATE` for simple `$var` substitution. Use `JINJA2` when you need template control flow or richer formatting.
+
 ### 1.3.8. Placeholder Processing Order
 
 The `update` command processes placeholders in a specific order to enable powerful workflows:
@@ -509,8 +551,8 @@ The `update` command processes placeholders in a specific order to enable powerf
    - Variables are NOT replaced inside code blocks (between ``` markers) — they are safe for code that uses `$var` notation
    - Front-matter YAML is automatically available as `$fm`
 
-4. **<!​--TEMPLATE-->** placeholders
-   - Substitutes variables in template content and inserts between opening and closing markers
+4. **<!​--TEMPLATE-->** and **<!​--JINJA2-->** placeholders
+   - Substitute or render template content and insert between opening and closing markers
    - Useful for dynamic code blocks and formatted content with variables
 
 5. **<!​--TOC-->** placeholders
@@ -524,7 +566,7 @@ The `update` command processes placeholders in a specific order to enable powerf
 This order allows:
 - Variables to be defined early and used everywhere in the document
 - INCLUDE content to be embedded before variables are replaced (so included content benefits from variable substitution)
-- TEMPLATE to use any variables including those in included content
+- TEMPLATE and JINJA2 to use any variables including those in included content
 - TOC to include headings from included files
 - Subsequent placeholders to use variables defined anywhere in the document
 - Safe inclusion of code with `$var` notation since code blocks are skipped
@@ -1024,6 +1066,7 @@ mdship automatically validates placeholder syntax before processing to prevent s
 
 **Placeholders that require closing tags:**
 - `<!​--TEMPLATE ... -->...<!--/TEMPLATE-->`
+- `<!​--JINJA2 ... -->...<!--/JINJA2-->`
 - `<!​--INCLUDE ... -->...<!--/INCLUDE-->`
 - `<!​--TOC ... -->...<!--/TOC-->`
 
@@ -1100,7 +1143,7 @@ When `mdship update` writes content between placeholder markers (TOC, INCLUDE, M
 
 This prevents accidentally losing hand-written edits that were made inside a managed block.
 
-**Applies to:** `<!--TOC-->`, `<!--INCLUDE-->`, `<!--MERMAID-->`, `<!--TEMPLATE-->` — all built-in placeholders that have a closing tag. Each placeholder processor must explicitly wire in the hash check; it is not applied automatically to new placeholders.
+**Applies to:** `<!--TOC-->`, `<!--INCLUDE-->`, `<!--MERMAID-->`, `<!--TEMPLATE-->`, `<!--JINJA2-->` — all built-in placeholders that generate managed content. Each placeholder processor must explicitly wire in the hash check; it is not applied automatically to new placeholders.
 
 **What it looks like after the first run:**
 

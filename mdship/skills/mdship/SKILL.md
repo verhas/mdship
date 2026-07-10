@@ -1,6 +1,6 @@
 ---
 name: mdship
-description: "Use when creating or editing markdown documents that should be processed by mdship placeholder comments, including SET, IMPORT, SLURP, SIP, SUP, variable references, TEMPLATE, INCLUDE, TOC, MERMAID, and AI placeholders. Helps an LLM agent author valid mdship-ready markdown with safe marker structure, YAML configuration, processing-order awareness, and managed-content boundaries."
+description: "Use when creating or editing markdown documents that should be processed by mdship placeholder comments, including SET, IMPORT, SLURP, SIP, SUP, variable references, TEMPLATE, JINJA2, INCLUDE, TOC, MERMAID, and AI placeholders. Helps an LLM agent author valid mdship-ready markdown with safe marker structure, YAML configuration, processing-order awareness, and managed-content boundaries."
 ---
 
 # mdship Placeholder Authoring
@@ -23,7 +23,7 @@ Use this skill when writing markdown that will later be processed by `mdship upd
 1. Variable sources: `SET`, `IMPORT`, `SLURP`, `SIP`, `SUP`.
 2. `INCLUDE` blocks.
 3. Variable references in original and included content.
-4. `TEMPLATE` blocks.
+4. `TEMPLATE` and `JINJA2` blocks.
 5. `TOC` blocks.
 6. Other top-to-bottom placeholders, including `MERMAID`.
 
@@ -151,6 +151,24 @@ content: |
 
 `content` is required. Variables are substituted before insertion. `TEMPLATE` requires a closing `<!--/TEMPLATE-->` tag.
 
+### JINJA2
+
+Use `JINJA2` when generated content needs Jinja2 template logic such as loops, conditionals, filters, or nested object access.
+
+```markdown
+<!--JINJA2
+content: |
+  # {{ appName }}
+
+  {% for author in authors %}
+  - {{ author }}
+  {% endfor %}
+-->
+<!--/JINJA2-->
+```
+
+`content` is required. All mdship variables are available as Jinja2 variables. Use Jinja2 dot access for nested dictionaries, such as `{{ config.database.host }}`. `JINJA2` requires a closing `<!--/JINJA2-->` tag.
+
 ### INCLUDE
 
 Use `INCLUDE` to embed file content. It requires a closing tag.
@@ -270,7 +288,7 @@ Use custom markers only when the generated content may contain the default closi
 
 ## Managed Content Rules
 
-`TOC`, `INCLUDE`, `TEMPLATE`, and `MERMAID` generated output is protected by `_content_generated_` checksums after mdship writes it.
+`TOC`, `INCLUDE`, `TEMPLATE`, `JINJA2`, and `MERMAID` generated output is protected by `_content_generated_` checksums after mdship writes it.
 
 When authoring:
 
@@ -285,6 +303,7 @@ When authoring:
 Use exact matching tags:
 
 - `TEMPLATE`: `<!--TEMPLATE ... -->` with `<!--/TEMPLATE-->`.
+- `JINJA2`: `<!--JINJA2 ... -->` with `<!--/JINJA2-->`.
 - `INCLUDE`: `<!--INCLUDE ... -->` with `<!--/INCLUDE-->`.
 - `TOC`: `<!--TOC ... -->` with `<!--/TOC-->`.
 - `MERMAID`: opening marker only; the following line is managed.

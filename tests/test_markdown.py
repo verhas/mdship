@@ -12,6 +12,7 @@ from mdship.markdown import (
     fix_heading_levels,
     generate_table_of_contents,
     insert_table_of_contents,
+    process_jinja2,
     process_template,
     remove_heading_numbers,
     reflow_paragraphs,
@@ -1552,6 +1553,102 @@ old
         result = process_template(content, variables=variables)
         assert "heading" in result
         assert "version" in result
+
+
+class TestJinja2:
+    def test_jinja2_basic(self):
+        """Test basic JINJA2 placeholder processing."""
+        variables = {"app": "MyApp", "version": "1.0.0"}
+        content = """Before
+
+<!--JINJA2
+content: |
+  Application: {{ app }}
+  Version: {{ version }}
+-->
+old content
+<!--/JINJA2-->
+
+After"""
+        result = process_jinja2(content, variables=variables)
+        assert "Application: MyApp" in result
+        assert "Version: 1.0.0" in result
+        assert "old content" not in result
+
+    def test_jinja2_loop_and_condition(self):
+        """Test JINJA2 control structures using variables."""
+        variables = {
+            "items": [
+                {"name": "alpha", "enabled": True},
+                {"name": "beta", "enabled": False},
+            ]
+        }
+        content = """<!--JINJA2
+content: |
+  {% for item in items if item.enabled %}
+  - {{ item.name }}
+  {% endfor %}
+-->
+old
+<!--/JINJA2-->"""
+        result = process_jinja2(content, variables=variables)
+        assert "- alpha" in result
+        assert "beta" not in result
+
+    def test_jinja2_with_nested_variables(self):
+        """Test JINJA2 nested dictionary access."""
+        variables = {"config": {"database": {"host": "localhost", "port": 5432}}}
+        content = """<!--JINJA2
+content: |
+  Database: {{ config.database.host }}:{{ config.database.port }}
+-->
+old
+<!--/JINJA2-->"""
+        result = process_jinja2(content, variables=variables)
+        assert "Database: localhost:5432" in result
+
+    def test_jinja2_missing_content(self):
+        """Test JINJA2 error when 'content' is missing."""
+        content = """<!--JINJA2
+name: "test"
+-->
+<!--/JINJA2-->"""
+        with pytest.raises(ValueError, match="requires 'content'"):
+            process_jinja2(content)
+
+    def test_jinja2_idempotent(self):
+        """Test that JINJA2 processing is idempotent."""
+        variables = {"key": "value"}
+        content = """<!--JINJA2
+content: |
+  Key: {{ key }}
+-->
+old
+<!--/JINJA2-->"""
+        result1 = process_jinja2(content, variables=variables)
+        result2 = process_jinja2(result1, variables=variables)
+        assert result1 == result2
+
+    def test_jinja2_validation_accepts_closing_tag(self):
+        """Test that valid JINJA2 placeholder passes validation."""
+        content = """<!--JINJA2
+content: |
+  Hello {{ name }}
+-->
+old
+<!--/JINJA2-->"""
+        _validate_placeholder_structure(content)
+
+    def test_jinja2_validation_rejects_typo(self):
+        """Test that JINJA2 closing tag typos are detected."""
+        content = """<!--JINJA2
+content: |
+  Hello {{ name }}
+-->
+old
+<!--/JINJA-->"""
+        with pytest.raises(ValueError, match="does not match.*Expected <!--/JINJA2-->"):
+            _validate_placeholder_structure(content)
 
     def test_collect_slurp_basic(self, tmp_path):
         """Test basic SLURP functionality with two capturing groups."""

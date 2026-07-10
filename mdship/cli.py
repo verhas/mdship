@@ -454,7 +454,7 @@ def update(
     3. Variable references (replace $variable in document and included content)
        - Works in regular text, not in code blocks (between ```)
        - Included content variables are replaced here
-    4. <!--TEMPLATE--> placeholders (substitute variables in templates, insert content)
+    4. <!--TEMPLATE--> and <!--JINJA2--> placeholders (render templates, insert content)
        - Useful for code blocks and formatted content with variables
     5. <!--TOC--> placeholders (generate table of contents)
        - Can include headings from both original and included content
@@ -509,6 +509,13 @@ def update(
           ```
         -->
 
+        <!--JINJA2
+        content: |
+          {% for author in authors %}
+          - {{ author }}
+          {% endfor %}
+        -->
+
         <!--TOC min-level: 2
         max-level: 3
         -->
@@ -521,7 +528,15 @@ def update(
             A[Client] --> B[Server]
         -->
     """
-    from mdship.markdown import collect_set_variables, replace_variables_in_document, insert_table_of_contents, update_includes, update_mermaid, process_template
+    from mdship.markdown import (
+        collect_set_variables,
+        insert_table_of_contents,
+        process_jinja2,
+        process_template,
+        replace_variables_in_document,
+        update_includes,
+        update_mermaid,
+    )
 
     errors = []
     for file in _resolve_files(files):
@@ -556,6 +571,13 @@ def update(
 
         try:
             content = process_template(content, variables=variables, force=force)
+        except ValueError as e:
+            err.print(f"[red]Error:[/red] {file}: {e}")
+            errors.append((file, str(e)))
+            continue
+
+        try:
+            content = process_jinja2(content, variables=variables, force=force)
         except ValueError as e:
             err.print(f"[red]Error:[/red] {file}: {e}")
             errors.append((file, str(e)))
@@ -672,11 +694,18 @@ def ai_check(
 
 
 @app.command()
-def init() -> None:
+def init(
+    codex: Annotated[
+        bool,
+        typer.Option("--codex", help="Also install bundled skills into ~/.codex/skills/"),
+    ] = False,
+) -> None:
     """Initialize mdship configuration in the current directory.
 
     Creates .mcp.json, .claude/settings.local.json, and .claude/skills/ai-placeholder/SKILL.md
     so that Claude Code picks up the mdship MCP server and AI placeholder skill.
+
+    With --codex, also installs the bundled skills into ~/.codex/skills/.
     """
     import json
     import importlib.resources as pkg_resources
@@ -718,6 +747,7 @@ def init() -> None:
     # .claude/skills/*/ — install all bundled skills
     # .github/prompts/*.prompt.md — same skills for GitHub Copilot
     github_prompts_dir = cwd / ".github" / "prompts"
+    codex_skills_dir = Path.home() / ".codex" / "skills"
     skills_pkg = pkg_resources.files("mdship").joinpath("skills")
     for skill_entry in skills_pkg.iterdir():
         skill_md = skill_entry.joinpath("SKILL.md")
@@ -735,6 +765,13 @@ def init() -> None:
         prompt_file = github_prompts_dir / f"{skill_entry.name}.prompt.md"
         prompt_file.write_text(content)
         err.print(f"[green]✓[/green] Created {prompt_file}")
+
+        if codex:
+            codex_dest_dir = codex_skills_dir / skill_entry.name
+            codex_dest_dir.mkdir(parents=True, exist_ok=True)
+            codex_dest_file = codex_dest_dir / "SKILL.md"
+            codex_dest_file.write_text(content)
+            err.print(f"[green]✓[/green] Created {codex_dest_file}")
 
 
 @app.command()
