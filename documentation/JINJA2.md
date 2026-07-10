@@ -107,7 +107,7 @@ Use a custom closing marker only when the generated output might contain the def
 
 This example renders a fenced code block from variables. The values appear inside the generated code block because the substitution happens inside the inline Jinja2 template before the result is inserted into the document.
 
-```markdown
+````markdown
 <!--SET
 appName: "MyApp"
 config:
@@ -133,7 +133,7 @@ content: |
 -->
 old generated code
 <!--/JINJA2-->
-```
+````
 
 After `mdship update`, the managed region becomes:
 
