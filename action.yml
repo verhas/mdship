@@ -1,7 +1,7 @@
 name: 'mdship markdown check'
 description: >-
-  Check markdown files with mdship: validate links and anchors, verify
-  front-matter checksums, or verify AI placeholder checksums.
+  Check markdown files with mdship: validate links and anchors, or verify
+  content and AI placeholder checksums.
 author: 'Peter Verhas'
 branding:
   icon: 'check-circle'
