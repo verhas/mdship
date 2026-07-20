@@ -2,7 +2,7 @@
 last-updated: '2026-06-10T11:37:48.418276'
 mdship-log: |
   2026-06-10 11:37:48 - update: processed all placeholders
-checksum: 5934cf6e45b0137e7b4fc86e3742c7301a857591300e9b36ac85b86a7fe86c8f
+checksum: 0d20ac43e102ab1061f6f9296ec29caac01e1f580cd98b92627a62912383264e
 checksum_algorithm: sha256
 ---
 # 1. mdship
@@ -1337,6 +1337,8 @@ jobs:
 | `python-version` | `3.12` | Python version to set up (mdship requires 3.11+) |
 
 The modifying commands (`update`, `number`, `reflow`, …) are intentionally not exposed: a CI check should report problems, not rewrite files.
+
+For a step-by-step cookbook with copy-paste workflow recipes see [documentation/GITHUB_ACTIONS.md](documentation/GITHUB_ACTIONS.md).
 
 ## 1.4. Design
 
