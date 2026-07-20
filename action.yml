@@ -1,0 +1,77 @@
+name: 'mdship markdown check'
+description: >-
+  Check markdown files with mdship: validate links and anchors, verify
+  front-matter checksums, or verify AI placeholder checksums.
+author: 'Peter Verhas'
+branding:
+  icon: 'check-circle'
+  color: 'blue'
+
+inputs:
+  command:
+    description: >-
+      The mdship check to run: "validate" (broken links, anchors, missing
+      files/images), "verify" (front-matter content checksum), or "ai-check"
+      (AI placeholder content/prompt/dep checksums).
+    required: false
+    default: 'validate'
+  files:
+    description: >-
+      Space-separated list of markdown files or glob patterns to check
+      (globstar patterns like docs/**/*.md are supported).
+    required: false
+    default: 'README.md'
+  version:
+    description: >-
+      mdship version to install from PyPI (e.g. "1.1.6"). Empty installs the
+      latest release. A value starting with "." or "/" is treated as a local
+      path and installed from source instead (useful for testing mdship
+      itself).
+    required: false
+    default: ''
+  python-version:
+    description: 'Python version to set up (mdship requires 3.11+).'
+    required: false
+    default: '3.12'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install mdship
+      shell: bash
+      env:
+        MDSHIP_VERSION: ${{ inputs.version }}
+      run: |
+        case "$MDSHIP_VERSION" in
+          "")     pip install --quiet mdship ;;
+          .*|/*)  pip install --quiet "$MDSHIP_VERSION" ;;
+          *)      pip install --quiet "mdship==$MDSHIP_VERSION" ;;
+        esac
+        mdship --version
+
+    - name: Run mdship check
+      shell: bash
+      env:
+        MDSHIP_COMMAND: ${{ inputs.command }}
+        MDSHIP_FILES: ${{ inputs.files }}
+      run: |
+        case "$MDSHIP_COMMAND" in
+          validate|verify|ai-check) ;;
+          *)
+            echo "::error::Unsupported command '$MDSHIP_COMMAND'. Use validate, verify, or ai-check."
+            exit 1
+            ;;
+        esac
+        shopt -s globstar nullglob
+        files=( $MDSHIP_FILES )
+        if [ ${#files[@]} -eq 0 ]; then
+          echo "::error::No files matched: $MDSHIP_FILES"
+          exit 1
+        fi
+        echo "Running: mdship $MDSHIP_COMMAND ${files[*]}"
+        mdship "$MDSHIP_COMMAND" "${files[@]}"

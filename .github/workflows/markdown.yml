@@ -1,0 +1,31 @@
+name: Markdown checks
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  validate:
+    name: Validate links and anchors
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate markdown documents
+        uses: ./
+        with:
+          command: validate
+          files: README.md documentation/*.md
+          version: .
+
+  verify:
+    name: Verify README checksum
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify front-matter checksum
+        uses: ./
+        with:
+          command: verify
+          files: README.md
+          version: .

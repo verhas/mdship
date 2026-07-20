@@ -2,7 +2,7 @@
 last-updated: '2026-06-10T11:37:48.418276'
 mdship-log: |
   2026-06-10 11:37:48 - update: processed all placeholders
-checksum: 0665df433ace74313eb1d1da1d241e748653b47f1388ec6bcedcdfd5509e5bba
+checksum: 5934cf6e45b0137e7b4fc86e3742c7301a857591300e9b36ac85b86a7fe86c8f
 checksum_algorithm: sha256
 ---
 # 1. mdship
@@ -10,7 +10,7 @@ checksum_algorithm: sha256
 A command-line and MCP tool for manipulating markdown files.
 
 <!--TOC _terminate_: "TIC" 
-_content_generated_: 1840:md5:77782b81984df2fce357d190509fb0b4
+_content_generated_: 2030:md5:78586dd9870b3f16ce99e6edb9eb51b5
 # ⚠️ MANAGED CONTENT: Edits will be lost.
 # danger zone: Delete _content_generated_ to override.
 -->
@@ -30,6 +30,7 @@ _content_generated_: 1840:md5:77782b81984df2fce357d190509fb0b4
       - [1.3.6.4. SUP: Extract from Document Lines](#1364-sup-extract-from-document-lines)
       - [1.3.6.5. Pattern Dictionary](#1365-pattern-dictionary)
     - [1.3.7. Template Placeholders](#137-template-placeholders)
+      - [1.3.7.1. Jinja2 Template Placeholders](#1371-jinja2-template-placeholders)
     - [1.3.8. Placeholder Processing Order](#138-placeholder-processing-order)
     - [1.3.9. Table of Contents](#139-table-of-contents)
     - [1.3.10. Including Files](#1310-including-files)
@@ -40,7 +41,9 @@ _content_generated_: 1840:md5:77782b81984df2fce357d190509fb0b4
     - [1.3.15. Validating Links](#1315-validating-links)
     - [1.3.16. Placeholder Validation](#1316-placeholder-validation)
     - [1.3.17. Managed Content Integrity](#1317-managed-content-integrity)
-    - [1.3.18. MCP Server](#1318-mcp-server)
+    - [1.3.18. AI Placeholders](#1318-ai-placeholders)
+    - [1.3.19. MCP Server](#1319-mcp-server)
+    - [1.3.20. GitHub Action](#1320-github-action)
   - [1.4. Design](#14-design)
     - [1.4.1. Dependencies](#141-dependencies)
     - [1.4.2. Development Dependencies](#142-development-dependencies)
@@ -1306,6 +1309,34 @@ Available tools include all CLI operations plus four AI-specific tools:
 | `ai_update` | Write new content and record all checksums atomically — agent never reads or writes the file directly |
 
 The `/ai-placeholder` skill uses `ai_context` → generate → `ai_update` so the full source document never enters the agent's context window.
+
+### 1.3.20. GitHub Action
+
+Use mdship as a GitHub Action to check markdown documents in CI. The action installs mdship from PyPI and runs one of the check commands on the given files, failing the job when a check reports a problem:
+
+```yaml
+jobs:
+  markdown:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate links and anchors
+        uses: verhas/mdship@v1
+        with:
+          command: validate
+          files: README.md docs/**/*.md
+```
+
+**Inputs:**
+
+| Input | Default | Description |
+|-------|---------|-------------|
+| `command` | `validate` | Check to run: `validate` (broken links, anchors, missing files and images), `verify` (front-matter content checksum), or `ai-check` (AI placeholder checksums) |
+| `files` | `README.md` | Space-separated files or glob patterns (`**` is supported) |
+| `version` | latest | mdship version to install from PyPI; a value starting with `.` or `/` installs from a local path instead |
+| `python-version` | `3.12` | Python version to set up (mdship requires 3.11+) |
+
+The modifying commands (`update`, `number`, `reflow`, …) are intentionally not exposed: a CI check should report problems, not rewrite files.
 
 ## 1.4. Design
 
