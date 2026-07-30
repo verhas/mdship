@@ -8,8 +8,12 @@ Exposes markdown manipulation tools over stdio. Start with:
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from mcp.server import FastMCP
+
+if TYPE_CHECKING:
+    from mdship.operations import OperationResult
 
 
 def _read(path: str) -> tuple[Path, str]:
@@ -23,6 +27,41 @@ def _write(p: Path, content: str, backup: bool) -> None:
     if backup:
         p.with_suffix(p.suffix + ".bak").write_text(p.read_text())
     p.write_text(content)
+
+
+def update(path: str, backup: bool = True, force: bool = False) -> str:
+    """Update all placeholders (variables, includes, TOC, diagrams, etc).
+
+    Unchanged documents are neither rewritten nor backed up. A missing <!--TOC-->
+    placeholder is not an error; every other placeholder, integrity, rendering
+    and validation failure is reported as a tool error.
+
+    Args:
+        path: Path to the markdown file
+        backup: Create a .bak backup before modifying (default: True)
+        force: Ignore managed content hash checks and regenerate all placeholders
+    """
+    from mdship import operations
+
+    result = operations.update_file(
+        Path(path),
+        force=force,
+        options=operations.WriteOptions(backup=backup),
+    )
+    return _serialize_result(result)
+
+
+def _serialize_result(result: OperationResult) -> str:
+    """Render an OperationResult as an MCP tool response string."""
+    artifacts = ", ".join(a.name for a in result.artifacts)
+    if not result.changed:
+        if artifacts:
+            return f"OK: {result.path} already up to date; diagram(s) regenerated: {artifacts}"
+        return f"OK: {result.path} already up to date"
+    message = f"OK: processed {result.path}"
+    if artifacts:
+        message += f"; diagram(s) regenerated: {artifacts}"
+    return message
 
 
 def main() -> None:
@@ -215,39 +254,7 @@ def main() -> None:
         _write(p, update_mermaid(content, str(p.parent)), backup)
         return f"OK: processed {path}"
 
-    @server.tool()
-    def update(path: str, backup: bool = True) -> str:
-        """Update all placeholders (variables, includes, TOC, diagrams, etc).
-
-        Args:
-            path: Path to the markdown file
-            backup: Create a .bak backup before modifying (default: True)
-        """
-        from mdship.markdown import (
-            collect_set_variables,
-            insert_table_of_contents,
-            process_jinja2,
-            process_template,
-            replace_variables_in_document,
-            update_includes,
-            update_mermaid,
-        )
-        p, content = _read(path)
-        markdown_dir = str(p.parent)
-
-        variables = collect_set_variables(content, markdown_dir=markdown_dir)
-        content = update_includes(content, markdown_dir)
-        content = replace_variables_in_document(content, variables, file_path=str(p))
-        content = process_template(content, variables=variables)
-        content = process_jinja2(content, variables=variables)
-        try:
-            content = insert_table_of_contents(content)
-        except ValueError:
-            pass
-        content = update_mermaid(content, markdown_dir, variables=variables)
-
-        _write(p, content, backup)
-        return f"OK: processed {path}"
+    server.tool()(update)
 
     @server.tool()
     def ai_fix(path: str, name: str | None = None, backup: bool = True) -> str:

@@ -5,6 +5,8 @@ import re
 from pathlib import Path
 from typing import Callable, Optional, Tuple
 
+from mdship.errors import IntegrityError, PlaceholderNotFound
+
 try:
     import yaml
 except ImportError:
@@ -89,7 +91,9 @@ def _parse_placeholder(content: str, placeholder_name: str, self_contained: bool
         }
 
     Raises:
-        ValueError: If placeholder markers are not found
+        PlaceholderNotFound: If no usable opening marker is present
+        IntegrityError: If managed content no longer matches its recorded hash
+        ValueError: For other malformed placeholder structures
     """
     # Find opening marker: <!--PLACEHOLDER_NAME ... -->
     # Match from <!--PLACEHOLDER_NAME to --> allowing any content including newlines
@@ -97,18 +101,23 @@ def _parse_placeholder(content: str, placeholder_name: str, self_contained: bool
     open_match = re.search(open_pattern, content, re.DOTALL)
 
     if not open_match:
-        raise ValueError(f"Opening marker <!--{placeholder_name}--> not found in content")
+        raise PlaceholderNotFound(f"Opening marker <!--{placeholder_name}--> not found in content")
 
     # Verify that the opening marker is at the start of a line and not in a code block
     match_pos = open_match.start()
     if _is_in_code_block(content, match_pos):
-        raise ValueError(f"Opening marker <!--{placeholder_name}--> found in code block (not a valid placeholder)")
+        raise PlaceholderNotFound(
+            f"Opening marker <!--{placeholder_name}--> found in code block "
+            "(not a valid placeholder)"
+        )
 
     # Check if marker is at the start of a line (possibly with whitespace)
     line_start = content.rfind('\n', 0, match_pos) + 1
     before_marker = content[line_start:match_pos]
     if before_marker.strip() != '':
-        raise ValueError(f"Opening marker <!--{placeholder_name}--> must be at the start of a line")
+        raise PlaceholderNotFound(
+            f"Opening marker <!--{placeholder_name}--> must be at the start of a line"
+        )
 
     open_marker = open_match.group(0)
     start_pos = open_match.end()
@@ -160,7 +169,7 @@ def _parse_placeholder(content: str, placeholder_name: str, self_contained: bool
                 end_pos = start_pos + close_match.start()
                 close_marker = close_match.group(0)
             else:
-                raise ValueError(
+                raise IntegrityError(
                     f"ERROR: Placeholder {placeholder_name} document integrity compromised. "
                     "Closing tag not found at expected position. "
                     "Delete _content_generated_ line to override and accept data loss."
@@ -232,7 +241,7 @@ def _parse_stored_hash(entry) -> Optional[str]:
 
 def _check_content_hash(placeholder_name: str, open_marker: str,
                         config: dict, current_body: str, force: bool = False) -> None:
-    """Raise ValueError if _content_generated_ hash is present and does not match current_body."""
+    """Raise IntegrityError if _content_generated_ is present and does not match current_body."""
     if force:
         return
     stored_entry = config.get(_CONTENT_GENERATED_KEY)
@@ -242,7 +251,7 @@ def _check_content_hash(placeholder_name: str, open_marker: str,
     # Verify the key appears as a standalone line (not embedded in a flow mapping etc.)
     if not any(line.strip().startswith(f"{_CONTENT_GENERATED_KEY}:")
                for line in open_marker.split('\n')):
-        raise ValueError(
+        raise IntegrityError(
             f"ERROR: Placeholder {placeholder_name}: {_CONTENT_GENERATED_KEY} found in YAML "
             "but not as a standalone line. "
             "Delete _content_generated_ line to override and accept data loss."
@@ -252,7 +261,7 @@ def _check_content_hash(placeholder_name: str, open_marker: str,
     if stored_hash is not None:
         _, current_hash = _compute_content_hash(current_body)
         if current_hash != stored_hash:
-            raise ValueError(
+            raise IntegrityError(
                 f"ERROR: Placeholder {placeholder_name} content was manually edited. "
                 "Hash mismatch detected. "
                 "Delete _content_generated_ line to override and accept data loss."
@@ -2816,8 +2825,8 @@ def update_mermaid(content: str, markdown_dir: str, variables: Optional[dict] = 
         current_body = content[opening_end:content_end]
         try:
             _check_content_hash('MERMAID', original_open_marker, config, current_body, force=force)
-        except ValueError as e:
-            raise ValueError(
+        except IntegrityError as e:
+            raise IntegrityError(
                 str(e) + " Also delete the image reference line and leave it empty after -->."
             ) from e
 

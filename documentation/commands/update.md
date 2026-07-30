@@ -88,11 +88,19 @@ from: "snippets/auth.py"
 |-----------|------|---------|-------------|
 | `path` | string | required | Path to the markdown file |
 | `backup` | boolean | `true` | Create a `.bak` backup before modifying |
+| `force` | boolean | `false` | Ignore managed content hash checks and regenerate all placeholders |
 
-**Returns:** `"OK: processed <path>"` on success.
+**Returns:** `"OK: processed <path>"` when the document was rewritten, or
+`"OK: <path> already up to date"` when the generated content was identical.
+Regenerated diagrams are appended as `; diagram(s) regenerated: <names>`.
 
-Note: The MCP `update` tool always regenerates all placeholders (equivalent to `--force`).
-It does not expose the fine-grained `force` flag available in the CLI.
+The MCP tool runs exactly the same pipeline as the CLI command, so both produce
+identical document content for identical input:
+
+- An unchanged document is not rewritten and no `.bak` file is created.
+- A missing `<!--TOC-->` placeholder is not an error.
+- Every other placeholder, integrity, rendering or validation failure is
+  reported as a tool error instead of being silently ignored.
 
 **Example call:**
 

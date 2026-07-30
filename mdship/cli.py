@@ -1,11 +1,14 @@
 import difflib
 from importlib.metadata import version as _pkg_version
 from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 import typer
 from rich.console import Console
 from rich.markup import escape
+
+if TYPE_CHECKING:
+    from mdship.operations import OperationResult, WriteOptions
 
 _VERSION = _pkg_version("mdship")
 
@@ -90,6 +93,37 @@ def _write_file(file: Path, content: str, operation: str = "") -> bool:
 
     file.write_text(content)
     return True
+
+
+def _write_options() -> "WriteOptions":
+    """Convert global CLI flags into application write policy."""
+    from mdship import operations
+
+    return operations.WriteOptions(
+        backup=not state.no_bak, dry_run=state.dry_run, track=state.track
+    )
+
+
+def _render_result(result: "OperationResult") -> bool:
+    """Render an operation result. Returns True when the document was written."""
+    if not result.changed:
+        err.print(f"[dim]↔[/dim] {result.path}: already up to date")
+        return False
+    if not result.written:
+        err.print(f"[yellow]~[/yellow] {result.path}: would change")
+        _print_diff(result.path, result.before, result.after)
+        return False
+    return True
+
+
+def _render_error(file: Path, error: Exception) -> None:
+    """Print an application error. File errors already name the file."""
+    from mdship.errors import FileOperationError
+
+    if isinstance(error, FileOperationError):
+        err.print(f"[red]Error:[/red] {error}")
+    else:
+        err.print(f"[red]Error:[/red] {file}: {error}")
 
 
 def _parse_line_range(lines: str) -> tuple[int | None, int | None]:
@@ -528,86 +562,26 @@ def update(
             A[Client] --> B[Server]
         -->
     """
-    from mdship.markdown import (
-        collect_set_variables,
-        insert_table_of_contents,
-        process_jinja2,
-        process_template,
-        replace_variables_in_document,
-        update_includes,
-        update_mermaid,
-    )
+    from mdship import operations
+    from mdship.errors import MdshipError
 
     errors = []
     for file in _resolve_files(files):
-        if not file.exists():
-            err.print(f"[red]Error:[/red] file not found: {file}")
-            errors.append((file, "file not found"))
-            continue
-
-        content = file.read_text()
-        markdown_dir = file.parent
-
         try:
-            variables = collect_set_variables(content, markdown_dir=str(markdown_dir), force=force)
-        except ValueError as e:
-            err.print(f"[red]Error:[/red] {file}: {e}")
+            result = operations.update_file(file, force=force, options=_write_options())
+        # Plain ValueError is still raised by not-yet-typed markdown.py phases;
+        # later phases narrow those to MdshipError subclasses.
+        except (MdshipError, ValueError) as e:
+            _render_error(file, e)
             errors.append((file, str(e)))
             continue
 
-        try:
-            content = update_includes(content, str(markdown_dir), force=force)
-        except ValueError as e:
-            err.print(f"[red]Error:[/red] {file}: {e}")
-            errors.append((file, str(e)))
-            continue
-
-        try:
-            content = replace_variables_in_document(content, variables, file_path=str(file))
-        except ValueError as e:
-            err.print(f"[red]Error:[/red] {file}: {e}")
-            errors.append((file, str(e)))
-            continue
-
-        try:
-            content = process_template(content, variables=variables, force=force)
-        except ValueError as e:
-            err.print(f"[red]Error:[/red] {file}: {e}")
-            errors.append((file, str(e)))
-            continue
-
-        try:
-            content = process_jinja2(content, variables=variables, force=force)
-        except ValueError as e:
-            err.print(f"[red]Error:[/red] {file}: {e}")
-            errors.append((file, str(e)))
-            continue
-
-        try:
-            content = insert_table_of_contents(content, force=force)
-        except ValueError as e:
-            if str(e).startswith("Opening marker"):
-                pass  # No TOC placeholder in file — that's fine
-            else:
-                err.print(f"[red]Error:[/red] {file}: {e}")
-                errors.append((file, str(e)))
-                continue
-
-        written_files: list[str] = []
-        try:
-            content = update_mermaid(content, str(markdown_dir), variables=variables, force=force,
-                                     written_files=written_files, dry_run=state.dry_run)
-        except ValueError as e:
-            err.print(f"[red]Error:[/red] {file}: {e}")
-            errors.append((file, str(e)))
-            continue
-
-        if _write_file(file, content, "update: processed all placeholders"):
+        if _render_result(result):
             err.print(f"[green]✓[/green] Processed {file}")
-            for wf in written_files:
-                err.print(f"  [dim]diagram:[/dim] {wf}")
-        elif written_files:
-            names = ", ".join(Path(wf).name for wf in written_files)
+            for artifact in result.artifacts:
+                err.print(f"  [dim]diagram:[/dim] {artifact}")
+        elif result.artifacts:
+            names = ", ".join(artifact.name for artifact in result.artifacts)
             err.print(f"[green]✓[/green] {file}: diagram(s) regenerated: {names}")
 
     _exit_if_errors(errors)

@@ -25,12 +25,16 @@ mdship/
 ├── mdship/                    # Main package
 │   ├── __init__.py
 │   ├── cli.py                 # CLI command dispatcher (typer app)
+│   ├── operations.py          # Application layer: file-level use cases
+│   ├── errors.py              # Typed mdship exceptions
 │   ├── markdown.py            # Core markdown manipulation functions
 │   └── mcp_server.py          # MCP server implementation
 │
 └── tests/                     # Test suite
     ├── __init__.py
-    └── test_markdown.py       # Unit tests for markdown functions
+    ├── test_markdown.py       # Unit tests for markdown functions
+    ├── test_operations.py     # Unit tests for the application layer
+    └── test_update_adapters.py # CLI/MCP adapter and parity tests
 ```
 
 ---
@@ -328,6 +332,29 @@ Configure in Claude's MCP settings:
 ---
 
 ## Development Notes
+
+### Layering
+
+```text
+CLI ──┐
+      ├──> operations.py ──> markdown.py
+MCP ──┘
+```
+
+- `markdown.py` transforms content and raises typed errors from `errors.py`.
+- `operations.py` is the application layer: it validates paths, reads a document
+  once, runs the workflow, applies tracking, compares, backs up and writes, and
+  returns an `OperationResult`. It must not import Typer, Rich or FastMCP.
+- `cli.py` and `mcp_server.py` are adapters: they convert their own options into
+  `WriteOptions`, call a named operation, and render or serialize the result.
+- `update_document()` in `operations.py` is the single definition of the
+  placeholder phase order. Do not re-implement it in an adapter.
+- Expected conditions are typed exceptions (`PlaceholderNotFound`,
+  `IntegrityError`, `FileOperationError`), never message-prefix matching.
+- Migration status: `update` is migrated (see `REFACTOR-2026-07-30.md`, phases 1
+  and 2). The other commands still call `markdown.py` directly from the adapters.
+
+### Notes
 
 - Uses `typer` for CLI, `mcp` Python SDK for server
 - Markdown parsing via `markdown-it-py` — parses to AST for robust handling
