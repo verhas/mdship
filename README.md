@@ -2,7 +2,7 @@
 last-updated: '2026-06-10T11:37:48.418276'
 mdship-log: |
   2026-06-10 11:37:48 - update: processed all placeholders
-checksum: 0d20ac43e102ab1061f6f9296ec29caac01e1f580cd98b92627a62912383264e
+checksum: 808f703eb5da07740a5f04b7b8afc2f0428b150ef9e75ee63104d0108efa4b61
 checksum_algorithm: sha256
 ---
 # 1. mdship
@@ -74,6 +74,12 @@ _content_generated_: 2030:md5:78586dd9870b3f16ce99e6edb9eb51b5
 - **Pattern dictionary**: Built-in patterns for common extraction tasks (@heading, @version) and support for custom patterns
 - **Placeholder validation**: Early detection of mistyped closing tags, unclosed placeholders, and duplicate AI placeholder names before processing
 - **Managed content integrity**: Hash-based protection against accidental manual edits inside managed blocks (TOC, INCLUDE, TEMPLATE, JINJA2, MERMAID)
+- **Python scripting**: Extend mdship with project-local scripts in `.mdship/scripts/`, gated by a read-only allow-list you control (see [documentation/PYTHON.md](documentation/PYTHON.md))
+  - **PYTHON `run:`**: Generate managed content from a script, with the previous output passed back in for incremental generation
+  - **PYTHON `define:`**: Define document variables from a script, alongside SET and IMPORT
+  - **`transform:`**: Post-process what INCLUDE, TOC, MERMAID, TEMPLATE or JINJA2 produced, single script or pipeline
+  - **`audit:`**: Validate or cross-check collected variables and abort the run when something is wrong
+  - **`mdship scripts`**: Install, update, and list bundled factory scripts; verify that execution is enabled
 - **Track changes**: Automatically maintain `last-updated` timestamp and operation logs in front-matter (use `--track` or `-t` flag)
 - **Validate links**: Check for broken anchor references, missing file references, and unused anchors
 - **AI placeholders**: Embed generation prompts in markdown documents for Claude to fill or update
@@ -540,6 +546,8 @@ The `update` command processes placeholders in a specific order to enable powerf
    - **<!--SLURP-->**: Extract variable names and values from files using regex (2 capturing groups)
    - **<!--SIP-->**: Extract predefined variables from files using regex (1 capturing group)
    - **<!--SUP-->**: Extract a single value from the next line in the document (can use pattern references like `@heading`)
+   - **<!--PYTHON define:-->**: Define variables from a project-local Python script
+   - Any of them may carry an `audit:` script hook that validates the collected variables
    - All variables become available to subsequent placeholders
    - Built-in patterns (`@heading`, `@version`) are automatically available
    - Front-matter YAML is automatically available as `$fm`
@@ -558,13 +566,20 @@ The `update` command processes placeholders in a specific order to enable powerf
    - Substitute or render template content and insert between opening and closing markers
    - Useful for dynamic code blocks and formatted content with variables
 
-5. **<!​--TOC-->** placeholders
+5. **<!​--PYTHON run:-->** placeholders
+   - Generates content with a project-local Python script
+   - Runs before the TOC so generated headings are indexed
+
+6. **<!​--TOC-->** placeholders
    - Generates table of contents from headings
    - Can include headings from both original document and included content
 
-6. **Other placeholders (top-to-bottom)**
+7. **Other placeholders (top-to-bottom)**
    - `<!​--MERMAID-->` diagrams with variable substitution
    - Processed in document order
+
+Content-manager placeholders (INCLUDE, TOC, MERMAID, TEMPLATE, JINJA2) may carry a
+`transform:` script hook that post-processes their output before it is written.
 
 This order allows:
 - Variables to be defined early and used everywhere in the document

@@ -52,6 +52,61 @@ def _parse_stored_length(entry) -> Optional[int]:
     return None
 
 
+def _python_mode(marker_text: str) -> str:
+    """Return 'run', 'define' or '' for the text of a PYTHON opening marker.
+
+    A cheap pre-parse used where the YAML has not been loaded yet; the
+    authoritative decision is made from the parsed config in process_python().
+    """
+    if re.search(r'(?:^|\s)run\s*:', marker_text):
+        return 'run'
+    if re.search(r'(?:^|\s)define\s*:', marker_text):
+        return 'define'
+    return ''
+
+
+def _apply_transform(generated: str, config: dict, placeholder: str, line_num: int,
+                     markdown_dir: Optional[str], variables: Optional[dict] = None,
+                     file_path: Optional[str] = None) -> str:
+    """Run a content-manager placeholder's transform: hooks over its generated content.
+
+    Returns the content unchanged when the placeholder declares no hook, so callers
+    can apply it unconditionally.
+    """
+    from mdship import scripting
+
+    if scripting.TRANSFORM_KEY not in config:
+        return generated
+    site = _script_site(placeholder, line_num, markdown_dir, file_path)
+    return scripting.run_transform(generated, config, variables or {}, site)
+
+
+def _script_site(placeholder: str, line_num: int, markdown_dir: Optional[str],
+                 file_path: Optional[str] = None):
+    """Build the call site a script hook is invoked from."""
+    from mdship import scripting
+
+    if markdown_dir is None:
+        if file_path:
+            markdown_dir = str(Path(file_path).parent)
+        else:
+            raise ValueError(
+                f"Line {line_num}: {placeholder} placeholder uses a script hook, but the "
+                "markdown file's directory is unknown, so .mdship/scripts/ cannot be located"
+            )
+    return scripting.ScriptSite(
+        placeholder=placeholder,
+        line=line_num,
+        markdown_dir=Path(markdown_dir),
+        file_path=Path(file_path) if file_path else None,
+    )
+
+
+def _has_yolo(marker_text: str) -> bool:
+    """True when a placeholder marker carries _yolo_: true."""
+    return re.search(r'(?:^|\s)_yolo_\s*:\s*(?:true|yes|on)\b', marker_text, re.IGNORECASE) is not None
+
+
 def _is_in_code_block(content: str, position: int) -> bool:
     """Check if a position in content is inside a code block (between ``` markers)."""
     in_code = False
@@ -195,13 +250,14 @@ def _parse_placeholder(content: str, placeholder_name: str, self_contained: bool
 
 
 def _update_placeholder(content: str, placeholder_name: str,
-                       update_func: Callable[[dict], str], force: bool = False) -> str:
+                       update_func: Callable[[dict, int], str], force: bool = False) -> str:
     """Update a placeholder with new content generated from config.
 
     Args:
         content: Markdown content
         placeholder_name: Name of the placeholder (e.g., 'TOC')
-        update_func: Function that takes config dict and returns new content
+        update_func: Function that takes the config dict and the opening marker's
+                     line number, and returns the new content
 
     Returns:
         Updated content with placeholder content replaced
@@ -211,11 +267,13 @@ def _update_placeholder(content: str, placeholder_name: str,
     current_body = content[info['start_pos']:info['end_pos']]
     _check_content_hash(placeholder_name, info['open_marker'], info['config'], current_body, force=force)
 
-    new_content = update_func(info['config'])
+    open_marker_start = info['start_pos'] - len(info['open_marker'])
+    line_num = content[:open_marker_start].count('\n') + 1
+
+    new_content = update_func(info['config'], line_num)
     new_body = "\n" + new_content + "\n"
 
     new_open_marker = _apply_content_hash(info['open_marker'], new_body)
-    open_marker_start = info['start_pos'] - len(info['open_marker'])
 
     return (
         content[:open_marker_start] +
@@ -2254,7 +2312,8 @@ def _remove_trailing_spaces_from_headings(content: str) -> str:
     return "\n".join(result)
 
 
-def update_includes(content: str, markdown_dir: str, force: bool = False) -> str:
+def update_includes(content: str, markdown_dir: str, force: bool = False,
+                    variables: Optional[dict] = None, file_path: Optional[str] = None) -> str:
     """Update INCLUDE placeholders by reading content from other files.
 
     Configuration in the marker:
@@ -2401,7 +2460,7 @@ def update_includes(content: str, markdown_dir: str, force: bool = False) -> str
                     close_match = regex_module.search(close_pattern, match_text)
                     closing_start = match_start + (close_match.start() if close_match else len(match_text))
                 else:
-                    raise ValueError(
+                    raise IntegrityError(
                         f"Line {line_num}: INCLUDE placeholder document integrity compromised. "
                         "Closing tag not found at expected position. "
                         "Delete _content_generated_ line to override and accept data loss."
@@ -2413,6 +2472,9 @@ def update_includes(content: str, markdown_dir: str, force: bool = False) -> str
 
         current_body = content[opening_end:closing_start]
         _check_content_hash('INCLUDE', original_open_marker, config, current_body, force=force)
+
+        included_content = _apply_transform(included_content, config, 'INCLUDE', line_num,
+                                            markdown_dir, variables=variables, file_path=file_path)
 
         new_body = '\n' + included_content + '\n'
         new_open_marker = _apply_content_hash(original_open_marker, new_body)
@@ -2427,7 +2489,8 @@ def update_includes(content: str, markdown_dir: str, force: bool = False) -> str
     return content
 
 
-def process_template(content: str, variables: Optional[dict] = None, force: bool = False) -> str:
+def process_template(content: str, variables: Optional[dict] = None, force: bool = False,
+                     markdown_dir: Optional[str] = None, file_path: Optional[str] = None) -> str:
     """Process TEMPLATE placeholders by substituting variables in content.
 
     Configuration in the marker:
@@ -2520,7 +2583,7 @@ def process_template(content: str, variables: Optional[dict] = None, force: bool
                     # Fall back: regex already found closing_start via the placeholder_pattern match
                     closing_start = match.end() - len('<!--/TEMPLATE-->')
                 else:
-                    raise ValueError(
+                    raise IntegrityError(
                         f"Line {line_num}: TEMPLATE placeholder document integrity compromised. "
                         "Closing tag not found at expected position. "
                         "Delete _content_generated_ line to override and accept data loss."
@@ -2528,6 +2591,9 @@ def process_template(content: str, variables: Optional[dict] = None, force: bool
 
         current_body = content[opening_end:closing_start]
         _check_content_hash('TEMPLATE', opening_marker, config, current_body, force=force)
+
+        processed_content = _apply_transform(processed_content, config, 'TEMPLATE', line_num,
+                                             markdown_dir, variables=variables, file_path=file_path)
 
         new_body = '\n' + processed_content + '\n'
         new_open_marker = _apply_content_hash(opening_marker, new_body)
@@ -2542,7 +2608,173 @@ def process_template(content: str, variables: Optional[dict] = None, force: bool
     return content
 
 
-def process_jinja2(content: str, variables: Optional[dict] = None, force: bool = False) -> str:
+def _find_placeholder_markers(content: str, name: str) -> list:
+    """Return [(match, line_num), ...] for every valid opening marker of a placeholder.
+
+    Markers inside code blocks or not at the start of a line are not placeholders.
+    """
+    import re as regex_module
+
+    found = []
+    for match in regex_module.finditer(rf'<!--{name}(.*?)-->', content, regex_module.DOTALL):
+        match_pos = match.start()
+        if _is_in_code_block(content, match_pos):
+            continue
+        line_start = content.rfind('\n', 0, match_pos) + 1
+        if content[line_start:match_pos].strip() != '':
+            continue
+        found.append((match, content[:match_pos].count('\n') + 1))
+    return found
+
+
+def _parse_marker_config(config_text: str, placeholder: str, line_num: int) -> dict:
+    """Parse the YAML body of a placeholder marker."""
+    config_text = config_text.strip() if config_text else ""
+    if not config_text:
+        return {}
+    if not yaml:
+        config = {}
+        for line in config_text.split('\n'):
+            line = line.strip()
+            if ':' in line and not line.startswith('#'):
+                key, value = line.split(':', 1)
+                config[key.strip()] = value.strip().strip('"\'')
+        return config
+    try:
+        return yaml.safe_load(config_text) or {}
+    except yaml.YAMLError as e:
+        raise ValueError(
+            f"Line {line_num}: {placeholder} placeholder has YAML parsing error: {e}"
+        ) from e
+
+
+def process_python(content: str, markdown_dir: str, variables: Optional[dict] = None,
+                   force: bool = False, file_path: Optional[str] = None) -> str:
+    """Process PYTHON placeholders that generate content.
+
+    <!--PYTHON
+    run: "generate_table.py"
+    source: "metrics.json"
+    -->
+    <!--/PYTHON-->
+
+    The script's run(content, ctx) receives the current text between the markers —
+    empty on the first run, the previous output afterwards — so a script can
+    generate incrementally. That makes the placeholder intentionally
+    non-idempotent; managing it is the script author's responsibility.
+
+    Placeholders in define: mode are handled during the variable phase by
+    collect_set_variables() and are skipped here.
+
+    Args:
+        content: Markdown content
+        markdown_dir: Directory of the markdown file (locates .mdship/scripts/)
+        variables: Document variables exposed to the script as ctx.vars
+        force: Ignore managed content hash checks
+        file_path: Path of the markdown file, exposed to the script as ctx.__FILE__
+
+    Returns:
+        Content with PYTHON run: placeholders updated
+    """
+    from mdship import scripting
+
+    if variables is None:
+        variables = {}
+
+    valid_matches = _find_placeholder_markers(content, 'PYTHON')
+    if not valid_matches:
+        return content
+
+    for match, line_num in reversed(valid_matches):
+        config = _parse_marker_config(match.group(1), 'PYTHON', line_num)
+
+        has_run = scripting.RUN_KEY in config
+        has_define = scripting.DEFINE_KEY in config
+        if has_run and has_define:
+            raise ValueError(
+                f"Line {line_num}: PYTHON placeholder has both 'run' and 'define' — "
+                "a placeholder is either content-generating or a variable source, not both"
+            )
+        if has_define:
+            continue  # Variable phase — already handled by collect_set_variables()
+        if not has_run:
+            raise ValueError(
+                f"Line {line_num}: PYTHON placeholder requires 'run' or 'define'"
+            )
+        if scripting.TRANSFORM_KEY in config:
+            raise ValueError(
+                f"Line {line_num}: PYTHON placeholder does not support 'transform' — "
+                "do the post-processing inside the run() function instead"
+            )
+        if scripting.AUDIT_KEY in config:
+            raise ValueError(
+                f"Line {line_num}: PYTHON placeholder in run: mode does not support 'audit' — "
+                "'audit' belongs to variable-source placeholders"
+            )
+
+        # _yolo_ accepts whatever is between the markers, including manual edits, so it
+        # also disables the position check that would otherwise fail on edited content.
+        yolo = config.get('_yolo_') is True
+        effective_force = force or yolo
+
+        open_marker = match.group(0)
+        opening_end = match.end()
+
+        terminate = config.get('_terminate_', 'PYTHON')
+        expected_close = f"<!--/{terminate}-->"
+        stored_entry = config.get(_CONTENT_GENERATED_KEY)
+        stored_length = _parse_stored_length(stored_entry) if stored_entry is not None else None
+
+        closing_start = None
+        if stored_length is not None:
+            candidate = opening_end + stored_length
+            if content[candidate:candidate + len(expected_close)] == expected_close:
+                closing_start = candidate
+            elif not effective_force:
+                raise IntegrityError(
+                    f"Line {line_num}: PYTHON placeholder document integrity compromised. "
+                    "Closing tag not found at expected position. "
+                    "Delete _content_generated_ line to override and accept data loss."
+                )
+
+        if closing_start is None:
+            close_match = re.search(re.escape(expected_close), content[opening_end:])
+            if not close_match:
+                raise ValueError(
+                    f"Line {line_num}: PYTHON placeholder in run: mode requires a closing "
+                    f"{expected_close} tag"
+                )
+            closing_start = opening_end + close_match.start()
+
+        current_body = content[opening_end:closing_start]
+        if not yolo:
+            _check_content_hash('PYTHON', open_marker, config, current_body, force=force)
+
+        # The stored body is '\n' + text + '\n'; the script sees just the text.
+        previous = current_body
+        if previous.startswith('\n'):
+            previous = previous[1:]
+        if previous.endswith('\n'):
+            previous = previous[:-1]
+
+        site = _script_site('PYTHON', line_num, markdown_dir, file_path)
+        generated = scripting.run_generate(previous, config, variables, site)
+
+        new_body = '\n' + generated + '\n'
+        new_open_marker = _apply_content_hash(open_marker, new_body)
+
+        content = (
+            content[:match.start()] +
+            new_open_marker +
+            new_body +
+            content[closing_start:]
+        )
+
+    return content
+
+
+def process_jinja2(content: str, variables: Optional[dict] = None, force: bool = False,
+                   markdown_dir: Optional[str] = None, file_path: Optional[str] = None) -> str:
     """Process JINJA2 placeholders by rendering template content with variables.
 
     Configuration in the marker:
@@ -2625,7 +2857,7 @@ def process_jinja2(content: str, variables: Optional[dict] = None, force: bool =
                 if force:
                     closing_start = match.end() - len('<!--/JINJA2-->')
                 else:
-                    raise ValueError(
+                    raise IntegrityError(
                         f"Line {line_num}: JINJA2 placeholder document integrity compromised. "
                         "Closing tag not found at expected position. "
                         "Delete _content_generated_ line to override and accept data loss."
@@ -2633,6 +2865,9 @@ def process_jinja2(content: str, variables: Optional[dict] = None, force: bool =
 
         current_body = content[opening_end:closing_start]
         _check_content_hash('JINJA2', opening_marker, config, current_body, force=force)
+
+        processed_content = _apply_transform(processed_content, config, 'JINJA2', line_num,
+                                             markdown_dir, variables=variables, file_path=file_path)
 
         new_body = '\n' + processed_content + '\n'
         new_open_marker = _apply_content_hash(opening_marker, new_body)
@@ -2648,7 +2883,8 @@ def process_jinja2(content: str, variables: Optional[dict] = None, force: bool =
 
 
 def update_mermaid(content: str, markdown_dir: str, variables: Optional[dict] = None, force: bool = False,
-                   written_files: Optional[list] = None, dry_run: bool = False) -> str:
+                   written_files: Optional[list] = None, dry_run: bool = False,
+                   file_path: Optional[str] = None) -> str:
     """Update MERMAID placeholders by rendering diagram source to files.
 
     Configuration in the marker:
@@ -2788,6 +3024,11 @@ def update_mermaid(content: str, markdown_dir: str, variables: Optional[dict] = 
         # Build image markdown (relative path for the markdown file)
         relative_file_path = config['file']
         image_markdown = f"![diagram]({relative_file_path})"
+
+        # A MERMAID transform may rewrite the image reference, but the managed body is
+        # exactly one line — run_transform() rejects a multi-line return value.
+        image_markdown = _apply_transform(image_markdown, config, 'MERMAID', line_num,
+                                          markdown_dir, variables=variables, file_path=file_path)
 
         # Position right after the --> of the opening tag
         opening_end = match.end()
@@ -3069,8 +3310,10 @@ def _validate_placeholder_structure(content: str, force: bool = False) -> None:
     """
     import re as regex_module
 
-    # Placeholders that require closing tags (MERMAID uses a single managed line, no closing tag)
-    PLACEHOLDERS_WITH_CLOSING = {'TEMPLATE', 'JINJA2', 'INCLUDE', 'TOC'}
+    # Placeholders that require closing tags (MERMAID uses a single managed line, no closing tag).
+    # PYTHON is listed because its run: mode is paired; its define: mode is self-contained
+    # and is skipped below.
+    PLACEHOLDERS_WITH_CLOSING = {'TEMPLATE', 'JINJA2', 'INCLUDE', 'TOC', 'PYTHON'}
 
     # Skip validation if this looks like documentation (many code block examples)
     # Count opening/closing code blocks to detect documentation files
@@ -3118,6 +3361,13 @@ def _validate_placeholder_structure(content: str, force: bool = False) -> None:
             ptype, open_line_num, accumulated = pending_open
             accumulated += '\n' + line
             if '-->' in line:
+                # A PYTHON placeholder in define: mode is self-contained — no closing tag.
+                # Anything else is treated as paired so that a marker with neither key
+                # reaches process_python(), which explains the problem properly.
+                if ptype == 'PYTHON' and _python_mode(accumulated) == 'define':
+                    pending_open = None
+                    continue
+
                 terminate_match = regex_module.search(
                     r'_terminate_\s*:\s*["\']?(\w+)["\']?', accumulated
                 )
@@ -3137,10 +3387,12 @@ def _validate_placeholder_structure(content: str, force: bool = False) -> None:
                     if actual == expected_close:
                         skip_until_offset = close_pos + len(expected_close)
                         # Closing tag validated by position — no stack entry needed.
-                    elif force:
+                    elif force or _has_yolo(accumulated):
+                        # _yolo_ accepts manual edits, so the stored length no longer locates
+                        # the closing tag — fall back to structural matching.
                         open_stack.append((ptype, terminator, open_line_num))
                     else:
-                        raise ValueError(
+                        raise IntegrityError(
                             f"Line {open_line_num}: {ptype} placeholder document integrity "
                             "compromised. Closing tag not found at expected position. "
                             "Delete _content_generated_ line to override and accept data loss."
@@ -3155,11 +3407,14 @@ def _validate_placeholder_structure(content: str, force: bool = False) -> None:
 
         # --- Opening tags ---
         if stripped.startswith('<!--'):
-            if match := regex_module.search(r'<!--(TEMPLATE|JINJA2|INCLUDE|TOC)(?:\s|-->|$)', line):
+            if match := regex_module.search(r'<!--(TEMPLATE|JINJA2|INCLUDE|TOC|PYTHON)(?:\s|-->|$)', line):
                 ptype = match.group(1)
 
                 if '-->' in line:
                     # Single-line opening tag
+                    if ptype == 'PYTHON' and _python_mode(line) == 'define':
+                        continue
+
                     terminate_match = regex_module.search(
                         r'_terminate_\s*:\s*["\']?(\w+)["\']?', line
                     )
@@ -3177,10 +3432,10 @@ def _validate_placeholder_structure(content: str, force: bool = False) -> None:
                         actual = content[close_pos:close_pos + len(expected_close)]
                         if actual == expected_close:
                             skip_until_offset = close_pos + len(expected_close)
-                        elif force:
+                        elif force or _has_yolo(line):
                             open_stack.append((ptype, terminator, line_num))
                         else:
-                            raise ValueError(
+                            raise IntegrityError(
                                 f"Line {line_num}: {ptype} placeholder document integrity "
                                 "compromised. Closing tag not found at expected position. "
                                 "Delete _content_generated_ line to override and accept data loss."
@@ -3237,8 +3492,9 @@ def _validate_placeholder_structure(content: str, force: bool = False) -> None:
         raise ValueError('\n'.join(errors))
 
 
-def collect_set_variables(content: str, markdown_dir: Optional[str] = None, force: bool = False) -> dict:
-    """Collect all variables defined by SET, IMPORT, SLURP, SUP, and SIP placeholders.
+def collect_set_variables(content: str, markdown_dir: Optional[str] = None, force: bool = False,
+                          file_path: Optional[str] = None) -> dict:
+    """Collect all variables defined by SET, IMPORT, SLURP, SUP, SIP and PYTHON placeholders.
 
     Variable source placeholders define variables that can be used throughout the document.
     Multiple placeholders are processed in order, and their variables are merged.
@@ -3284,17 +3540,31 @@ def collect_set_variables(content: str, markdown_dir: Optional[str] = None, forc
     Variables are made available for use by subsequent placeholders like MERMAID,
     and for variable references like <!--$variable--> in the document.
 
+    PYTHON example (define: mode — no closing tag, runs in this phase):
+    <!--PYTHON
+    define: "compute_vars.py"
+    source: "data.csv"
+    -->
+
+    Any variable-source placeholder may carry an 'audit:' script hook. Audit scripts
+    run right after the placeholder's variables have been merged, see everything
+    collected so far through ctx.vars, and abort processing by raising.
+
     Args:
         content: Markdown content
         markdown_dir: Optional directory of the markdown file (for resolving relative paths in SIP/SLURP/IMPORT)
+        force: Ignore managed content hash checks during structure validation
+        file_path: Optional path of the markdown file, exposed to scripts as ctx.__FILE__
 
     Returns:
-        Dict of all collected variables from all SET, IMPORT, SLURP, and SIP placeholders
+        Dict of all collected variables from all SET, IMPORT, SLURP, SIP and PYTHON placeholders
 
     Raises:
         ValueError: If a variable is redefined or other configuration errors occur
     """
     import re as regex_module
+
+    from mdship import scripting
 
     # Validate placeholder structure FIRST, before any processing
     _validate_placeholder_structure(content, force=force)
@@ -3310,7 +3580,7 @@ def collect_set_variables(content: str, markdown_dir: Optional[str] = None, forc
 
     # Process variable source placeholders in order they appear
     # Find all SET, IMPORT, SLURP, SIP, SUP placeholders
-    placeholder_pattern = r'<!--(SET|IMPORT|SLURP|SIP|SUP)(.*?)-->'
+    placeholder_pattern = r'<!--(SET|IMPORT|SLURP|SIP|SUP|PYTHON)(.*?)-->'
     all_matches = list(regex_module.finditer(placeholder_pattern, content, regex_module.DOTALL))
 
     for match_idx, match in enumerate(all_matches):
@@ -3369,6 +3639,8 @@ def collect_set_variables(content: str, markdown_dir: Optional[str] = None, forc
 
             # Check for variable redefinition
             for var_name, var_value in config.items():
+                if var_name == scripting.AUDIT_KEY:
+                    continue  # Script hook, not a variable
                 if var_name in variables:
                     raise ValueError(f"Line {line_num}: Variable '{var_name}' is already defined")
                 variables[var_name] = var_value
@@ -3412,6 +3684,28 @@ def collect_set_variables(content: str, markdown_dir: Optional[str] = None, forc
                 if "Line " not in str(e):
                     raise ValueError(f"Line {line_num}: {str(e)}")
                 raise
+
+        elif placeholder_type == "PYTHON":
+            if scripting.DEFINE_KEY not in config:
+                continue  # run: mode — handled in the content phase by process_python()
+            if scripting.RUN_KEY in config:
+                raise ValueError(
+                    f"Line {line_num}: PYTHON placeholder has both 'run' and 'define' — "
+                    "a placeholder is either content-generating or a variable source, not both"
+                )
+            if scripting.TRANSFORM_KEY in config:
+                raise ValueError(
+                    f"Line {line_num}: PYTHON placeholder in define: mode does not support "
+                    "'transform' — variable sources produce no content"
+                )
+            site = _script_site("PYTHON", line_num, markdown_dir, file_path)
+            defined = scripting.run_define(config, site, variables)
+            variables = _merge_variables(variables, defined, line_num)
+
+        # Run the placeholder's audit: hooks once its variables are in place.
+        if scripting.AUDIT_KEY in config:
+            site = _script_site(placeholder_type, line_num, markdown_dir, file_path)
+            scripting.run_audit(config, variables, site)
 
     # Add front-matter variables as $fm
     fm_dict = _extract_front_matter(content)
@@ -3999,7 +4293,9 @@ def _get_files_to_process(from_path: str, include_pattern: str, exclude_pattern:
     return sorted(files)
 
 
-def insert_table_of_contents(content: str, force: bool = False) -> str:
+def insert_table_of_contents(content: str, force: bool = False, markdown_dir: Optional[str] = None,
+                             variables: Optional[dict] = None,
+                             file_path: Optional[str] = None) -> str:
     """Insert or replace table of contents between <!--TOC--> markers.
 
     Configuration is read from YAML inside the marker:
@@ -4018,17 +4314,21 @@ def insert_table_of_contents(content: str, force: bool = False) -> str:
 
     Args:
         content: Markdown content
+        force: Ignore managed content hash checks
+        markdown_dir: Directory of the markdown file (locates .mdship/scripts/ for transform:)
+        variables: Document variables exposed to transform scripts as ctx.vars
+        file_path: Path of the markdown file, exposed to scripts as ctx.__FILE__
 
     Returns:
         Content with TOC updated
 
     Raises:
-        ValueError: If no TOC placeholder is found
+        PlaceholderNotFound: If no TOC placeholder is found
     """
     # Remove trailing spaces from headings
     content = _remove_trailing_spaces_from_headings(content)
 
-    def generate_toc_content(config: dict) -> str:
+    def generate_toc_content(config: dict, line_num: int) -> str:
         """Generate TOC content based on config from placeholder marker."""
         # Get min/max levels from config with defaults
         cfg_min = config.get('min-level')
@@ -4037,7 +4337,9 @@ def insert_table_of_contents(content: str, force: bool = False) -> str:
         effective_min = int(cfg_min) if cfg_min is not None else 1
         effective_max = int(cfg_max) if cfg_max is not None else 6
 
-        return generate_table_of_contents(content, min_level=effective_min, max_level=effective_max)
+        toc = generate_table_of_contents(content, min_level=effective_min, max_level=effective_max)
+        return _apply_transform(toc, config, 'TOC', line_num, markdown_dir,
+                                variables=variables, file_path=file_path)
 
     return _update_placeholder(content, 'TOC', generate_toc_content, force=force)
 

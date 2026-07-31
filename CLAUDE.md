@@ -27,6 +27,8 @@ mdship/
 │   ├── cli.py                 # CLI command dispatcher (typer app)
 │   ├── operations.py          # Application layer: file-level use cases
 │   ├── errors.py              # Typed mdship exceptions
+│   ├── scripting.py           # User scripts: trust gate, loading, ctx, hooks
+│   ├── factory_scripts/       # Bundled scripts installable into a project
 │   ├── markdown.py            # Core markdown manipulation functions
 │   └── mcp_server.py          # MCP server implementation
 │
@@ -34,7 +36,8 @@ mdship/
     ├── __init__.py
     ├── test_markdown.py       # Unit tests for markdown functions
     ├── test_operations.py     # Unit tests for the application layer
-    └── test_update_adapters.py # CLI/MCP adapter and parity tests
+    ├── test_update_adapters.py # CLI/MCP adapter and parity tests
+    └── test_scripting.py      # Trust gate, PYTHON placeholder, hooks, factory scripts
 ```
 
 ---
@@ -208,11 +211,22 @@ Variables can be referenced using:
 
 **Status**: Full implementation with all 5 variable sources, hierarchical names, and YAML parsing
 
+### `process_python(content: str, markdown_dir: str, variables: Optional[dict], force: bool, file_path: Optional[str]) -> str`
+
+Runs `<!--PYTHON run: ...-->` placeholders: calls the script's `run(content, ctx)`
+and writes the returned string as managed content. `define:` mode placeholders are
+handled in the variable phase by `collect_set_variables`. `_yolo_: true` bypasses
+the manual-edit integrity check.
+
+**Status**: Full implementation; see `documentation/PYTHON.md`
+
 ---
 
 ## Placeholder Processing
 
 The `mdship update` command processes placeholders in a specific order to ensure variables are available when needed:
+
+The order is defined in exactly one place: `update_document()` in `operations.py`.
 
 1. **Variable source placeholders** (collected in order they appear) - Define variables for use in subsequent placeholders
    - SET: Define inline with YAML values
@@ -220,6 +234,8 @@ The `mdship update` command processes placeholders in a specific order to ensure
    - SLURP: Extract names and values from files
    - SIP: Extract predefined variables from files
    - SUP: Extract from next document line
+   - PYTHON `define:`: Define variables from a project-local Python script
+   - Each may carry an `audit:` script hook, run once its variables are merged
 
 2. **INCLUDE placeholders** - Insert content from external files
    - Done before variable replacement so variables can be substituted in included content
@@ -228,10 +244,19 @@ The `mdship update` command processes placeholders in a specific order to ensure
    - Variables are NOT replaced inside code blocks (between ``` markers)
    - Safe for including code with `$var` notation
 
-4. **TOC placeholders** - Generate table of contents from headings
+4. **TEMPLATE and JINJA2 placeholders** - Render inline templates with the collected variables
+
+5. **PYTHON `run:` placeholders** - Generate content with a project-local Python script
+   - Before the TOC so generated headings are indexed
+
+6. **TOC placeholders** - Generate table of contents from headings
    - Can include headings from both original and included content
 
-5. **MERMAID placeholders** - Render diagrams with variable substitution
+7. **MERMAID placeholders** - Render diagrams with variable substitution
+
+Content-manager placeholders (INCLUDE, TOC, MERMAID, TEMPLATE, JINJA2) may carry a
+`transform:` script hook that post-processes their generated content. PYTHON does not:
+post-processing belongs inside its `run()` function.
 
 All placeholder types are self-contained: they may be followed by a closing `<!--/NAME-->` marker, but it's optional and ignored.
 
@@ -351,6 +376,9 @@ MCP ──┘
   placeholder phase order. Do not re-implement it in an adapter.
 - Expected conditions are typed exceptions (`PlaceholderNotFound`,
   `IntegrityError`, `FileOperationError`), never message-prefix matching.
+- `scripting.py` owns everything about user scripts: the `trusted_projects` gate,
+  script resolution and loading, the `ctx` object, the hook runners, and factory
+  script provenance. It never writes the allow-list and never changes permissions.
 - Migration status: `update` is migrated (see `REFACTOR-2026-07-30.md`, phases 1
   and 2). The other commands still call `markdown.py` directly from the adapters.
 

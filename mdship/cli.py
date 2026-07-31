@@ -106,6 +106,8 @@ def _write_options() -> "WriteOptions":
 
 def _render_result(result: "OperationResult") -> bool:
     """Render an operation result. Returns True when the document was written."""
+    for notice in result.notices:
+        err.print(f"[dim]•[/dim] {escape(notice)}")
     if not result.changed:
         err.print(f"[dim]↔[/dim] {result.path}: already up to date")
         return False
@@ -754,3 +756,178 @@ def mcp() -> None:
     from mdship.mcp_server import main as mcp_main
 
     mcp_main()
+
+
+scripts_app = typer.Typer(
+    help="Manage the project's Python scripts in .mdship/scripts/",
+    context_settings={"help_option_names": ["-h", "--help"]},
+)
+app.add_typer(scripts_app, name="scripts")
+
+
+def _project_root() -> Path:
+    """Locate the project root for the scripts commands, defaulting to cwd."""
+    from mdship.scripting import find_project_root
+
+    return find_project_root(Path.cwd()) or Path.cwd()
+
+
+def _trust_instructions(project: Path) -> str:
+    from mdship.scripting import trusted_projects_path
+
+    return (
+        "To enable script execution for this project, add its path to your "
+        "trusted_projects file:\n\n"
+        f"    {trusted_projects_path()}               (Unix/macOS)\n"
+        "    %USERPROFILE%\\.mdship\\trusted_projects   (Windows)\n\n"
+        "Add this line:\n"
+        f"    {project}\n\n"
+        "Then lock the file:\n"
+        "    Unix:    chmod 444 ~/.mdship/trusted_projects\n"
+        "    Windows: attrib +R %USERPROFILE%\\.mdship\\trusted_projects"
+    )
+
+
+@scripts_app.command("init")
+def scripts_init() -> None:
+    """Create .mdship/scripts/ and explain how to enable script execution."""
+    from mdship.scripting import scripts_dir
+
+    project = Path.cwd()
+    directory = scripts_dir(project)
+    if directory.is_dir():
+        err.print(f"[dim]↔[/dim] {directory} already exists")
+    else:
+        directory.mkdir(parents=True, exist_ok=True)
+        err.print(f"[green]✓[/green] Created {directory}")
+
+    err.print()
+    err.print(escape(_trust_instructions(project)))
+    err.print()
+    err.print("[dim]mdship never creates or modifies trusted_projects itself.[/dim]")
+
+
+@scripts_app.command("list")
+def scripts_list() -> None:
+    """Show factory scripts, their install status, and the project's own scripts."""
+    from mdship.scripting import factory_scripts, installed_scripts, script_status
+
+    project = _project_root()
+    factory = factory_scripts()
+
+    err.print("[bold]Factory scripts:[/bold]")
+    if not factory:
+        err.print("  [dim](none bundled)[/dim]")
+    width = max((len(name) for name in factory), default=0)
+    for name in factory:
+        status = script_status(project, name, factory)
+        if not status.installed:
+            label = "[dim]not installed[/dim]"
+        elif not status.tracked:
+            label = "[yellow]present, not installed by mdship[/yellow]"
+        else:
+            parts = []
+            if status.modified:
+                parts.append("[yellow]locally modified[/yellow]")
+            if status.factory_newer:
+                parts.append("[cyan]newer factory version available[/cyan]")
+            label = " + ".join(parts) if parts else "[green]installed, up to date[/green]"
+        err.print(f"  {name.ljust(width)}   {label}")
+
+    custom = [name for name in installed_scripts(project) if name not in factory]
+    err.print()
+    err.print("[bold]Custom scripts:[/bold]")
+    if custom:
+        for name in custom:
+            err.print(f"  {name}")
+    else:
+        err.print("  [dim](none)[/dim]")
+
+
+@scripts_app.command("install")
+def scripts_install(
+    names: Annotated[list[str], typer.Argument(help="Factory script file name(s)")] = [],
+    all_: Annotated[bool, typer.Option("--all", help="Install every factory script")] = False,
+    force: Annotated[bool, typer.Option("--force", "-f", help="Replace an existing script and its .meta")] = False,
+) -> None:
+    """Copy factory scripts into .mdship/scripts/ and record their provenance."""
+    from mdship.scripting import factory_scripts, install_factory_script
+
+    factory = factory_scripts()
+    targets = list(factory) if all_ else names
+    if not targets:
+        err.print("[red]Error:[/red] name a script to install, or use --all")
+        raise typer.Exit(1)
+
+    project = _project_root()
+    errors: list[tuple[Path, str]] = []
+    for name in targets:
+        outcome = install_factory_script(project, name, _VERSION, force=force)
+        if outcome == "installed":
+            err.print(f"[green]✓[/green] Installed {name}")
+        elif outcome == "replaced":
+            err.print(f"[green]✓[/green] Replaced {name} with the factory version")
+        elif outcome == "exists":
+            err.print(
+                f"[yellow]⚠[/yellow]  {name} already exists — "
+                "use 'scripts update' to refresh it, or 'scripts install --force' to replace it"
+            )
+        else:
+            err.print(f"[red]Error:[/red] no factory script named {name}")
+            errors.append((Path(name), "unknown factory script"))
+    _exit_if_errors(errors)
+
+
+@scripts_app.command("update")
+def scripts_update(
+    names: Annotated[list[str], typer.Argument(help="Factory script file name(s)")] = [],
+    all_: Annotated[bool, typer.Option("--all", help="Update every installed factory script")] = False,
+) -> None:
+    """Refresh unmodified factory scripts from this mdship version."""
+    from mdship.scripting import factory_scripts, update_factory_script
+
+    factory = factory_scripts()
+    targets = list(factory) if all_ else names
+    if not targets:
+        err.print("[red]Error:[/red] name a script to update, or use --all")
+        raise typer.Exit(1)
+
+    project = _project_root()
+    errors: list[tuple[Path, str]] = []
+    for name in targets:
+        outcome = update_factory_script(project, name, _VERSION)
+        if outcome == "updated":
+            err.print(f"[green]✓[/green] Updated {name}")
+        elif outcome == "up_to_date":
+            err.print(f"[dim]↔[/dim] {name}: already up to date")
+        elif outcome == "modified":
+            err.print(
+                f"[yellow]⚠[/yellow]  {name}: locally modified — not touched. "
+                "Use 'scripts install --force' to discard local changes"
+            )
+        elif outcome == "untracked":
+            err.print(
+                f"[yellow]⚠[/yellow]  {name}: no .meta file, so it was not installed by mdship — "
+                "not touched"
+            )
+        elif outcome == "not_installed":
+            if not all_:
+                err.print(f"[yellow]⚠[/yellow]  {name}: not installed — use 'scripts install {name}'")
+        else:
+            err.print(f"[red]Error:[/red] no factory script named {name}")
+            errors.append((Path(name), "unknown factory script"))
+    _exit_if_errors(errors)
+
+
+@scripts_app.command("check")
+def scripts_check() -> None:
+    """Verify that script execution is enabled for this project. Exits 1 if not."""
+    from mdship.scripting import trust_status
+
+    project = _project_root()
+    ok, message = trust_status(project)
+    if ok:
+        print(f"OK: script execution enabled for this project ({project})")
+        return
+    err.print(f"[red]ERROR:[/red] {escape(message)}")
+    raise typer.Exit(1)

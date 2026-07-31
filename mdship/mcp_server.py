@@ -55,12 +55,15 @@ def _serialize_result(result: OperationResult) -> str:
     """Render an OperationResult as an MCP tool response string."""
     artifacts = ", ".join(a.name for a in result.artifacts)
     if not result.changed:
+        message = f"OK: {result.path} already up to date"
         if artifacts:
-            return f"OK: {result.path} already up to date; diagram(s) regenerated: {artifacts}"
-        return f"OK: {result.path} already up to date"
-    message = f"OK: processed {result.path}"
-    if artifacts:
-        message += f"; diagram(s) regenerated: {artifacts}"
+            message += f"; diagram(s) regenerated: {artifacts}"
+    else:
+        message = f"OK: processed {result.path}"
+        if artifacts:
+            message += f"; diagram(s) regenerated: {artifacts}"
+    for notice in result.notices:
+        message += f"\n{notice}"
     return message
 
 
@@ -225,7 +228,8 @@ def main() -> None:
         """
         from mdship.markdown import insert_table_of_contents
         p, content = _read(path)
-        _write(p, insert_table_of_contents(content), backup)
+        _write(p, insert_table_of_contents(
+            content, markdown_dir=str(p.parent), file_path=path), backup)
         return f"OK: processed {path}"
 
     @server.tool()
@@ -238,7 +242,7 @@ def main() -> None:
         """
         from mdship.markdown import update_includes
         p, content = _read(path)
-        _write(p, update_includes(content, str(p.parent)), backup)
+        _write(p, update_includes(content, str(p.parent), file_path=path), backup)
         return f"OK: processed {path}"
 
     @server.tool()
@@ -251,7 +255,7 @@ def main() -> None:
         """
         from mdship.markdown import update_mermaid
         p, content = _read(path)
-        _write(p, update_mermaid(content, str(p.parent)), backup)
+        _write(p, update_mermaid(content, str(p.parent), file_path=path), backup)
         return f"OK: processed {path}"
 
     server.tool()(update)
