@@ -781,6 +781,151 @@ def ai_check_placeholders(content: str, name: Optional[str] = None,
     return errors
 
 
+def list_ai_placeholders(content: str, markdown_dir: Optional[str] = None) -> list:
+    """List every AI placeholder with its name, line, and a cheap status —
+    no generated content or dep bodies are read or returned.
+
+    Discovery primitive, like list_headings: call this first to find which
+    AI placeholders exist and which need attention, instead of reading the
+    whole document. Follow up with ai_context (by `name`, or by `line` for
+    unnamed placeholders) to fetch what's needed to regenerate one.
+
+    Args:
+        content: Markdown content
+        markdown_dir: Directory of the markdown file, for resolving brief/dep
+                      paths to check their checksums. Without it, brief/dep
+                      changes can't be detected and are ignored.
+
+    Returns a list of dicts in document order, each:
+        {'name': str | None, 'line': int, 'status': str}
+    `name` is None for an unnamed placeholder — address it by `line` instead.
+    `status` is one of:
+        'never_generated' — no _content_generated_ recorded yet (cold start)
+        'edited'          — managed content changed since the last generation;
+                            ai_fix must be run before regenerating
+        'needs_update'    — an input (prompt/brief/dep) changed since generation
+        'may_need_update' — every recorded checksum matches, but no deps: are
+                            declared, so referenced files can't be verified
+        'up_to_date'      — every recorded checksum matches
+    """
+    placeholders = _find_ai_placeholders(content)
+    results = []
+
+    for ph in placeholders:
+        config = ph['config']
+        name = config.get('name')
+        line = content[:ph['match_start']].count('\n') + 1
+
+        stored_entry = config.get(_CONTENT_GENERATED_KEY)
+        if stored_entry is None:
+            results.append({'name': name, 'line': line, 'status': 'never_generated'})
+            continue
+
+        if ph['length_ok'] is False:
+            results.append({'name': name, 'line': line, 'status': 'edited'})
+            continue
+
+        stored_hash = _parse_stored_hash(stored_entry)
+        if stored_hash is not None:
+            current_body = content[ph['start_pos']:ph['end_pos']]
+            _, current_hash = _compute_content_hash(current_body)
+            if current_hash != stored_hash:
+                results.append({'name': name, 'line': line, 'status': 'edited'})
+                continue
+
+        needs_update = False
+
+        stored_prompt_cs = config.get(_PROMPT_CHECKSUM_KEY)
+        if stored_prompt_cs:
+            stored_phash = str(stored_prompt_cs).replace('md5:', '').strip()
+            prompt_text = str(config.get('prompt', '') or '')
+            if hashlib.md5(prompt_text.encode('utf-8')).hexdigest() != stored_phash:
+                needs_update = True
+        else:
+            needs_update = True  # Cold start on the prompt checksum specifically.
+
+        brief_path = config.get('brief')
+        if brief_path and isinstance(brief_path, str) and markdown_dir:
+            stored_brief_cs = config.get(_BRIEF_CHECKSUM_KEY)
+            if stored_brief_cs:
+                stored_bhash = str(stored_brief_cs).replace('md5:', '').strip()
+                try:
+                    if _compute_brief_checksum(brief_path, markdown_dir) != stored_bhash:
+                        needs_update = True
+                except ValueError:
+                    needs_update = True
+            else:
+                needs_update = True
+
+        deps = config.get('deps', []) or []
+        if deps and isinstance(deps, list) and markdown_dir:
+            for dep in deps:
+                if not isinstance(dep, dict):
+                    continue
+                stored_dep_cs = dep.get('checksum')
+                if not stored_dep_cs:
+                    needs_update = True
+                    continue
+                stored_cs_hex = str(stored_dep_cs).replace('md5:', '').strip()
+                try:
+                    if _compute_dep_checksum(dep, markdown_dir) != stored_cs_hex:
+                        needs_update = True
+                except ValueError:
+                    needs_update = True
+
+        if needs_update:
+            status = 'needs_update'
+        elif not deps:
+            status = 'may_need_update'
+        else:
+            status = 'up_to_date'
+        results.append({'name': name, 'line': line, 'status': status})
+
+    return results
+
+
+_AI_COMMENT_RE = re.compile(r'^\s*//AI:\s*(.*)$')
+
+
+def list_ai_comments(content: str) -> list:
+    """List every `//AI:` inline review-comment line, with its line number and text.
+
+    `//AI:` is the ai-review/ai-fix convention for a human- or agent-inserted
+    review annotation sitting on its own line (see the ai-review/ai-fix
+    skills). This is a discovery primitive, like list_headings/
+    list_ai_placeholders: call it to find every such annotation without
+    reading the whole document. Follow up with get_lines or get_paragraphs
+    (using the reported `line`) to fetch the annotation and its surrounding
+    content before acting on it.
+
+    A multi-line comment (consecutive `//AI:`-prefixed lines) is returned as
+    separate entries, one per physical line, in document order. Lines inside
+    fenced code blocks are skipped (e.g. documentation showing the syntax as
+    an example).
+
+    Args:
+        content: Markdown content
+
+    Returns a list of dicts in document order, each: {'line': int, 'text': str}
+    `text` is the comment content after the '//AI:' marker, trimmed.
+    """
+    lines = content.split("\n")
+    results = []
+    in_code_block = False
+
+    for i, line in enumerate(lines, 1):
+        if line.strip().startswith("```"):
+            in_code_block = not in_code_block
+            continue
+        if in_code_block:
+            continue
+        match = _AI_COMMENT_RE.match(line)
+        if match:
+            results.append({'line': i, 'text': match.group(1).strip()})
+
+    return results
+
+
 def ai_check_and_get_context(content: str, name_or_line: str, markdown_dir: str) -> dict:
     """Check AI placeholder state and return context for the MCP ai_context tool.
 
@@ -1261,42 +1406,66 @@ def fix_heading_levels(content: str) -> str:
     """Fix heading levels to ensure consistent hierarchy.
 
     Ensures headings follow proper nesting (no skipping from h1 to h3, etc).
-    Parses markdown to AST for accurate analysis.
+    Works line-by-line, like shift_heading_levels/add_heading_numbers, so it
+    only rewrites the leading '#' run of each out-of-sequence heading —
+    every other line, including list-continuation indentation, blank lines,
+    and inline formatting, is left byte-for-byte unchanged. Skips YAML
+    front-matter, fenced code blocks, and HTML comments (mdship placeholder
+    bodies included), so a '#' YAML comment inside a <!--SET--> block, say,
+    is never mistaken for a heading.
     """
-    from markdown_it import MarkdownIt
-
     lines = content.split("\n")
 
-    # Find and preserve YAML front-matter
     fm_end = None
-    fm_lines = []
     if lines and lines[0] == "---":
         for i in range(1, len(lines)):
             if lines[i] == "---":
                 fm_end = i
                 break
 
-    if fm_end is not None:
-        fm_lines = lines[: fm_end + 1]
-        content_to_parse = "\n".join(lines[fm_end + 1 :])
-    else:
-        content_to_parse = content
+    heading_lines = []  # [(line_index, old_level), ...]
+    in_code_block = False
+    in_html_comment = False
 
-    # Parse markdown to AST
-    md = MarkdownIt()
-    tokens = md.parse(content_to_parse)
+    for i, line in enumerate(lines):
+        if fm_end is not None and i <= fm_end:
+            continue
 
-    # Analyze and fix heading levels
-    fixed_tokens = _fix_heading_levels_in_tokens(tokens)
+        if line.startswith("```"):
+            in_code_block = not in_code_block
 
-    # Render back to markdown
-    rendered = _tokens_to_markdown(fixed_tokens)
+        was_in_html_comment = in_html_comment
+        if in_html_comment:
+            if "-->" in line:
+                in_html_comment = False
+        else:
+            open_pos = line.find("<!--")
+            if open_pos >= 0 and line.find("-->", open_pos + 4) < 0:
+                in_html_comment = True
 
-    # Add back front-matter if present
-    if fm_lines:
-        return "\n".join(fm_lines) + "\n" + rendered
-    else:
-        return rendered
+        match = re.match(r"^(#{1,6})\s+(.+)$", line)
+        if match and not in_code_block and not was_in_html_comment:
+            heading_lines.append((i, len(match.group(1))))
+
+    if not heading_lines:
+        return content
+
+    # Sequentially fix skips (e.g. h1 -> h3), same rule as before: a jump of
+    # more than one level is clamped to last_level + 1; going up or staying
+    # level is always left alone. The first heading is never adjusted.
+    last_level = heading_lines[0][1]
+    new_levels = {}
+    for line_idx, old_level in heading_lines:
+        new_level = last_level + 1 if old_level > last_level + 1 else old_level
+        new_level = max(1, min(new_level, 6))
+        new_levels[line_idx] = new_level
+        last_level = new_level
+
+    for line_idx, new_level in new_levels.items():
+        match = re.match(r"^#{1,6}(\s+.+)$", lines[line_idx])
+        lines[line_idx] = "#" * new_level + match.group(1)
+
+    return "\n".join(lines)
 
 
 def shift_heading_levels(content: str, levels: int, start_line: Optional[int] = None, end_line: Optional[int] = None) -> str:
@@ -1446,6 +1615,67 @@ def _shift_heading_tokens(tokens: list, levels: int, start_line: Optional[int] =
     return result
 
 
+_FIND_REPLACE_FLAGS = {'i': re.IGNORECASE, 'm': re.MULTILINE, 's': re.DOTALL, 'x': re.VERBOSE}
+
+
+def find_replace(content: str, pattern: str, replacement: str,
+                  start_line: Optional[int] = None, end_line: Optional[int] = None,
+                  count: int = 0, flags: str = "") -> str:
+    """Replace regex matches in content, skipping fenced code blocks.
+
+    Matches are found against the whole document (so a pattern may span
+    lines), but each match is only applied if the line it starts on falls
+    inside `start_line`:`end_line` and outside a fenced code block.
+
+    Args:
+        content: Markdown content
+        pattern: Regex pattern to search for
+        replacement: Replacement text; supports backreferences (\\1, \\g<name>)
+        start_line: Optional starting line (1-based, inclusive)
+        end_line: Optional ending line (1-based, inclusive)
+        count: Maximum number of replacements to apply; 0 means unlimited
+        flags: Any combination of 'i' (IGNORECASE), 'm' (MULTILINE),
+               's' (DOTALL), 'x' (VERBOSE)
+
+    Raises:
+        ValueError: If `pattern` is not a valid regex, `flags` contains an
+                    unsupported letter, or `replacement` uses a bad backreference.
+    """
+    re_flags = 0
+    for ch in flags:
+        if ch not in _FIND_REPLACE_FLAGS:
+            raise ValueError(f"Unknown regex flag: {ch!r}. Supported: i, m, s, x")
+        re_flags |= _FIND_REPLACE_FLAGS[ch]
+
+    try:
+        compiled = re.compile(pattern, re_flags)
+    except re.error as e:
+        raise ValueError(f"Invalid regex pattern: {e}")
+
+    applied = 0
+
+    def _replace(match: "re.Match") -> str:
+        nonlocal applied
+        if count and applied >= count:
+            return match.group(0)
+        if _is_in_code_block(content, match.start()):
+            return match.group(0)
+        if start_line is not None or end_line is not None:
+            line_num = content.count('\n', 0, match.start()) + 1
+            if start_line is not None and line_num < start_line:
+                return match.group(0)
+            if end_line is not None and line_num > end_line:
+                return match.group(0)
+
+        applied += 1
+        try:
+            return match.expand(replacement)
+        except re.error as e:
+            raise ValueError(f"Invalid replacement: {e}")
+
+    return compiled.sub(_replace, content)
+
+
 def add_content_checksum(content: str, algorithm: str = "sha256") -> str:
     """Add or update checksum in front-matter.
 
@@ -1500,6 +1730,97 @@ def add_content_checksum(content: str, algorithm: str = "sha256") -> str:
 
     result = ["---"] + fm_lines + ["---"] + lines[end_idx + 1 :]
     return "\n".join(result)
+
+
+def _split_front_matter(content: str) -> Tuple[dict, str]:
+    """Split content into (front_matter_dict, body).
+
+    Returns ({}, content) unchanged when there is no YAML front-matter block.
+    Raises ValueError if a front-matter block is opened but never closed, or
+    its YAML cannot be parsed.
+    """
+    if not yaml:
+        raise ValueError("PyYAML is required for front-matter operations")
+
+    lines = content.split("\n")
+    if not lines or lines[0] != "---":
+        return {}, content
+
+    end_idx = None
+    for i in range(1, len(lines)):
+        if lines[i] == "---":
+            end_idx = i
+            break
+    if end_idx is None:
+        raise ValueError("Front-matter block opened with '---' but never closed")
+
+    fm_text = "\n".join(lines[1:end_idx])
+    try:
+        fm_dict = yaml.safe_load(fm_text) if fm_text.strip() else {}
+    except yaml.YAMLError as e:
+        raise ValueError(f"Malformed YAML front-matter: {e}")
+    if not isinstance(fm_dict, dict):
+        raise ValueError("Front-matter must be a YAML mapping")
+
+    return fm_dict, "\n".join(lines[end_idx + 1:])
+
+
+def _join_front_matter(fm_dict: dict, body: str) -> str:
+    """Rebuild content with fm_dict serialized as a YAML front-matter block.
+
+    Returns body unchanged when fm_dict is empty, so clearing the last
+    front-matter key removes the block entirely.
+    """
+    if not fm_dict:
+        return body
+    fm_yaml = yaml.dump(fm_dict, default_flow_style=False, sort_keys=False, allow_unicode=True)
+    return "---\n" + fm_yaml + "---\n" + body
+
+
+def get_front_matter_value(content: str, key: Optional[str] = None) -> any:
+    """Return one value from YAML front-matter, or the whole front-matter dict.
+
+    Args:
+        content: Markdown content
+        key: Dot-notation path (e.g. "author.name"). If None, returns the
+             entire front-matter dict.
+
+    Raises:
+        ValueError: If the document has no front-matter, or `key` is not found.
+    """
+    fm_dict, _ = _split_front_matter(content)
+    if not fm_dict:
+        raise ValueError("Document has no YAML front-matter")
+    if key is None:
+        return fm_dict
+
+    current = fm_dict
+    for part in key.split('.'):
+        if isinstance(current, dict) and part in current:
+            current = current[part]
+        else:
+            raise ValueError(f"Front-matter key not found: {key!r}")
+    return current
+
+
+def set_front_matter_value(content: str, key: str, value: any) -> str:
+    """Set one value in YAML front-matter using dot notation, creating the
+    front-matter block and any intermediate mapping levels as needed.
+
+    Args:
+        content: Markdown content
+        key: Dot-notation path (e.g. "author.name")
+        value: Value to set at the leaf (any YAML-serializable Python value)
+
+    Raises:
+        ValueError: If `key` is empty, or an intermediate level along the
+                    path already exists as a scalar value.
+    """
+    if not key:
+        raise ValueError("key must not be empty")
+    fm_dict, body = _split_front_matter(content)
+    _set_nested_value(fm_dict, key, value)
+    return _join_front_matter(fm_dict, body)
 
 
 def update_tracking(content: str, operation: str) -> str:
@@ -1742,53 +2063,6 @@ def _unnumber_heading_tokens(tokens: list, start_line: Optional[int] = None, end
                 content = re.sub(r"^\d+ ", "", content)               # "1 " pattern
                 token.content = content
 
-        result.append(token)
-
-    return result
-
-
-def _fix_heading_levels_in_tokens(tokens: list) -> list:
-    """Fix heading levels in tokens to ensure consistent hierarchy.
-
-    Ensures no skipping of levels (h1 -> h2 -> h3, not h1 -> h3).
-    """
-    # First pass: identify all headings and their token indices
-    heading_indices = []
-    for i, token in enumerate(tokens):
-        if token.type == "heading_open":
-            level = int(token.tag[1])  # h1 -> 1, h2 -> 2, etc
-            heading_indices.append((i, level))
-
-    if not heading_indices:
-        return tokens
-
-    # Second pass: determine new level for each heading sequentially
-    level_adjustments = {}  # Map token_index -> new_level
-    last_level = heading_indices[0][1]  # Start with first heading's level
-
-    for idx, (token_idx, old_level) in enumerate(heading_indices):
-        if old_level > last_level + 1:
-            # Skip detected (e.g., h1 -> h3), adjust to last_level + 1
-            new_level = last_level + 1
-        elif old_level < last_level:
-            # Going back up is allowed
-            new_level = old_level
-        else:
-            # Normal progression or same level
-            new_level = old_level
-
-        # Cap at h6 and keep at least h1
-        new_level = max(1, min(new_level, 6))
-
-        level_adjustments[token_idx] = new_level
-        last_level = new_level
-
-    # Third pass: apply level corrections to tokens
-    result = []
-    for i, token in enumerate(tokens):
-        if token.type == "heading_open" and i in level_adjustments:
-            new_level = level_adjustments[i]
-            token.tag = f"h{new_level}"
         result.append(token)
 
     return result
@@ -2228,6 +2502,442 @@ def remove_heading_numbers(content: str, start_line: Optional[int] = None, end_l
 
         result.append(line)
 
+    return "\n".join(result)
+
+
+def _find_headings(content: str) -> list:
+    """Return document headings as dicts with level, numbering-stripped text,
+    and 1-based line number.
+
+    Works line-by-line, like add_heading_numbers/remove_heading_numbers, and
+    skips headings inside fenced code blocks or HTML comments.
+    """
+    lines = content.split("\n")
+    headings = []
+    in_code_block = False
+    in_html_comment = False
+
+    for line_num, line in enumerate(lines, 1):
+        if line.startswith("```"):
+            in_code_block = not in_code_block
+
+        was_in_html_comment = in_html_comment
+        if in_html_comment:
+            if "-->" in line:
+                in_html_comment = False
+        else:
+            open_pos = line.find("<!--")
+            if open_pos >= 0 and line.find("-->", open_pos + 4) < 0:
+                in_html_comment = True
+
+        if in_code_block or was_in_html_comment:
+            continue
+
+        level, text = _normalize_heading(line)
+        if level is not None:
+            headings.append({"level": level, "text": text, "line": line_num})
+
+    return headings
+
+
+def _heading_ancestor_paths(headings: list) -> list:
+    """Return, for each heading, the list of titles from its top-level ancestor
+    down to itself, based on heading level nesting."""
+    stack = []  # [(level, text), ...]
+    paths = []
+    for h in headings:
+        while stack and stack[-1][0] >= h["level"]:
+            stack.pop()
+        paths.append([t for _, t in stack] + [h["text"]])
+        stack.append((h["level"], h["text"]))
+    return paths
+
+
+def _resolve_section(content: str, heading: str, occurrence: int = 1) -> Tuple[int, int]:
+    """Locate one section's line span by heading title or ancestor path.
+
+    `heading` is matched case-insensitively against a heading's title, with
+    numbering prefixes ignored. Use " > " to disambiguate a title that repeats
+    under different parents, e.g. "Setup > Prerequisites" — only headings
+    whose immediate ancestors end with that path match. `occurrence` (1-based)
+    selects among several matches, in document order.
+
+    Returns (start_line, end_line_exclusive), both 1-based; end_line_exclusive
+    is the line of the next heading at the same or a shallower level, or
+    len(lines) + 1 at the end of the document.
+    """
+    headings = _find_headings(content)
+    if not headings:
+        raise ValueError("No headings found in document")
+
+    target = [seg.strip().lower() for seg in heading.split(">")]
+    if any(not seg for seg in target):
+        raise ValueError(f"Invalid heading path: {heading!r}")
+
+    paths = _heading_ancestor_paths(headings)
+    matches = [
+        i for i, path in enumerate(paths)
+        if len(path) >= len(target)
+        and [p.lower() for p in path[-len(target):]] == target
+    ]
+
+    if not matches:
+        raise ValueError(f"Heading not found: {heading!r}")
+    if occurrence < 1 or occurrence > len(matches):
+        raise ValueError(
+            f"Heading {heading!r} matched {len(matches)} time(s); "
+            f"occurrence {occurrence} is out of range"
+        )
+
+    idx = matches[occurrence - 1]
+    level = headings[idx]["level"]
+    start_line = headings[idx]["line"]
+
+    end_line_exclusive = len(content.split("\n")) + 1
+    for later in headings[idx + 1:]:
+        if later["level"] <= level:
+            end_line_exclusive = later["line"]
+            break
+
+    return start_line, end_line_exclusive
+
+
+def list_headings(content: str) -> list:
+    """List every heading in the document with its level, line number, and
+    ancestor path.
+
+    Discovery primitive: call this first to find the exact `heading` argument
+    for get_section/replace_section, or the line numbers for
+    insert_lines/delete_lines, instead of guessing the document's structure.
+
+    Returns a list of dicts in document order, each:
+        {'level': int, 'text': str, 'line': int, 'path': str}
+    `path` is the " > "-joined ancestor path including this heading — usable
+    directly as the `heading` argument of get_section / replace_section.
+    """
+    headings = _find_headings(content)
+    paths = _heading_ancestor_paths(headings)
+    return [
+        {'level': h['level'], 'text': h['text'], 'line': h['line'], 'path': ' > '.join(p)}
+        for h, p in zip(headings, paths)
+    ]
+
+
+def get_section(content: str, heading: str, occurrence: int = 1) -> str:
+    """Return the text of one section: its heading line through the line
+    before the next heading at the same or a shallower level (or the end of
+    the document).
+
+    See _resolve_section for how `heading` and `occurrence` are matched; use
+    list_headings first if you don't already know the exact heading text/path.
+    """
+    start_line, end_line_exclusive = _resolve_section(content, heading, occurrence)
+    lines = content.split("\n")
+    return "\n".join(lines[start_line - 1:end_line_exclusive - 1])
+
+
+def replace_section(content: str, heading: str, new_content: str, occurrence: int = 1) -> str:
+    """Replace one section — its heading line through the line before the next
+    heading at the same or a shallower level — with `new_content`.
+
+    `new_content` replaces the whole span that get_section would return,
+    including the heading line; include a heading line in `new_content` to
+    keep the section headed. See _resolve_section for how `heading` and
+    `occurrence` are matched.
+
+    Changing only a few lines inside a large section? get_section + this
+    function round-trip the whole section text through the caller just to
+    change a fraction of it. insert_lines/delete_lines edit by line number
+    instead, at the cost of losing the heading-based safety net (they don't
+    know where sections start or end) — use list_headings/get_section first
+    to find the right line numbers.
+    """
+    start_line, end_line_exclusive = _resolve_section(content, heading, occurrence)
+    lines = content.split("\n")
+    new_lines = new_content.rstrip("\n").split("\n")
+    result = lines[:start_line - 1] + new_lines + lines[end_line_exclusive - 1:]
+    return "\n".join(result)
+
+
+def get_lines(content: str, start_line: int, end_line: int) -> str:
+    """Return lines `start_line`:`end_line` (1-based, inclusive) verbatim.
+
+    Read-only primitive for fetching a small, known slice of a document
+    without reading the whole file — the counterpart to insert_lines /
+    delete_lines. No heading, code-block, or table awareness.
+
+    Raises ValueError if the range is outside 1..len(lines) or start_line > end_line.
+    """
+    lines = content.split("\n")
+    if start_line < 1 or end_line > len(lines) or start_line > end_line:
+        raise ValueError(
+            f"invalid line range {start_line}:{end_line} (document has {len(lines)} line(s))"
+        )
+    return "\n".join(lines[start_line - 1:end_line])
+
+
+def insert_lines(content: str, after_line: int, text: str) -> str:
+    """Insert `text` as new lines after `after_line` (primitive line-editing tool).
+
+    `after_line` is 1-based; 0 inserts at the very start of the document, and
+    len(content's lines) appends at the very end. `text` is split on newlines
+    and inserted verbatim, with no heading, code-block, or table awareness.
+
+    This is the low-level tool for edits with no heading to anchor on, or
+    for adding a few lines inside a section without resending the whole
+    section through replace_section. Prefer replace_section when a heading
+    anchor is available. Call list_headings or get_section first to find a
+    safe line number — a raw line number can land inside a fenced code block
+    or a table row.
+
+    Raises ValueError if `after_line` is outside 0..len(lines).
+    """
+    lines = content.split("\n")
+    if after_line < 0 or after_line > len(lines):
+        raise ValueError(
+            f"after_line {after_line} is out of range: document has {len(lines)} line(s), "
+            f"valid range is 0..{len(lines)}"
+        )
+    new_lines = text.rstrip("\n").split("\n")
+    result = lines[:after_line] + new_lines + lines[after_line:]
+    return "\n".join(result)
+
+
+def delete_lines(content: str, start_line: int, end_line: int) -> str:
+    """Delete lines `start_line`:`end_line` (1-based, inclusive) — primitive
+    line-editing tool.
+
+    No heading, code-block, or table awareness: this removes exactly those
+    line numbers, whatever they contain. This is the low-level tool for
+    removing a few lines with no heading to anchor on, or trimming part of a
+    section without resending the rest through replace_section. Prefer
+    replace_section when a heading anchor is available. Call list_headings or
+    get_section first to find safe line numbers — a raw line range can split
+    a fenced code block or a table.
+
+    Raises ValueError if the range is outside 1..len(lines) or start_line > end_line.
+    """
+    lines = content.split("\n")
+    if start_line < 1 or end_line > len(lines) or start_line > end_line:
+        raise ValueError(
+            f"invalid line range {start_line}:{end_line} (document has {len(lines)} line(s))"
+        )
+    result = lines[:start_line - 1] + lines[end_line:]
+    return "\n".join(result)
+
+
+def _find_paragraph_spans(content: str) -> list:
+    """Return every paragraph's (start_line, end_line) span, 1-based inclusive.
+
+    A paragraph is a maximal run of non-blank lines. A fenced code block is
+    kept intact as a single paragraph even if it contains blank lines.
+    """
+    lines = content.split("\n")
+    spans = []
+    in_code_block = False
+    para_start = None
+
+    for i, line in enumerate(lines, 1):
+        if line.strip().startswith("```"):
+            in_code_block = not in_code_block
+
+        is_blank = not in_code_block and line.strip() == ""
+
+        if is_blank:
+            if para_start is not None:
+                spans.append((para_start, i - 1))
+                para_start = None
+        elif para_start is None:
+            para_start = i
+
+    if para_start is not None:
+        spans.append((para_start, len(lines)))
+
+    return spans
+
+
+def get_paragraphs(content: str, start_line: int, end_line: int) -> str:
+    """Return the paragraph(s) overlapping `start_line`:`end_line`, expanded
+    to full paragraph boundaries.
+
+    A paragraph is a maximal run of non-blank lines (a fenced code block is
+    kept intact even if it contains blank lines). `start_line` may fall
+    before or inside the first paragraph to return; `end_line` may fall
+    inside or after the last one — both are 1-based. Returns the whole span
+    from the start of the first matching paragraph through the end of the
+    last matching one, verbatim, including any blank lines and other
+    paragraphs in between.
+
+    Content-oriented primitive: lets an agent fetch "the paragraph(s) around
+    line N" without knowing exact paragraph boundaries in advance, and
+    without reading the whole file — pair it with find_replace or a
+    line-number hit from list_ai_comments to fetch just the surrounding text.
+
+    Raises ValueError if the range is outside 1..len(lines), start_line >
+    end_line, the document has no paragraphs, or no paragraph overlaps the range.
+    """
+    lines = content.split("\n")
+    if start_line < 1 or end_line > len(lines) or start_line > end_line:
+        raise ValueError(
+            f"invalid line range {start_line}:{end_line} (document has {len(lines)} line(s))"
+        )
+
+    spans = _find_paragraph_spans(content)
+    if not spans:
+        raise ValueError("No paragraphs found in document")
+
+    first = next((s for s in spans if s[1] >= start_line), None)
+    last = next((s for s in reversed(spans) if s[0] <= end_line), None)
+
+    if first is None or last is None or first[0] > last[1]:
+        raise ValueError(f"No paragraph overlaps line range {start_line}:{end_line}")
+
+    return "\n".join(lines[first[0] - 1:last[1]])
+
+
+def _split_table_row(line: str) -> list:
+    """Split a GFM pipe-table row into cell strings, honoring escaped pipes (\\|)
+    and optional leading/trailing pipes."""
+    placeholder = "\x00"
+    protected = line.strip().replace("\\|", placeholder)
+    cells = protected.split("|")
+    if cells and cells[0].strip() == "":
+        cells = cells[1:]
+    if cells and cells[-1].strip() == "":
+        cells = cells[:-1]
+    return [c.strip().replace(placeholder, "|") for c in cells]
+
+
+def _is_table_delimiter_row(line: str) -> bool:
+    """True when line is a GFM table delimiter row (e.g. '| --- | :---: |')."""
+    cells = _split_table_row(line)
+    return bool(cells) and all(re.match(r'^:?-+:?$', c) for c in cells)
+
+
+def _escape_table_cell(text: str) -> str:
+    """Escape pipes and newlines so text stays a single table cell when rendered."""
+    return text.replace("|", "\\|").replace("\n", " ")
+
+
+def _find_tables(content: str) -> list:
+    """Return all GFM pipe tables in content.
+
+    Each entry: {'header': [...], 'rows': [[...], ...], 'start_line': int,
+    'end_line': int} — both line numbers 1-based, inclusive, spanning the
+    whole table (header, delimiter row, and body rows). Tables inside fenced
+    code blocks are skipped.
+    """
+    lines = content.split("\n")
+    n = len(lines)
+    tables = []
+    in_code_block = False
+    i = 0
+
+    while i < n:
+        line = lines[i]
+        if line.strip().startswith("```"):
+            in_code_block = not in_code_block
+            i += 1
+            continue
+
+        if not in_code_block and i + 1 < n and '|' in line:
+            header = _split_table_row(line)
+            if header and _is_table_delimiter_row(lines[i + 1]):
+                start_line = i + 1
+                j = i + 2
+                rows = []
+                while j < n and lines[j].strip() and '|' in lines[j]:
+                    rows.append(_split_table_row(lines[j]))
+                    j += 1
+                tables.append({
+                    'header': header,
+                    'rows': rows,
+                    'start_line': start_line,
+                    'end_line': j,
+                })
+                i = j
+                continue
+
+        i += 1
+
+    return tables
+
+
+def _resolve_table(content: str, index: int = 1, line: Optional[int] = None) -> dict:
+    """Locate one table by 1-based document index, or by a 1-based line it spans.
+
+    Raises ValueError if no tables exist, or `index`/`line` matches none.
+    """
+    tables = _find_tables(content)
+    if not tables:
+        raise ValueError("No tables found in document")
+
+    if line is not None:
+        for t in tables:
+            if t['start_line'] <= line <= t['end_line']:
+                return t
+        raise ValueError(f"No table found at line {line}")
+
+    if index < 1 or index > len(tables):
+        raise ValueError(f"Document has {len(tables)} table(s); index {index} is out of range")
+    return tables[index - 1]
+
+
+def extract_table(content: str, index: int = 1, line: Optional[int] = None) -> dict:
+    """Return one GFM pipe table as {'header': [...], 'rows': [[...], ...]}.
+
+    Select the table with `line` (any 1-based line within it), or by `index`
+    (1-based position among tables in document order, default 1) when `line`
+    is not given.
+
+    Raises ValueError if no table is found, or `index`/`line` matches none.
+    """
+    table = _resolve_table(content, index=index, line=line)
+    return {'header': table['header'], 'rows': table['rows']}
+
+
+def _render_table(header: list, rows: list) -> list:
+    """Render a GFM pipe table with aligned columns from header + row cells."""
+    header = [str(c) for c in header]
+    rows = [[str(c) for c in row] for row in rows]
+    ncols = len(header)
+
+    widths = [max(3, len(_escape_table_cell(header[i]))) for i in range(ncols)]
+    for row in rows:
+        for i in range(ncols):
+            cell = row[i] if i < len(row) else ""
+            widths[i] = max(widths[i], len(_escape_table_cell(cell)))
+
+    def _format_row(cells: list) -> str:
+        padded = []
+        for i in range(ncols):
+            cell = _escape_table_cell(cells[i]) if i < len(cells) else ""
+            padded.append(cell.ljust(widths[i]))
+        return "| " + " | ".join(padded) + " |"
+
+    lines = [_format_row(header), "| " + " | ".join("-" * w for w in widths) + " |"]
+    lines.extend(_format_row(row) for row in rows)
+    return lines
+
+
+def update_table(content: str, header: list, rows: list, index: int = 1, line: Optional[int] = None) -> str:
+    """Replace one GFM pipe table's header and rows with new content, re-rendered
+    with aligned columns.
+
+    Select the table with `line` (any 1-based line within it), or by `index`
+    (1-based position among tables in document order, default 1) when `line`
+    is not given.
+
+    Raises ValueError if `header` is empty, no table is found, or `index`/`line`
+    matches none.
+    """
+    if not header:
+        raise ValueError("header must not be empty")
+
+    table = _resolve_table(content, index=index, line=line)
+    new_lines = _render_table(header, rows)
+    lines = content.split("\n")
+    result = lines[:table['start_line'] - 1] + new_lines + lines[table['end_line']:]
     return "\n".join(result)
 
 

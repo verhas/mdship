@@ -72,6 +72,28 @@ Deps declare which files (or file slices) the agent needs to read when generatin
 
 ---
 
+## Discovering placeholders
+
+When the user asks to process, check, or update **all** AI placeholders in a file — or names one that has no `name` field, so you need its line number — call `mcp__mdship__list_ai_placeholders` with the file path first. **Do not read the file to find `<!--AI-->` markers yourself.**
+
+It returns every placeholder in document order, with no generated content or dep bodies read or returned:
+
+```json
+[
+  {"name": "intro", "line": 3, "status": "may_need_update"},
+  {"name": null, "line": 22, "status": "up_to_date"}
+]
+```
+
+`name` is `null` for an unnamed placeholder — address it in Step 1 below using `line` (as a decimal string) instead of `name`. `status` is a cheap preview of what `ai_context` would return:
+
+- **`"up_to_date"`** — skip immediately. **Do not call `ai_context` for this one** — the check has already been done.
+- **`"never_generated"`, `"needs_update"`, `"may_need_update"`, or `"edited"`** — proceed to Step 1 (`ai_context`) for this placeholder; it will return the full detail (`needs_update`, `may_need_update`, or `error`) needed to act.
+
+Skip this discovery call entirely when the user already named one specific placeholder to process — go straight to Step 1 with that name.
+
+---
+
 ## Decision flow for each placeholder
 
 ### Step 1 — Call `mcp__mdship__ai_context`
@@ -189,9 +211,9 @@ prompt: |
 ```
 
 "Update the AI placeholder named examples" → only process the second one.
-"Update all AI placeholders" → process all of them in document order.
+"Update all AI placeholders" → call `mcp__mdship__list_ai_placeholders` first (see **Discovering placeholders** above), then process each entry in document order.
 
-When processing multiple placeholders, call `mcp__mdship__ai_context` separately for each one. Skip those that return `up_to_date`; stop on `error`; generate for `needs_update` or `may_need_update`.
+When processing multiple placeholders, call `mcp__mdship__ai_context` separately for each one whose `list_ai_placeholders` status was not `up_to_date`. Skip `up_to_date` ones without calling `ai_context`; stop and report on `error`; generate for `needs_update` or `may_need_update`.
 
 ---
 

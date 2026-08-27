@@ -52,9 +52,9 @@ Normalizes heading hierarchy by fixing level skips. For example:
 - `# Title` → `### Subtitle` (SKIP! Fixed to `## Subtitle`)
 - Allows going back up: `### Sub` → `## Section` → `# New` (OK)
 
-Parses markdown to AST for accurate analysis and sequential adjustment of each heading.
+Works line-by-line, like `shift_heading_levels`/`add_heading_numbers`, rewriting only the leading `#` run of each out-of-sequence heading. Every other line — list-continuation indentation, blank lines, inline formatting — is left byte-for-byte unchanged. Skips YAML front-matter, fenced code blocks, and HTML comments, so a `#` YAML comment inside a `<!--SET-->` block is never mistaken for a heading.
 
-**Status**: Full implementation with AST-based parsing
+**Status**: Full implementation, line-based (preserves exact original text). Prior to 2026-08, this rendered the whole document through an AST round-trip, which silently reflowed unrelated content (e.g. stripped two-space list-continuation indentation) — fixed to match the line-based convention used by the other heading commands.
 
 ### `shift_heading_levels(content: str, levels: int, start_line: Optional[int], end_line: Optional[int]) -> str`
 
@@ -121,6 +121,123 @@ Removes all hierarchical numbering from headings. Handles all numbering styles a
 - `end_line`: Optional ending line (1-based, inclusive)
 
 **Status**: Full implementation with AST-based parsing and line range support
+
+### `list_headings(content: str) -> list`
+
+Lists every heading in the document as `{level, text, line, path}` dicts, in document order. `path` is the `" > "`-joined ancestor path including the heading itself, directly usable as the `heading` argument of `get_section` / `replace_section`.
+
+**Discovery primitive**: call this first to find the exact `heading` argument for `get_section`/`replace_section`, or the line numbers for `insert_lines`/`delete_lines`, instead of guessing the document's structure.
+
+**Status**: Full implementation
+
+### `get_section(content: str, heading: str, occurrence: int) -> str`
+
+Returns one section's text: its heading line through the line before the next heading at the same or a shallower level (or the end of the document).
+
+**Parameters**:
+
+- `heading`: Heading title, matched case-insensitively with numbering prefixes ignored. Use `" > "` to disambiguate a title that repeats under different parents, e.g. `"Setup > Prerequisites"` — only headings whose immediate ancestors end with that path match.
+- `occurrence`: 1-based index to pick among several matches of the same title/path, in document order (default 1).
+
+Raises `ValueError` if the heading/path has no match, or if `occurrence` is out of range. Unsure of the exact title/path? Call `list_headings` first.
+
+**Status**: Full implementation, line-based (preserves exact original text)
+
+### `replace_section(content: str, heading: str, new_content: str, occurrence: int) -> str`
+
+Replaces one section — the same span `get_section` would return, including the heading line — with `new_content`. Include a heading line in `new_content` to keep the section headed; omit it to fold the section away.
+
+**Parameters**: same `heading` and `occurrence` semantics as `get_section`.
+
+Changing only a few lines inside a large section? `get_section` + this function round-trip the whole section text through the caller just to change a fraction of it — `insert_lines`/`delete_lines` edit by line number instead, at the cost of losing the heading-based safety net.
+
+**Status**: Full implementation, line-based (preserves exact original text)
+
+### `get_lines(content: str, start_line: int, end_line: int) -> str`
+
+Returns lines `start_line`:`end_line` (1-based, inclusive) verbatim.
+
+**Read-only primitive** — the counterpart to `insert_lines`/`delete_lines`, for fetching a small, known slice of a document without reading the whole file. No heading, code-block, or table awareness.
+
+Raises `ValueError` if the range is outside `1..len(lines)` or `start_line > end_line`.
+
+**Status**: Full implementation
+
+### `insert_lines(content: str, after_line: int, text: str) -> str`
+
+Inserts `text` as new lines after `after_line` (1-based; `0` inserts at the very start of the document).
+
+**Primitive line-editing tool** — no heading, code-block, or table awareness; it inserts at that line number no matter what's there. Use it for edits with no heading to anchor on, or to add a few lines inside a section without resending the whole section through `replace_section`. Prefer `replace_section` when a heading anchor is available; call `list_headings` or `get_section` first to find a safe line number, since a raw line number can land inside a fenced code block or a table row.
+
+Raises `ValueError` if `after_line` is outside `0..len(lines)`.
+
+**Status**: Full implementation
+
+### `delete_lines(content: str, start_line: int, end_line: int) -> str`
+
+Deletes lines `start_line`:`end_line` (1-based, inclusive).
+
+**Primitive line-editing tool** — same no-awareness caveat and same guidance as `insert_lines`: prefer `replace_section` when a heading anchor exists, and use `list_headings`/`get_section` to find safe line numbers first.
+
+Raises `ValueError` if the range is outside `1..len(lines)` or `start_line > end_line`.
+
+**Status**: Full implementation
+
+### `get_paragraphs(content: str, start_line: int, end_line: int) -> str`
+
+Returns the paragraph(s) overlapping `start_line`:`end_line`, expanded to full paragraph boundaries. A paragraph is a maximal run of non-blank lines (a fenced code block is kept intact as one paragraph even if it contains blank lines). `start_line` may fall before or inside the first paragraph to return; `end_line` may fall inside or after the last one.
+
+**Content-oriented primitive**: lets an agent fetch "the paragraph(s) around line N" without knowing exact paragraph boundaries in advance and without reading the whole file — pair it with a line number from `list_ai_comments` or `find_replace` to fetch just the surrounding text.
+
+Raises `ValueError` if the range is outside `1..len(lines)`, `start_line > end_line`, the document has no paragraphs, or no paragraph overlaps the range (e.g. a single blank line sitting exactly between two one-line paragraphs, queried with `start_line == end_line`).
+
+**Status**: Full implementation
+
+### `get_front_matter_value(content: str, key: Optional[str]) -> Any`
+
+Returns one value from YAML front-matter using dot notation (e.g. `"author.name"`), or the whole front-matter dict when `key` is `None`.
+
+Raises `ValueError` if the document has no front-matter, or `key` is not found.
+
+**Status**: Full implementation
+
+### `set_front_matter_value(content: str, key: str, value: Any) -> str`
+
+Sets one value in YAML front-matter using dot notation, creating the front-matter block and any intermediate mapping levels as needed. Preserves the rest of the front-matter and the document body unchanged.
+
+Raises `ValueError` if `key` is empty, or an intermediate level along the path already exists as a scalar.
+
+**Status**: Full implementation
+
+### `find_replace(content: str, pattern: str, replacement: str, start_line: Optional[int], end_line: Optional[int], count: int, flags: str) -> str`
+
+Replaces regex matches in content, skipping fenced code blocks. Matches are found against the whole document (so a pattern may span lines), but each match is only applied if the line it starts on falls inside `start_line`:`end_line` and outside a fenced code block.
+
+**Parameters**:
+
+- `replacement`: Supports backreferences (`\1`, `\g<name>`)
+- `count`: Maximum number of replacements to apply; 0 means unlimited
+- `flags`: Any combination of `i` (IGNORECASE), `m` (MULTILINE), `s` (DOTALL), `x` (VERBOSE)
+
+Raises `ValueError` for an invalid pattern, an unsupported flag letter, or a bad backreference.
+
+**Status**: Full implementation
+
+### `extract_table(content: str, index: int, line: Optional[int]) -> dict`
+
+Returns one GFM pipe table as `{"header": [...], "rows": [[...], ...]}`. Select the table with `line` (any 1-based line within it), or by `index` (1-based position among tables in document order, default 1) when `line` is not given. Tables inside fenced code blocks are skipped.
+
+Raises `ValueError` if no table is found, or `index`/`line` matches none.
+
+**Status**: Full implementation
+
+### `update_table(content: str, header: list, rows: list, index: int, line: Optional[int]) -> str`
+
+Replaces one GFM pipe table's header and rows with new content, re-rendered with aligned columns. Same `index`/`line` selection as `extract_table`.
+
+Raises `ValueError` if `header` is empty, no table is found, or `index`/`line` matches none.
+
+**Status**: Full implementation
 
 ### `generate_table_of_contents(content: str, min_level: int, max_level: int) -> str`
 
@@ -210,6 +327,22 @@ Variables can be referenced using:
 - `${variable}` for bracketed syntax
 
 **Status**: Full implementation with all 5 variable sources, hierarchical names, and YAML parsing
+
+### `list_ai_placeholders(content: str, markdown_dir: Optional[str]) -> list`
+
+Lists every `<!--AI-->` placeholder as `{name, line, status}` dicts, in document order, without reading or returning any generated content or dep bodies.
+
+**Discovery primitive**, like `list_headings`: call this before processing "all" AI placeholders in a file (or to find an unnamed one's line number), instead of reading the whole document to find `<!--AI-->` markers. `status` is one of `never_generated`, `edited`, `needs_update`, `may_need_update`, `up_to_date` — an `up_to_date` entry can be skipped without a follow-up `ai_context` call; every other status still needs `ai_context` for the full prompt/content/dep detail needed to regenerate.
+
+**Status**: Full implementation. See [`documentation/AI.md`](documentation/AI.md) and the `ai-placeholder` skill for the full AI placeholder workflow (`ai_context`, `ai_update`, `ai_fix`, `ai_check`).
+
+### `list_ai_comments(content: str) -> list`
+
+Lists every `//AI:` inline review-comment line as `{line, text}` dicts, in document order. `//AI:` is the ai-review/ai-fix convention for a human- or agent-inserted review annotation sitting on its own line — see the `ai-review`/`ai-fix` skills.
+
+**Discovery primitive**: call this to find every such annotation without reading the whole document. Follow up with `get_lines` or `get_paragraphs` (using the reported `line`) to fetch the annotation and its surrounding content. A multi-line comment (consecutive `//AI:`-prefixed lines) is returned as separate entries, one per physical line. Lines inside fenced code blocks are skipped (e.g. documentation showing the syntax as an example).
+
+**Status**: Full implementation
 
 ### `process_python(content: str, markdown_dir: str, variables: Optional[dict], force: bool, file_path: Optional[str]) -> str`
 
@@ -314,10 +447,24 @@ mdship number file.md --style period                       # 1. 1.1. 1.1.1.
 mdship number file.md --style space                        # 1 1.1 1.1.1
 mdship number file.md --style parenthesis                  # 1) 1.1) 1.1.1)
 mdship unnumber file.md                                    # Remove numbering
+mdship list-headings file.md                                # Print every heading (level, line, path) as JSON
+mdship get-section file.md --heading "Setup > Prerequisites"   # Print one section to stdout
+mdship replace-section file.md --heading "Setup > Prerequisites" --content "..."  # Replace one section (or pipe via stdin)
+mdship get-lines file.md --start-line 12 --end-line 14        # Print a range of lines to stdout
+mdship insert-lines file.md --after-line 12 --content "..."   # Primitive: insert lines (or pipe via stdin)
+mdship delete-lines file.md --start-line 12 --end-line 14     # Primitive: delete a line range
+mdship get-paragraphs file.md --start-line 12 --end-line 14   # Print paragraph(s) overlapping a line range
+mdship frontmatter-get file.md --key author.name           # Print one front-matter value (or the whole block)
+mdship frontmatter-set file.md --key author.name --value "Ada"  # Set a front-matter value (creates the block)
+mdship find-replace file.md --pattern 'v\d+\.\d+\.\d+' --replacement 'v2.0.0'  # Regex replace, skips code blocks
+mdship extract-table file.md --index 1                     # Print one table as JSON
+mdship update-table file.md --data '{"header": [...], "rows": [[...]]}'  # Replace a table (or pipe JSON via stdin)
 mdship toc file.md                                         # Generate TOC between <!--TOC--> markers
 mdship toc file.md --max-level 2                           # Include only h1-h2
 mdship toc file.md --min-level 2                           # Start from h2
 mdship update file.md                                      # Update all placeholders (SET, IMPORT, SLURP, SIP, SUP, INCLUDE, TOC, MERMAID)
+mdship ai-list file.md                                     # List every AI placeholder's name, line, status (JSON)
+mdship ai-comments file.md                                 # List every //AI: review-comment line (JSON)
 mdship mcp                                                 # Start MCP server on stdio
 
 # With --no-bak flag (prevents backup creation)
@@ -331,6 +478,31 @@ The `--no-bak` flag is a global option that works with any modifying command.
 
 The `verify` command is special—it prints "OK" on success and an error message on failure, with appropriate exit codes for use in shell scripts.
 
+### Command aliases
+
+The longer, multi-word command names have short aliases, registered by stacking a second `@app.command("xx", hidden=True)` decorator on the same function in `cli.py` (Typer's `command()` decorator just registers a name and returns the function unchanged, so this costs nothing). The alias registration itself is hidden from `mdship --help`'s command list, to avoid a second row per command — instead, each aliased command's one-line summary ends with `(alias: xx)`, e.g. `semantic-line-breaks`'s row (and its own `--help`) reads "Break lines at semantic boundaries (sentences, clauses). (alias: slb)". The alias itself works exactly like the full name:
+
+| Alias | Full command |
+|---|---|
+| `fh` | `fix-headings` |
+| `sh` | `shift-headings` |
+| `slb` | `semantic-line-breaks` |
+| `lh` | `list-headings` |
+| `gs` | `get-section` |
+| `rs` | `replace-section` |
+| `gl` | `get-lines` |
+| `il` | `insert-lines` |
+| `dl` | `delete-lines` |
+| `gp` | `get-paragraphs` |
+| `fr` | `find-replace` |
+| `et` | `extract-table` |
+| `ut` | `update-table` |
+| `fg` | `frontmatter-get` |
+| `fs` | `frontmatter-set` |
+| `ac` | `ai-comments` |
+
+`sum`, `verify`, `validate`, `reflow`, `number`, `unnumber`, `toc`, `update`, `init`, `mcp`, `ai-list`, `ai-fix`, and `ai-check` are already short and have no alias. These are CLI-only; MCP tool names are unaffected (an agent calling the MCP server always uses the full tool name, e.g. `semantic_line_breaks`).
+
 ---
 
 ## MCP Integration
@@ -338,7 +510,8 @@ The `verify` command is special—it prints "OK" on success and an error message
 The `mcp_server.py` module implements a stdio-based MCP server that exposes the same markdown functions as async tools. The server:
 
 - Runs on stdin/stdout only (no network)
-- Exposes tools: `fix_headings`, `shift_headings`, `add_checksum`, `check_checksum`, `reflow`, `semantic_line_breaks`, `number`, `unnumber`, `toc`, `include`, `mermaid`, `update`, `ai_fix`, `ai_check`
+- Exposes tools: `fix_headings`, `shift_headings`, `add_checksum`, `check_checksum`, `reflow`, `semantic_line_breaks`, `number`, `unnumber`, `list_headings`, `get_section`, `replace_section`, `get_lines`, `insert_lines`, `delete_lines`, `get_paragraphs`, `frontmatter_get`, `frontmatter_set`, `find_replace`, `extract_table`, `update_table`, `toc`, `include`, `mermaid`, `update`, `list_ai_placeholders`, `list_ai_comments`, `ai_fix`, `ai_check`, `ai_context`, `ai_update`
+- `insert_lines`/`delete_lines` are deliberately low-level primitives (no heading/code-block/table awareness) for edits `replace_section` can't reach with a heading anchor — their tool descriptions say so explicitly so an agent reaches for the structural tools first
 - Handles errors gracefully and returns error messages as text content
 
 Configure in Claude's MCP settings:

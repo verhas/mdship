@@ -3,14 +3,28 @@
 import pytest
 
 import hashlib
+import re
 
 from mdship.markdown import (
     add_content_checksum,
     add_heading_numbers,
     check_content_checksum,
     collect_set_variables,
+    find_replace,
+    delete_lines,
+    extract_table,
     fix_heading_levels,
     generate_table_of_contents,
+    get_front_matter_value,
+    get_lines,
+    get_paragraphs,
+    get_section,
+    insert_lines,
+    list_ai_comments,
+    list_headings,
+    replace_section,
+    set_front_matter_value,
+    update_table,
     insert_table_of_contents,
     process_jinja2,
     process_template,
@@ -27,9 +41,74 @@ from mdship.markdown import (
     ai_fix_placeholders,
     ai_check_placeholders,
     ai_check_and_get_context,
+    list_ai_placeholders,
     validate_ai_placeholders,
     ai_update_placeholder,
 )
+
+
+class TestFixHeadingLevels:
+    def test_no_headings_returns_unchanged(self):
+        content = "Just a paragraph.\nAnother line.\n"
+        assert fix_heading_levels(content) == content
+
+    def test_valid_hierarchy_unchanged(self):
+        content = "# Title\n## Sub\n### Subsub\n"
+        assert fix_heading_levels(content) == content
+
+    def test_fixes_a_single_skip(self):
+        content = "# Title\n### Skipped\n"
+        assert fix_heading_levels(content) == "# Title\n## Skipped\n"
+
+    def test_going_back_up_is_left_alone(self):
+        content = "# A\n## B\n### C\n# D\n"
+        assert fix_heading_levels(content) == content
+
+    def test_first_heading_level_is_never_forced(self):
+        content = "### Starts at h3\n#### Sub\n"
+        assert fix_heading_levels(content) == content
+
+    def test_only_rewrites_the_hash_prefix(self):
+        content = "# Title\n### Skipped heading with **bold** text\n"
+        result = fix_heading_levels(content)
+        assert result == "# Title\n## Skipped heading with **bold** text\n"
+
+    def test_preserves_list_continuation_indentation(self):
+        # Regression test: fix_heading_levels used to round-trip the whole
+        # document through an AST renderer, which stripped the two-space
+        # indent that makes a wrapped bullet item a lazy continuation line.
+        content = (
+            "# Title\n\n"
+            "### Skipped heading\n\n"
+            "- a bullet point that wraps onto a second physical line where\n"
+            "  the continuation is indented by exactly two spaces\n"
+        )
+        result = fix_heading_levels(content)
+        assert "  the continuation is indented by exactly two spaces" in result
+        assert "\nthe continuation is indented by exactly two spaces" not in result
+
+    def test_preserves_blank_lines_and_surrounding_content_verbatim(self):
+        content = "# Title\n\n\nSome   text   with  odd   spacing.\n\n### Skipped\nBody.\n"
+        result = fix_heading_levels(content)
+        assert result == "# Title\n\n\nSome   text   with  odd   spacing.\n\n## Skipped\nBody.\n"
+
+    def test_skips_headings_inside_fenced_code_blocks(self):
+        content = "# Title\n```\n### not a heading\n```\n"
+        assert fix_heading_levels(content) == content
+
+    def test_skips_hash_lines_inside_html_comments(self):
+        content = "# Title\n<!--SET\n# not a heading, a YAML comment\nname: x\n-->\n"
+        assert fix_heading_levels(content) == content
+
+    def test_preserves_front_matter(self):
+        content = "---\ntitle: x\n---\n# Title\n### Skipped\n"
+        result = fix_heading_levels(content)
+        assert result == "---\ntitle: x\n---\n# Title\n## Skipped\n"
+
+    def test_multiple_skips_in_sequence(self):
+        content = "# A\n#### B\n###### C\n"
+        result = fix_heading_levels(content)
+        assert result == "# A\n## B\n### C\n"
 
 
 class TestShiftHeadings:
@@ -250,6 +329,443 @@ class TestAddHeadingNumbers:
         assert "# Title" in result
         assert "## 1. Section A" in result
         assert "## 2. Section B" in result
+
+
+class TestListHeadings:
+    DOC = (
+        "# Title\n\n"
+        "## Setup\n\n"
+        "### Prerequisites\n"
+        "Setup prereqs.\n\n"
+        "## Usage\n\n"
+        "### Prerequisites\n"
+        "Usage prereqs.\n"
+    )
+
+    def test_lists_all_headings_in_order(self):
+        result = list_headings(self.DOC)
+        assert [h["text"] for h in result] == ["Title", "Setup", "Prerequisites", "Usage", "Prerequisites"]
+
+    def test_includes_level_and_line(self):
+        result = list_headings(self.DOC)
+        assert result[1] == {"level": 2, "text": "Setup", "line": 3, "path": "Title > Setup"}
+
+    def test_path_disambiguates_repeated_titles(self):
+        result = list_headings(self.DOC)
+        prereq_paths = [h["path"] for h in result if h["text"] == "Prerequisites"]
+        assert prereq_paths == ["Title > Setup > Prerequisites", "Title > Usage > Prerequisites"]
+
+    def test_path_is_usable_by_get_section(self):
+        heading = list_headings(self.DOC)[2]["path"]
+        assert get_section(self.DOC, heading) == "### Prerequisites\nSetup prereqs.\n"
+
+    def test_no_headings_returns_empty_list(self):
+        assert list_headings("Just a paragraph.\n") == []
+
+
+class TestInsertDeleteLines:
+    DOC = "line1\nline2\nline3\n"
+
+    def test_insert_after_middle_line(self):
+        result = insert_lines(self.DOC, 1, "new line")
+        assert result == "line1\nnew line\nline2\nline3\n"
+
+    def test_insert_at_start(self):
+        result = insert_lines(self.DOC, 0, "first")
+        assert result == "first\nline1\nline2\nline3\n"
+
+    def test_insert_at_end(self):
+        result = insert_lines(self.DOC, 4, "last")
+        assert result == "line1\nline2\nline3\n\nlast"
+
+    def test_insert_multiple_lines(self):
+        result = insert_lines(self.DOC, 1, "a\nb")
+        assert result == "line1\na\nb\nline2\nline3\n"
+
+    def test_insert_out_of_range_raises(self):
+        with pytest.raises(ValueError, match="out of range"):
+            insert_lines(self.DOC, 99, "x")
+        with pytest.raises(ValueError, match="out of range"):
+            insert_lines(self.DOC, -1, "x")
+
+    def test_delete_single_line(self):
+        result = delete_lines(self.DOC, 2, 2)
+        assert result == "line1\nline3\n"
+
+    def test_delete_range(self):
+        result = delete_lines(self.DOC, 1, 2)
+        assert result == "line3\n"
+
+    def test_delete_invalid_range_raises(self):
+        with pytest.raises(ValueError, match="invalid line range"):
+            delete_lines(self.DOC, 3, 1)
+        with pytest.raises(ValueError, match="invalid line range"):
+            delete_lines(self.DOC, 0, 1)
+        with pytest.raises(ValueError, match="invalid line range"):
+            delete_lines(self.DOC, 1, 99)
+
+    def test_delete_then_insert_replaces_lines(self):
+        removed = delete_lines(self.DOC, 2, 2)
+        result = insert_lines(removed, 1, "replacement")
+        assert result == "line1\nreplacement\nline3\n"
+
+
+class TestGetLines:
+    DOC = "line1\nline2\nline3\nline4\n"
+
+    def test_get_single_line(self):
+        assert get_lines(self.DOC, 2, 2) == "line2"
+
+    def test_get_range(self):
+        assert get_lines(self.DOC, 2, 3) == "line2\nline3"
+
+    def test_get_whole_document(self):
+        assert get_lines(self.DOC, 1, 5) == self.DOC.rstrip("\n") + "\n"
+
+    def test_invalid_range_raises(self):
+        with pytest.raises(ValueError, match="invalid line range"):
+            get_lines(self.DOC, 3, 1)
+        with pytest.raises(ValueError, match="invalid line range"):
+            get_lines(self.DOC, 0, 1)
+        with pytest.raises(ValueError, match="invalid line range"):
+            get_lines(self.DOC, 1, 99)
+
+
+class TestGetParagraphs:
+    DOC = (
+        "Paragraph one line one.\n"
+        "Paragraph one line two.\n"
+        "\n"
+        "Paragraph two.\n"
+        "\n"
+        "Paragraph three line one.\n"
+        "Paragraph three line two.\n"
+        "\n"
+        "Paragraph four.\n"
+    )
+    # Line numbers: 1-2 = P1, 4 = P2, 6-7 = P3, 9 = P4
+
+    def test_line_inside_single_paragraph(self):
+        assert get_paragraphs(self.DOC, 1, 1) == "Paragraph one line one.\nParagraph one line two."
+
+    def test_start_on_blank_line_before_paragraph(self):
+        # Line 3 is blank, right before P2 -> should still resolve to P2.
+        assert get_paragraphs(self.DOC, 3, 4) == "Paragraph two."
+
+    def test_end_on_blank_line_after_paragraph(self):
+        # Line 5 is blank, right after P2 -> should still resolve to P2.
+        assert get_paragraphs(self.DOC, 4, 5) == "Paragraph two."
+
+    def test_range_spanning_multiple_paragraphs_includes_gaps_verbatim(self):
+        result = get_paragraphs(self.DOC, 4, 7)
+        assert result == "Paragraph two.\n\nParagraph three line one.\nParagraph three line two."
+
+    def test_range_covering_whole_document(self):
+        assert get_paragraphs(self.DOC, 1, 9) == self.DOC.rstrip("\n")
+
+    def test_code_fence_kept_as_one_paragraph_despite_blank_line_inside(self):
+        content = "Intro.\n\n```\ncode line 1\n\ncode line 2\n```\n\nOutro.\n"
+        # Fence spans lines 3-7; a line inside it should return the whole fence.
+        result = get_paragraphs(content, 5, 5)
+        assert result == "```\ncode line 1\n\ncode line 2\n```"
+
+    def test_invalid_line_range_raises(self):
+        with pytest.raises(ValueError, match="invalid line range"):
+            get_paragraphs(self.DOC, 5, 1)
+        with pytest.raises(ValueError, match="invalid line range"):
+            get_paragraphs(self.DOC, 1, 999)
+
+    def test_no_paragraphs_raises(self):
+        with pytest.raises(ValueError, match="No paragraphs found"):
+            get_paragraphs("\n\n\n", 1, 1)
+
+    def test_range_entirely_in_gap_raises(self):
+        # A document with a big gap and nothing touching lines 4:4.
+        content = "Para one.\n\n\n\nPara two.\n"
+        with pytest.raises(ValueError, match="No paragraph overlaps"):
+            get_paragraphs(content, 3, 3)
+
+
+class TestGetSection:
+    DOC = (
+        "# Title\n\n"
+        "## Setup\n\n"
+        "### Prerequisites\n"
+        "Setup prereqs.\n\n"
+        "### Install\n"
+        "Setup install steps.\n\n"
+        "## Usage\n\n"
+        "### Prerequisites\n"
+        "Usage prereqs.\n\n"
+        "## Reference\n"
+        "The end.\n"
+    )
+
+    def test_get_section_by_title(self):
+        result = get_section(self.DOC, "Install")
+        assert result == "### Install\nSetup install steps.\n"
+
+    def test_get_section_includes_subsections(self):
+        result = get_section(self.DOC, "Setup")
+        assert result.startswith("## Setup")
+        assert "### Prerequisites" in result
+        assert "### Install" in result
+        assert "## Usage" not in result
+
+    def test_get_section_to_end_of_document(self):
+        result = get_section(self.DOC, "Reference")
+        assert result == "## Reference\nThe end.\n"
+
+    def test_get_section_ambiguous_title_disambiguated_by_path(self):
+        setup_prereqs = get_section(self.DOC, "Setup > Prerequisites")
+        usage_prereqs = get_section(self.DOC, "Usage > Prerequisites")
+        assert "Setup prereqs." in setup_prereqs
+        assert "Usage prereqs." in usage_prereqs
+
+    def test_get_section_ambiguous_title_disambiguated_by_occurrence(self):
+        first = get_section(self.DOC, "Prerequisites", occurrence=1)
+        second = get_section(self.DOC, "Prerequisites", occurrence=2)
+        assert "Setup prereqs." in first
+        assert "Usage prereqs." in second
+
+    def test_get_section_matches_case_insensitively_and_ignores_numbering(self):
+        content = "## 1.2. setup\nbody"
+        result = get_section(content, "Setup")
+        assert result == "## 1.2. setup\nbody"
+
+    def test_get_section_not_found_raises(self):
+        with pytest.raises(ValueError, match="Heading not found"):
+            get_section(self.DOC, "Nonexistent")
+
+    def test_get_section_occurrence_out_of_range_raises(self):
+        with pytest.raises(ValueError, match="occurrence 3 is out of range"):
+            get_section(self.DOC, "Prerequisites", occurrence=3)
+
+
+class TestReplaceSection:
+    DOC = (
+        "# Title\n\n"
+        "## Setup\n"
+        "Old setup text.\n\n"
+        "## Usage\n"
+        "Usage text.\n"
+    )
+
+    def test_replace_section_keeps_heading(self):
+        result = replace_section(self.DOC, "Setup", "## Setup\nNew setup text.")
+        assert "New setup text." in result
+        assert "Old setup text." not in result
+        assert "## Usage\nUsage text." in result
+
+    def test_replace_section_preserves_surrounding_content(self):
+        result = replace_section(self.DOC, "Setup", "## Setup\nNew setup text.")
+        assert result.startswith("# Title\n\n")
+        assert result.endswith("## Usage\nUsage text.\n")
+
+    def test_replace_section_by_path(self):
+        content = (
+            "## A\n### Prerequisites\nA prereqs.\n"
+            "## B\n### Prerequisites\nB prereqs.\n"
+        )
+        result = replace_section(content, "B > Prerequisites", "### Prerequisites\nB updated.")
+        assert "A prereqs." in result
+        assert "B updated." in result
+        assert "B prereqs." not in result
+
+    def test_replace_section_not_found_raises(self):
+        with pytest.raises(ValueError, match="Heading not found"):
+            replace_section(self.DOC, "Nonexistent", "text")
+
+
+class TestFrontMatterValue:
+    DOC = (
+        "---\n"
+        "title: My Doc\n"
+        "author:\n"
+        "  name: Ada\n"
+        "tags:\n"
+        "  - a\n"
+        "  - b\n"
+        "---\n"
+        "Body text.\n"
+    )
+
+    def test_get_whole_front_matter(self):
+        result = get_front_matter_value(self.DOC)
+        assert result == {"title": "My Doc", "author": {"name": "Ada"}, "tags": ["a", "b"]}
+
+    def test_get_scalar_key(self):
+        assert get_front_matter_value(self.DOC, "title") == "My Doc"
+
+    def test_get_nested_key(self):
+        assert get_front_matter_value(self.DOC, "author.name") == "Ada"
+
+    def test_get_list_key(self):
+        assert get_front_matter_value(self.DOC, "tags") == ["a", "b"]
+
+    def test_get_missing_key_raises(self):
+        with pytest.raises(ValueError, match="Front-matter key not found"):
+            get_front_matter_value(self.DOC, "nope")
+
+    def test_get_no_front_matter_raises(self):
+        with pytest.raises(ValueError, match="no YAML front-matter"):
+            get_front_matter_value("# Just a doc\n")
+
+    def test_set_creates_front_matter_when_absent(self):
+        result = set_front_matter_value("Body text.\n", "title", "New Doc")
+        assert get_front_matter_value(result, "title") == "New Doc"
+        assert result.endswith("Body text.\n")
+
+    def test_set_overwrites_existing_key(self):
+        result = set_front_matter_value(self.DOC, "title", "Updated")
+        assert get_front_matter_value(result, "title") == "Updated"
+
+    def test_set_preserves_other_keys(self):
+        result = set_front_matter_value(self.DOC, "title", "Updated")
+        assert get_front_matter_value(result, "author.name") == "Ada"
+        assert get_front_matter_value(result, "tags") == ["a", "b"]
+
+    def test_set_nested_key_creates_intermediate_dicts(self):
+        result = set_front_matter_value(self.DOC, "author.email", "ada@example.com")
+        assert get_front_matter_value(result, "author.name") == "Ada"
+        assert get_front_matter_value(result, "author.email") == "ada@example.com"
+
+    def test_set_nested_key_on_new_document(self):
+        result = set_front_matter_value("Body.\n", "a.b.c", 42)
+        assert get_front_matter_value(result, "a.b.c") == 42
+
+    def test_set_typed_value_round_trips(self):
+        result = set_front_matter_value(self.DOC, "published", True)
+        assert get_front_matter_value(result, "published") is True
+
+    def test_set_scalar_conflict_raises(self):
+        with pytest.raises(ValueError, match="already exists as a scalar"):
+            set_front_matter_value(self.DOC, "title.subtitle", "x")
+
+    def test_get_set_round_trip_preserves_body(self):
+        result = set_front_matter_value(self.DOC, "title", "Updated")
+        assert result.endswith("Body text.\n")
+
+
+class TestFindReplace:
+    def test_basic_substitution(self):
+        result = find_replace("hello world", "world", "there")
+        assert result == "hello there"
+
+    def test_regex_pattern(self):
+        result = find_replace("v1.2.3", r"\d+\.\d+\.\d+", "X.Y.Z")
+        assert result == "vX.Y.Z"
+
+    def test_backreference_in_replacement(self):
+        result = find_replace("John Smith", r"(\w+) (\w+)", r"\2 \1")
+        assert result == "Smith John"
+
+    def test_replaces_all_by_default(self):
+        result = find_replace("a a a", "a", "b")
+        assert result == "b b b"
+
+    def test_count_limits_replacements(self):
+        result = find_replace("a a a", "a", "b", count=2)
+        assert result == "b b a"
+
+    def test_no_match_returns_unchanged(self):
+        content = "hello world"
+        assert find_replace(content, "nope", "x") == content
+
+    def test_skips_fenced_code_blocks(self):
+        content = "before TOKEN\n```\nTOKEN inside code\n```\nafter TOKEN"
+        result = find_replace(content, "TOKEN", "X")
+        assert result == "before X\n```\nTOKEN inside code\n```\nafter X"
+
+    def test_respects_line_range(self):
+        content = "TOKEN 1\nTOKEN 2\nTOKEN 3"
+        result = find_replace(content, "TOKEN", "X", start_line=2, end_line=2)
+        assert result == "TOKEN 1\nX 2\nTOKEN 3"
+
+    def test_ignorecase_flag(self):
+        result = find_replace("Hello HELLO hello", "hello", "x", flags="i")
+        assert result == "x x x"
+
+    def test_invalid_regex_raises(self):
+        with pytest.raises(ValueError, match="Invalid regex pattern"):
+            find_replace("abc", "(", "x")
+
+    def test_invalid_flag_raises(self):
+        with pytest.raises(ValueError, match="Unknown regex flag"):
+            find_replace("abc", "a", "x", flags="z")
+
+
+class TestTables:
+    DOC = (
+        "# Doc\n\n"
+        "| Name | Age |\n"
+        "| --- | --- |\n"
+        "| Ada | 30 |\n"
+        "| Bob | 25 |\n\n"
+        "Some text.\n\n"
+        "| X | Y |\n"
+        "| --- | --- |\n"
+        "| 1 | 2 |\n"
+    )
+
+    def test_extract_first_table_by_default(self):
+        result = extract_table(self.DOC)
+        assert result == {"header": ["Name", "Age"], "rows": [["Ada", "30"], ["Bob", "25"]]}
+
+    def test_extract_table_by_index(self):
+        result = extract_table(self.DOC, index=2)
+        assert result == {"header": ["X", "Y"], "rows": [["1", "2"]]}
+
+    def test_extract_table_by_line(self):
+        result = extract_table(self.DOC, line=11)  # inside the second table
+        assert result == {"header": ["X", "Y"], "rows": [["1", "2"]]}
+
+    def test_extract_table_index_out_of_range_raises(self):
+        with pytest.raises(ValueError, match="out of range"):
+            extract_table(self.DOC, index=3)
+
+    def test_extract_no_tables_raises(self):
+        with pytest.raises(ValueError, match="No tables found"):
+            extract_table("# No tables here\n")
+
+    def test_extract_skips_table_in_code_block(self):
+        content = "```\n| a | b |\n| --- | --- |\n| 1 | 2 |\n```\n\n| Real | Table |\n| --- | --- |\n| x | y |\n"
+        result = extract_table(content)
+        assert result == {"header": ["Real", "Table"], "rows": [["x", "y"]]}
+
+    def test_extract_handles_escaped_pipes(self):
+        content = "| A | B |\n| --- | --- |\n| a\\|b | c |\n"
+        result = extract_table(content)
+        assert result["rows"] == [["a|b", "c"]]
+
+    def test_update_table_replaces_rows(self):
+        result = update_table(self.DOC, ["Name", "Age"], [["Carol", "40"]])
+        assert extract_table(result, index=1) == {"header": ["Name", "Age"], "rows": [["Carol", "40"]]}
+        # second table and surrounding text untouched
+        assert extract_table(result, index=2) == {"header": ["X", "Y"], "rows": [["1", "2"]]}
+        assert "Some text." in result
+
+    def test_update_table_by_index(self):
+        result = update_table(self.DOC, ["X", "Y"], [["9", "9"]], index=2)
+        assert extract_table(result, index=1) == {"header": ["Name", "Age"], "rows": [["Ada", "30"], ["Bob", "25"]]}
+        assert extract_table(result, index=2) == {"header": ["X", "Y"], "rows": [["9", "9"]]}
+
+    def test_update_table_renders_aligned_pipe_table(self):
+        result = update_table("| A |\n| --- |\n| 1 |\n", ["Header"], [["value"]])
+        assert "| Header |" in result
+        assert re.search(r"\|\s*-+\s*\|", result)
+
+    def test_update_table_escapes_pipe_in_cell(self):
+        result = update_table("| A |\n| --- |\n| 1 |\n", ["Col"], [["a|b"]])
+        assert extract_table(result)["rows"] == [["a|b"]]
+
+    def test_update_table_empty_header_raises(self):
+        with pytest.raises(ValueError, match="header must not be empty"):
+            update_table(self.DOC, [], [])
+
+    def test_update_table_not_found_raises(self):
+        with pytest.raises(ValueError, match="No tables found"):
+            update_table("# No tables\n", ["A"], [["1"]])
 
 
 class TestTableOfContents:
@@ -3061,6 +3577,112 @@ class TestAIDepsExtension:
         changed = fixed.replace("prompt: Do it.", "prompt: Do something else.")
         result = ai_check_and_get_context(changed, "x", ".")
         assert result['status'] == 'needs_update'
+
+
+class TestListAiComments:
+    def test_finds_single_comment(self):
+        content = "Some text.\n//AI: fix this wording\nMore text.\n"
+        assert list_ai_comments(content) == [{"line": 2, "text": "fix this wording"}]
+
+    def test_finds_multiple_comments_in_order(self):
+        content = "//AI: first\nText.\n//AI: second\nMore.\n"
+        result = list_ai_comments(content)
+        assert [r["line"] for r in result] == [1, 3]
+        assert [r["text"] for r in result] == ["first", "second"]
+
+    def test_multiline_comment_returned_as_separate_entries(self):
+        content = (
+            "//AI: Replace X with Y because\n"
+            "//AI: the reasoning continues here.\n"
+            "Body text.\n"
+        )
+        result = list_ai_comments(content)
+        assert result == [
+            {"line": 1, "text": "Replace X with Y because"},
+            {"line": 2, "text": "the reasoning continues here."},
+        ]
+
+    def test_ignores_comment_not_at_line_start(self):
+        content = "This mentions //AI: inline but is not an annotation.\n"
+        assert list_ai_comments(content) == []
+
+    def test_leading_whitespace_allowed(self):
+        content = "  //AI: indented annotation\n"
+        assert list_ai_comments(content) == [{"line": 1, "text": "indented annotation"}]
+
+    def test_skips_comments_inside_fenced_code_blocks(self):
+        content = "```\n//AI: this is example syntax, not a real annotation\n```\n"
+        assert list_ai_comments(content) == []
+
+    def test_no_comments_returns_empty_list(self):
+        assert list_ai_comments("# Just a doc\nNo annotations here.\n") == []
+
+
+class TestListAiPlaceholders:
+    def test_never_generated(self):
+        content = "<!--AI\nname: \"sec\"\nprompt: Do it.\n-->\nbody\n<!--/AI-->\n"
+        result = list_ai_placeholders(content)
+        assert result == [{"name": "sec", "line": 1, "status": "never_generated"}]
+
+    def test_up_to_date_with_deps(self, tmp_path):
+        dep_file = tmp_path / "dep.txt"
+        dep_file.write_text("stable\n")
+        content = (
+            "<!--AI\nname: \"sec\"\nprompt: Do it.\ndeps:\n  - path: dep.txt\n-->\nbody\n<!--/AI-->\n"
+        )
+        fixed, _ = ai_fix_placeholders(content, markdown_dir=str(tmp_path))
+        result = list_ai_placeholders(fixed, markdown_dir=str(tmp_path))
+        assert result == [{"name": "sec", "line": 1, "status": "up_to_date"}]
+
+    def test_may_need_update_without_deps(self):
+        content = "<!--AI\nname: \"sec\"\nprompt: Do it.\n-->\nbody\n<!--/AI-->\n"
+        fixed, _ = ai_fix_placeholders(content)
+        result = list_ai_placeholders(fixed)
+        assert result == [{"name": "sec", "line": 1, "status": "may_need_update"}]
+
+    def test_needs_update_on_prompt_change(self):
+        content = "<!--AI\nname: \"sec\"\nprompt: Old.\n-->\nbody\n<!--/AI-->\n"
+        fixed, _ = ai_fix_placeholders(content)
+        changed = fixed.replace("prompt: Old.", "prompt: New.")
+        result = list_ai_placeholders(changed)
+        assert result == [{"name": "sec", "line": 1, "status": "needs_update"}]
+
+    def test_needs_update_on_dep_change(self, tmp_path):
+        dep_file = tmp_path / "dep.txt"
+        dep_file.write_text("original\n")
+        content = (
+            "<!--AI\nname: \"sec\"\nprompt: Do it.\ndeps:\n  - path: dep.txt\n-->\nbody\n<!--/AI-->\n"
+        )
+        fixed, _ = ai_fix_placeholders(content, markdown_dir=str(tmp_path))
+        dep_file.write_text("modified\n")
+        result = list_ai_placeholders(fixed, markdown_dir=str(tmp_path))
+        assert result == [{"name": "sec", "line": 1, "status": "needs_update"}]
+
+    def test_edited_on_manual_content_change(self):
+        content = "<!--AI\nname: \"sec\"\nprompt: Do it.\n-->\nbody\n<!--/AI-->\n"
+        fixed, _ = ai_fix_placeholders(content)
+        tampered = fixed.replace("body", "tampered body text")
+        result = list_ai_placeholders(tampered)
+        assert result == [{"name": "sec", "line": 1, "status": "edited"}]
+
+    def test_unnamed_placeholder_has_none_name(self):
+        content = "<!--AI\nprompt: Do it.\n-->\nbody\n<!--/AI-->\n"
+        result = list_ai_placeholders(content)
+        assert result == [{"name": None, "line": 1, "status": "never_generated"}]
+
+    def test_no_placeholders_returns_empty_list(self):
+        assert list_ai_placeholders("# Just a doc\n") == []
+
+    def test_lists_multiple_placeholders_independently_in_document_order(self):
+        content = (
+            "<!--AI\nname: \"first\"\nprompt: A.\n-->\nbody a\n<!--/AI-->\n\n"
+            "<!--AI\nname: \"second\"\nprompt: B.\n-->\nbody b\n<!--/AI-->\n"
+        )
+        fixed, _ = ai_fix_placeholders(content, name="first")
+        result = list_ai_placeholders(fixed)
+        assert [r["name"] for r in result] == ["first", "second"]
+        assert result[0]["status"] == "may_need_update"
+        assert result[1]["status"] == "never_generated"
 
 
 class TestAIUpdatePlaceholder:

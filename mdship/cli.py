@@ -1,18 +1,131 @@
 import difflib
+import re
 from importlib.metadata import version as _pkg_version
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
+import click
 import typer
 from rich.console import Console
 from rich.markup import escape
+from typer.core import TyperGroup
 
 if TYPE_CHECKING:
     from mdship.operations import OperationResult, WriteOptions
 
 _VERSION = _pkg_version("mdship")
 
+_ALIAS_SUFFIX_RE = re.compile(r"\s*\(alias:\s*\S+\)")
+
+
+def _derive_aliases(group: click.Group) -> dict[str, str]:
+    """Map each visible command name to its hidden single-word alias, if any.
+
+    An alias is registered by stacking `@app.command("xx", hidden=True)` on
+    the same function as the canonical `@app.command()` — this finds those
+    pairs by grouping commands by their (shared) callback function, so the
+    top-level `--help` listing can show it without a second row and without
+    a second, hand-maintained list of aliases to keep in sync.
+    """
+    by_func: dict[str, list[tuple[str, bool]]] = {}
+    for cmd_name, cmd in group.commands.items():
+        if cmd is None or cmd.callback is None:
+            continue
+        by_func.setdefault(cmd.callback.__name__, []).append((cmd_name, bool(cmd.hidden)))
+
+    aliases: dict[str, str] = {}
+    for entries in by_func.values():
+        visible = [n for n, hidden in entries if not hidden]
+        hidden = [n for n, hidden in entries if hidden]
+        if len(visible) == 1 and len(hidden) == 1:
+            aliases[visible[0]] = hidden[0]
+    return aliases
+
+
+class _AliasAwareGroup(TyperGroup):
+    """TyperGroup whose `--help` command list shows each command's alias next
+    to its name (e.g. "fix-headings (fh)"), instead of leaving it buried at
+    the end of the wrapped description text.
+
+    Implemented by temporarily swapping in a patched
+    `typer.rich_utils._print_commands_panel` for the duration of one help
+    render, so Typer's own logic still drives everything else (usage,
+    options, panel grouping). Falls back to Typer's normal rendering if this
+    ever breaks against a future Typer/Rich version.
+    """
+
+    def format_help(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
+        try:
+            self._format_help_with_aliases(ctx, formatter)
+        except Exception:
+            super().format_help(ctx, formatter)
+
+    def _format_help_with_aliases(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
+        import typer.rich_utils as ru
+        from rich import box as rich_box
+        from rich.panel import Panel
+        from rich.table import Table
+        from rich.text import Text
+
+        aliases = _derive_aliases(self)
+
+        def patched_print_commands_panel(*, name, commands, markup_mode, console, cmd_len):
+            display_names = {
+                cmd.name: (f"{cmd.name} ({aliases[cmd.name]})" if cmd.name in aliases else (cmd.name or ""))
+                for cmd in commands
+            }
+            width = max((len(n) for n in display_names.values()), default=cmd_len)
+
+            t_styles = {
+                "show_lines": ru.STYLE_COMMANDS_TABLE_SHOW_LINES,
+                "leading": ru.STYLE_COMMANDS_TABLE_LEADING,
+                "box": ru.STYLE_COMMANDS_TABLE_BOX,
+                "border_style": ru.STYLE_COMMANDS_TABLE_BORDER_STYLE,
+                "row_styles": ru.STYLE_COMMANDS_TABLE_ROW_STYLES,
+                "pad_edge": ru.STYLE_COMMANDS_TABLE_PAD_EDGE,
+                "padding": ru.STYLE_COMMANDS_TABLE_PADDING,
+            }
+            box_style = getattr(rich_box, t_styles.pop("box"), None)
+            table = Table(highlight=False, show_header=False, expand=True, box=box_style, **t_styles)
+            table.add_column(style=ru.STYLE_COMMANDS_TABLE_FIRST_COLUMN, no_wrap=True, width=width)
+            table.add_column("Description", justify="left", no_wrap=False, ratio=10)
+
+            rows: list[list] = []
+            deprecated_rows: list = []
+            for cmd in commands:
+                helptext = cmd.short_help or cmd.help or ""
+                if cmd.name in aliases:
+                    # Already shown in the name column — drop it from the
+                    # description here to avoid saying it twice.
+                    helptext = _ALIAS_SUFFIX_RE.sub("", helptext, count=1)
+                display_name = display_names.get(cmd.name, cmd.name or "")
+                if cmd.deprecated:
+                    name_text = Text(display_name, style=ru.STYLE_DEPRECATED_COMMAND)
+                    deprecated_rows.append(Text(ru.DEPRECATED_STRING, style=ru.STYLE_DEPRECATED))
+                else:
+                    name_text = Text(display_name)
+                    deprecated_rows.append(None)
+                rows.append([name_text, ru._make_command_help(help_text=helptext, markup_mode=markup_mode)])
+
+            if any(deprecated_rows):
+                rows = [[*row, dep] for row, dep in zip(rows, deprecated_rows, strict=True)]
+            for row in rows:
+                table.add_row(*row)
+            if table.row_count:
+                console.print(
+                    Panel(table, border_style=ru.STYLE_COMMANDS_PANEL_BORDER, title=name, title_align=ru.ALIGN_COMMANDS_PANEL)
+                )
+
+        original = ru._print_commands_panel
+        ru._print_commands_panel = patched_print_commands_panel
+        try:
+            super().format_help(ctx, formatter)
+        finally:
+            ru._print_commands_panel = original
+
+
 app = typer.Typer(
+    cls=_AliasAwareGroup,
     help=f"mdship — markdown manipulation tool (version {_VERSION})",
     context_settings={"help_option_names": ["-h", "--help"]},
 )
@@ -191,11 +304,12 @@ def _resolve_files(files: list[Path]) -> list[Path]:
     return _load_last_files()
 
 
+@app.command("fh", hidden=True)
 @app.command()
 def fix_headings(
     files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")] = [],
 ) -> None:
-    """Fix heading levels to ensure consistent hierarchy."""
+    """Fix heading levels to ensure consistent hierarchy. (alias: fh)"""
     from mdship.markdown import fix_heading_levels
 
     errors = []
@@ -211,13 +325,14 @@ def fix_headings(
     _exit_if_errors(errors)
 
 
+@app.command("sh", hidden=True)
 @app.command()
 def shift_headings(
     files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")] = [],
     levels: Annotated[int, typer.Option("--levels", "-l", help="Number of levels to shift (positive=lower, negative=higher)")] = 1,
     lines: Annotated[str | None, typer.Option("--lines", help="Line range to process (e.g., '10:50', '10:', ':50')")] = None,
 ) -> None:
-    """Shift all headings by the specified number of levels."""
+    """Shift all headings by the specified number of levels. (alias: sh)"""
     from mdship.markdown import shift_heading_levels
 
     start_line = end_line = None
@@ -263,6 +378,79 @@ def sum(
         content = file.read_text()
         updated_content = add_content_checksum(content, algorithm)
         if _write_file(file, updated_content, f"add-checksum: added {algorithm} checksum"):
+            err.print(f"[green]✓[/green] Processed {file}")
+    _exit_if_errors(errors)
+
+
+@app.command("fg", hidden=True)
+@app.command("frontmatter-get")
+def frontmatter_get(
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to read")] = [],
+    key: Annotated[str | None, typer.Option("--key", "-k", help="Dot-notation key path, e.g. 'author.name'. Omit to print the whole front-matter block.")] = None,
+) -> None:
+    """Print a value (or the whole block) from YAML front-matter to stdout. (alias: fg)"""
+    if state.track:
+        err.print(f"[red]Error:[/red] --track option is not supported for read-only commands")
+        raise typer.Exit(1)
+
+    import yaml
+    from mdship.markdown import get_front_matter_value
+
+    errors = []
+    for file in _resolve_files(files):
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+        content = file.read_text()
+        try:
+            value = get_front_matter_value(content, key)
+        except ValueError as e:
+            err.print(f"[red]Error:[/red] {file}: {e}")
+            errors.append((file, str(e)))
+            continue
+        if isinstance(value, (dict, list)):
+            print(yaml.dump(value, default_flow_style=False, sort_keys=False, allow_unicode=True).rstrip())
+        else:
+            print(value)
+    _exit_if_errors(errors)
+
+
+@app.command("fs", hidden=True)
+@app.command("frontmatter-set")
+def frontmatter_set(
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")] = [],
+    key: Annotated[str, typer.Option("--key", "-k", help="Dot-notation key path, e.g. 'author.name'")] = "",
+    value: Annotated[str, typer.Option("--value", "-v", help="Value to set, parsed as YAML (so 'true', '42', '[1,2]' get proper types; quote a string to force it)")] = "",
+) -> None:
+    """Set a value in YAML front-matter, creating the block if needed. (alias: fs)"""
+    if not key:
+        err.print("[red]Error:[/red] --key is required")
+        raise typer.Exit(1)
+
+    import yaml
+    from mdship.markdown import set_front_matter_value
+
+    try:
+        parsed_value = yaml.safe_load(value)
+    except yaml.YAMLError as e:
+        err.print(f"[red]Error:[/red] invalid --value: {e}")
+        raise typer.Exit(1)
+
+    errors = []
+    for file in _resolve_files(files):
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+        content = file.read_text()
+        try:
+            updated_content = set_front_matter_value(content, key, parsed_value)
+        except ValueError as e:
+            err.print(f"[red]Error:[/red] {file}: {e}")
+            errors.append((file, str(e)))
+            continue
+        if _write_file(file, updated_content, f"frontmatter-set: set '{key}'"):
             err.print(f"[green]✓[/green] Processed {file}")
     _exit_if_errors(errors)
 
@@ -345,12 +533,13 @@ def reflow(
     _exit_if_errors(errors)
 
 
+@app.command("slb", hidden=True)
 @app.command()
 def semantic_line_breaks(
     files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")] = [],
     lines: Annotated[str | None, typer.Option("--lines", help="Line range to process (e.g., '10:50', '10:', ':50')")] = None,
 ) -> None:
-    """Break lines at semantic boundaries (sentences, clauses)."""
+    """Break lines at semantic boundaries (sentences, clauses). (alias: slb)"""
     from mdship.markdown import reflow_paragraphs
 
     start_line = end_line = None
@@ -472,6 +661,370 @@ def unnumber(
     _exit_if_errors(errors)
 
 
+@app.command("lh", hidden=True)
+@app.command("list-headings")
+def list_headings(
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to read")] = [],
+) -> None:
+    """Print every heading (level, line, ancestor path) as JSON. (alias: lh)
+
+    Discovery primitive: run this first to find the exact --heading value for
+    get-section/replace-section, or the line numbers for insert-lines/delete-lines,
+    instead of guessing the document's structure.
+    """
+    if state.track:
+        err.print(f"[red]Error:[/red] --track option is not supported for read-only commands")
+        raise typer.Exit(1)
+
+    import json
+    from mdship.markdown import list_headings as list_headings_fn
+
+    errors = []
+    for file in _resolve_files(files):
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+        content = file.read_text()
+        print(json.dumps(list_headings_fn(content)))
+    _exit_if_errors(errors)
+
+
+@app.command("gs", hidden=True)
+@app.command("get-section")
+def get_section(
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to read")] = [],
+    heading: Annotated[str, typer.Option("--heading", "-H", help="Heading title, or ' > '-separated path e.g. 'Setup > Prerequisites'")] = "",
+    occurrence: Annotated[int, typer.Option("--occurrence", help="1-based index when the heading/path matches more than once")] = 1,
+) -> None:
+    """Print one section's text (heading line through its subsections) to stdout. (alias: gs)"""
+    if state.track:
+        err.print(f"[red]Error:[/red] --track option is not supported for read-only commands")
+        raise typer.Exit(1)
+    if not heading:
+        err.print("[red]Error:[/red] --heading is required")
+        raise typer.Exit(1)
+
+    from mdship.markdown import get_section as get_section_fn
+
+    errors = []
+    for file in _resolve_files(files):
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+        content = file.read_text()
+        try:
+            section = get_section_fn(content, heading, occurrence=occurrence)
+        except ValueError as e:
+            err.print(f"[red]Error:[/red] {file}: {e}")
+            errors.append((file, str(e)))
+            continue
+        print(section)
+    _exit_if_errors(errors)
+
+
+@app.command("rs", hidden=True)
+@app.command("replace-section")
+def replace_section(
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")] = [],
+    heading: Annotated[str, typer.Option("--heading", "-H", help="Heading title, or ' > '-separated path e.g. 'Setup > Prerequisites'")] = "",
+    content_opt: Annotated[str | None, typer.Option("--content", help="Replacement text. Reads stdin if omitted.")] = None,
+    occurrence: Annotated[int, typer.Option("--occurrence", help="1-based index when the heading/path matches more than once")] = 1,
+) -> None:
+    """Replace one section (heading line through its subsections) with new text. (alias: rs)"""
+    if not heading:
+        err.print("[red]Error:[/red] --heading is required")
+        raise typer.Exit(1)
+
+    import sys
+
+    new_content = content_opt if content_opt is not None else sys.stdin.read()
+
+    from mdship.markdown import replace_section as replace_section_fn
+
+    errors = []
+    for file in _resolve_files(files):
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+        content = file.read_text()
+        try:
+            updated_content = replace_section_fn(content, heading, new_content, occurrence=occurrence)
+        except ValueError as e:
+            err.print(f"[red]Error:[/red] {file}: {e}")
+            errors.append((file, str(e)))
+            continue
+        if _write_file(file, updated_content, f"replace-section: replaced section '{heading}'"):
+            err.print(f"[green]✓[/green] Processed {file}")
+    _exit_if_errors(errors)
+
+
+@app.command("gl", hidden=True)
+@app.command("get-lines")
+def get_lines(
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to read")] = [],
+    start_line: Annotated[int, typer.Option("--start-line", help="First 1-based line to return")] = 1,
+    end_line: Annotated[int, typer.Option("--end-line", help="Last 1-based line to return (inclusive)")] = 1,
+) -> None:
+    """Print a range of lines to stdout. (alias: gl)
+
+    Read-only primitive for fetching a small, known slice of a document
+    without reading the whole file. No heading, code-block, or table
+    awareness.
+    """
+    if state.track:
+        err.print(f"[red]Error:[/red] --track option is not supported for read-only commands")
+        raise typer.Exit(1)
+
+    from mdship.markdown import get_lines as get_lines_fn
+
+    errors = []
+    for file in _resolve_files(files):
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+        content = file.read_text()
+        try:
+            result = get_lines_fn(content, start_line, end_line)
+        except ValueError as e:
+            err.print(f"[red]Error:[/red] {file}: {e}")
+            errors.append((file, str(e)))
+            continue
+        print(result)
+    _exit_if_errors(errors)
+
+
+@app.command("il", hidden=True)
+@app.command("insert-lines")
+def insert_lines(
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")] = [],
+    after_line: Annotated[int, typer.Option("--after-line", help="Insert after this 1-based line; 0 inserts at the start of the document")] = 0,
+    content_opt: Annotated[str | None, typer.Option("--content", help="Text to insert. Reads stdin if omitted.")] = None,
+) -> None:
+    """Insert lines after a given line number. (alias: il)
+
+    Primitive line-editing tool with no heading, code-block, or table
+    awareness. Prefer replace-section when a heading anchor is available; use
+    list-headings/get-section first to find a safe line number.
+    """
+    import sys
+
+    new_content = content_opt if content_opt is not None else sys.stdin.read()
+
+    from mdship.markdown import insert_lines as insert_lines_fn
+
+    errors = []
+    for file in _resolve_files(files):
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+        content = file.read_text()
+        try:
+            updated_content = insert_lines_fn(content, after_line, new_content)
+        except ValueError as e:
+            err.print(f"[red]Error:[/red] {file}: {e}")
+            errors.append((file, str(e)))
+            continue
+        if _write_file(file, updated_content, f"insert-lines: inserted after line {after_line}"):
+            err.print(f"[green]✓[/green] Processed {file}")
+    _exit_if_errors(errors)
+
+
+@app.command("dl", hidden=True)
+@app.command("delete-lines")
+def delete_lines(
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")] = [],
+    start_line: Annotated[int, typer.Option("--start-line", help="First 1-based line to delete")] = 1,
+    end_line: Annotated[int, typer.Option("--end-line", help="Last 1-based line to delete (inclusive)")] = 1,
+) -> None:
+    """Delete a range of lines. (alias: dl)
+
+    Primitive line-editing tool with no heading, code-block, or table
+    awareness. Prefer replace-section when a heading anchor is available; use
+    list-headings/get-section first to find safe line numbers.
+    """
+    from mdship.markdown import delete_lines as delete_lines_fn
+
+    errors = []
+    for file in _resolve_files(files):
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+        content = file.read_text()
+        try:
+            updated_content = delete_lines_fn(content, start_line, end_line)
+        except ValueError as e:
+            err.print(f"[red]Error:[/red] {file}: {e}")
+            errors.append((file, str(e)))
+            continue
+        if _write_file(file, updated_content, f"delete-lines: deleted lines {start_line}:{end_line}"):
+            err.print(f"[green]✓[/green] Processed {file}")
+    _exit_if_errors(errors)
+
+
+@app.command("gp", hidden=True)
+@app.command("get-paragraphs")
+def get_paragraphs(
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to read")] = [],
+    start_line: Annotated[int, typer.Option("--start-line", help="1-based line before or inside the first paragraph to return")] = 1,
+    end_line: Annotated[int, typer.Option("--end-line", help="1-based line inside or after the last paragraph to return")] = 1,
+) -> None:
+    """Print the paragraph(s) overlapping a line range, expanded to full paragraph boundaries. (alias: gp)
+
+    Content-oriented primitive: a paragraph is a maximal run of non-blank
+    lines (a fenced code block is kept intact even if it contains blank
+    lines). --start-line may fall before or inside the first paragraph to
+    return; --end-line may fall inside or after the last one. Lets an agent
+    fetch "the paragraph(s) around line N" without reading the whole file.
+    """
+    if state.track:
+        err.print(f"[red]Error:[/red] --track option is not supported for read-only commands")
+        raise typer.Exit(1)
+
+    from mdship.markdown import get_paragraphs as get_paragraphs_fn
+
+    errors = []
+    for file in _resolve_files(files):
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+        content = file.read_text()
+        try:
+            result = get_paragraphs_fn(content, start_line, end_line)
+        except ValueError as e:
+            err.print(f"[red]Error:[/red] {file}: {e}")
+            errors.append((file, str(e)))
+            continue
+        print(result)
+    _exit_if_errors(errors)
+
+
+@app.command("fr", hidden=True)
+@app.command("find-replace")
+def find_replace(
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")] = [],
+    pattern: Annotated[str, typer.Option("--pattern", "-p", help="Regex pattern to search for")] = "",
+    replacement: Annotated[str, typer.Option("--replacement", "-r", help="Replacement text; supports backreferences like \\1, \\g<name>")] = "",
+    lines: Annotated[str | None, typer.Option("--lines", help="Line range to process (e.g., '10:50', '10:', ':50')")] = None,
+    count: Annotated[int, typer.Option("--count", help="Maximum number of replacements (0 = unlimited)")] = 0,
+    flags: Annotated[str, typer.Option("--flags", help="Regex flags: any combination of i (ignorecase), m (multiline), s (dotall), x (verbose)")] = "",
+) -> None:
+    """Replace regex matches in a document, skipping fenced code blocks. (alias: fr)"""
+    if not pattern:
+        err.print("[red]Error:[/red] --pattern is required")
+        raise typer.Exit(1)
+
+    from mdship.markdown import find_replace as find_replace_fn
+
+    start_line = end_line = None
+    if lines:
+        try:
+            start_line, end_line = _parse_line_range(lines)
+        except ValueError as e:
+            err.print(f"[red]Error:[/red] invalid line range: {e}")
+            raise typer.Exit(1)
+
+    errors = []
+    for file in _resolve_files(files):
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+        content = file.read_text()
+        try:
+            updated_content = find_replace_fn(
+                content, pattern, replacement,
+                start_line=start_line, end_line=end_line, count=count, flags=flags,
+            )
+        except ValueError as e:
+            err.print(f"[red]Error:[/red] {file}: {e}")
+            errors.append((file, str(e)))
+            continue
+        if _write_file(file, updated_content, f"find-replace: replaced matches of /{pattern}/"):
+            err.print(f"[green]✓[/green] Processed {file}")
+    _exit_if_errors(errors)
+
+
+@app.command("et", hidden=True)
+@app.command("extract-table")
+def extract_table(
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to read")] = [],
+    index: Annotated[int, typer.Option("--index", "-i", help="1-based table position in document order (default 1)")] = 1,
+    line: Annotated[int | None, typer.Option("--line", help="Select the table spanning this 1-based line instead of --index")] = None,
+) -> None:
+    """Print one GFM pipe table as JSON ({"header": [...], "rows": [[...], ...]}). (alias: et)"""
+    if state.track:
+        err.print(f"[red]Error:[/red] --track option is not supported for read-only commands")
+        raise typer.Exit(1)
+
+    import json
+    from mdship.markdown import extract_table as extract_table_fn
+
+    errors = []
+    for file in _resolve_files(files):
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+        content = file.read_text()
+        try:
+            table = extract_table_fn(content, index=index, line=line)
+        except ValueError as e:
+            err.print(f"[red]Error:[/red] {file}: {e}")
+            errors.append((file, str(e)))
+            continue
+        print(json.dumps(table))
+    _exit_if_errors(errors)
+
+
+@app.command("ut", hidden=True)
+@app.command("update-table")
+def update_table(
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")] = [],
+    data: Annotated[str | None, typer.Option("--data", help='JSON {"header": [...], "rows": [[...], ...]}. Reads stdin if omitted.')] = None,
+    index: Annotated[int, typer.Option("--index", "-i", help="1-based table position in document order (default 1)")] = 1,
+    line: Annotated[int | None, typer.Option("--line", help="Select the table spanning this 1-based line instead of --index")] = None,
+) -> None:
+    """Replace one GFM pipe table's header and rows from JSON, re-rendered with aligned columns. (alias: ut)"""
+    import json
+    import sys
+
+    raw = data if data is not None else sys.stdin.read()
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as e:
+        err.print(f"[red]Error:[/red] invalid JSON: {e}")
+        raise typer.Exit(1)
+    if not isinstance(payload, dict) or "header" not in payload or "rows" not in payload:
+        err.print('[red]Error:[/red] JSON must be an object with "header" and "rows" keys')
+        raise typer.Exit(1)
+
+    from mdship.markdown import update_table as update_table_fn
+
+    errors = []
+    for file in _resolve_files(files):
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+        content = file.read_text()
+        try:
+            updated_content = update_table_fn(content, payload["header"], payload["rows"], index=index, line=line)
+        except ValueError as e:
+            err.print(f"[red]Error:[/red] {file}: {e}")
+            errors.append((file, str(e)))
+            continue
+        if _write_file(file, updated_content, "update-table: replaced table"):
+            err.print(f"[green]✓[/green] Processed {file}")
+    _exit_if_errors(errors)
+
+
 @app.command()
 def update(
     files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")] = [],
@@ -586,6 +1139,69 @@ def update(
             names = ", ".join(artifact.name for artifact in result.artifacts)
             err.print(f"[green]✓[/green] {file}: diagram(s) regenerated: {names}")
 
+    _exit_if_errors(errors)
+
+
+@app.command("ai-list")
+def ai_list(
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to read")] = [],
+) -> None:
+    """Print every AI placeholder's name, line, and status as JSON.
+
+    Discovery primitive: run this first to find which AI placeholders exist
+    and which need attention, instead of reading the whole document. No
+    generated content or dep bodies are read or printed — follow up with
+    ai-context (by name, or by line for an unnamed placeholder) for what's
+    needed to regenerate one.
+
+    status is one of: never_generated, edited, needs_update, may_need_update,
+    up_to_date. See list_ai_placeholders in markdown.py for what each means.
+    """
+    if state.track:
+        err.print(f"[red]Error:[/red] --track option is not supported for read-only commands")
+        raise typer.Exit(1)
+
+    import json
+    from mdship.markdown import list_ai_placeholders
+
+    errors = []
+    for file in _resolve_files(files):
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+        content = file.read_text()
+        print(json.dumps(list_ai_placeholders(content, markdown_dir=str(file.parent))))
+    _exit_if_errors(errors)
+
+
+@app.command("ac", hidden=True)
+@app.command("ai-comments")
+def ai_comments(
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to read")] = [],
+) -> None:
+    """Print every //AI: inline review-comment line (line number and text) as JSON. (alias: ac)
+
+    Discovery primitive: run this first to find human- or agent-inserted
+    //AI: review annotations (the ai-review/ai-fix convention) without
+    reading the whole document. Follow up with get-lines or get-paragraphs
+    to fetch each one and its surrounding content before acting on it.
+    """
+    if state.track:
+        err.print(f"[red]Error:[/red] --track option is not supported for read-only commands")
+        raise typer.Exit(1)
+
+    import json
+    from mdship.markdown import list_ai_comments
+
+    errors = []
+    for file in _resolve_files(files):
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+        content = file.read_text()
+        print(json.dumps(list_ai_comments(content)))
     _exit_if_errors(errors)
 
 

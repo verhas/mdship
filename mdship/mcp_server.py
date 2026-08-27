@@ -258,7 +258,365 @@ def main() -> None:
         _write(p, update_mermaid(content, str(p.parent), file_path=path), backup)
         return f"OK: processed {path}"
 
+    @server.tool()
+    def list_headings(path: str) -> str:
+        """List every heading in the document as JSON: level, text, line, and
+        ancestor path.
+
+        Discovery primitive: call this first to find the exact `heading`
+        argument for get_section/replace_section, or the line numbers for
+        insert_lines/delete_lines, instead of guessing the document's structure.
+        Each entry's "path" is directly usable as the `heading` argument of
+        get_section / replace_section.
+
+        Args:
+            path: Path to the markdown file
+        """
+        import json as _json
+        from mdship.markdown import list_headings as list_headings_fn
+        _, content = _read(path)
+        return _json.dumps(list_headings_fn(content))
+
+    @server.tool()
+    def get_section(path: str, heading: str, occurrence: int = 1) -> str:
+        """Return one section's text: its heading line through its subsections.
+
+        `heading` is matched case-insensitively against a heading's title
+        (numbering prefixes ignored). Use " > " to disambiguate a title that
+        repeats under different parents, e.g. "Setup > Prerequisites" —
+        only headings whose immediate ancestors end with that path match.
+        `occurrence` (1-based) selects among several matches, in document
+        order. Unsure of the exact title/path? Call list_headings first.
+
+        Args:
+            path: Path to the markdown file
+            heading: Heading title, or a " > "-separated ancestor path
+            occurrence: 1-based match index when heading/path is ambiguous
+        """
+        from mdship.markdown import get_section as get_section_fn
+        _, content = _read(path)
+        try:
+            return get_section_fn(content, heading, occurrence=occurrence)
+        except ValueError as e:
+            return f"ERROR: {e}"
+
+    @server.tool()
+    def replace_section(
+        path: str,
+        heading: str,
+        new_content: str,
+        occurrence: int = 1,
+        backup: bool = True,
+    ) -> str:
+        """Replace one section (heading line through its subsections) with new text.
+
+        `new_content` replaces the whole section get_section would return,
+        including the heading line — include a heading line in `new_content`
+        to keep the section headed. See get_section for how `heading` and
+        `occurrence` are matched.
+
+        Args:
+            path: Path to the markdown file
+            heading: Heading title, or a " > "-separated ancestor path
+            new_content: Replacement text for the whole section span
+            occurrence: 1-based match index when heading/path is ambiguous
+            backup: Create a .bak backup before modifying (default: True)
+        """
+        from mdship.markdown import replace_section as replace_section_fn
+        p, content = _read(path)
+        try:
+            updated = replace_section_fn(content, heading, new_content, occurrence=occurrence)
+        except ValueError as e:
+            return f"ERROR: {e}"
+        _write(p, updated, backup)
+        return f"OK: processed {path}"
+
+    @server.tool()
+    def get_lines(path: str, start_line: int, end_line: int) -> str:
+        """Return lines `start_line`:`end_line` (1-based, inclusive) verbatim.
+
+        Read-only primitive for fetching a small, known slice of a document
+        without reading the whole file — the counterpart to insert_lines /
+        delete_lines. No heading, code-block, or table awareness.
+
+        Args:
+            path: Path to the markdown file
+            start_line: First 1-based line to return
+            end_line: Last 1-based line to return (inclusive)
+        """
+        from mdship.markdown import get_lines as get_lines_fn
+        _, content = _read(path)
+        try:
+            return get_lines_fn(content, start_line, end_line)
+        except ValueError as e:
+            return f"ERROR: {e}"
+
+    @server.tool()
+    def insert_lines(path: str, after_line: int, text: str, backup: bool = True) -> str:
+        """Insert `text` as new lines after `after_line`. PRIMITIVE — prefer
+        replace_section when a heading anchor exists.
+
+        Use this only for edits with no heading to anchor on, or to add a few
+        lines inside a section without resending the whole section through
+        replace_section. It has no heading, code-block, or table awareness —
+        a bad line number can land inside a fenced code block or a table row.
+        Call list_headings or get_section first to find a safe line number.
+
+        Args:
+            path: Path to the markdown file
+            after_line: 1-based line to insert after; 0 inserts at the document start
+            text: Text to insert, split on newlines
+            backup: Create a .bak backup before modifying (default: True)
+        """
+        from mdship.markdown import insert_lines as insert_lines_fn
+        p, content = _read(path)
+        try:
+            updated = insert_lines_fn(content, after_line, text)
+        except ValueError as e:
+            return f"ERROR: {e}"
+        _write(p, updated, backup)
+        return f"OK: processed {path}"
+
+    @server.tool()
+    def delete_lines(path: str, start_line: int, end_line: int, backup: bool = True) -> str:
+        """Delete lines `start_line`:`end_line` (1-based, inclusive). PRIMITIVE —
+        prefer replace_section when a heading anchor exists.
+
+        Use this only for edits with no heading to anchor on, or to trim a few
+        lines out of a section without resending the rest through
+        replace_section. It has no heading, code-block, or table awareness —
+        a bad line range can split a fenced code block or a table. Call
+        list_headings or get_section first to find safe line numbers.
+
+        Args:
+            path: Path to the markdown file
+            start_line: First 1-based line to delete
+            end_line: Last 1-based line to delete (inclusive)
+            backup: Create a .bak backup before modifying (default: True)
+        """
+        from mdship.markdown import delete_lines as delete_lines_fn
+        p, content = _read(path)
+        try:
+            updated = delete_lines_fn(content, start_line, end_line)
+        except ValueError as e:
+            return f"ERROR: {e}"
+        _write(p, updated, backup)
+        return f"OK: processed {path}"
+
+    @server.tool()
+    def get_paragraphs(path: str, start_line: int, end_line: int) -> str:
+        """Return the paragraph(s) overlapping a line range, expanded to full
+        paragraph boundaries.
+
+        Content-oriented primitive: a paragraph is a maximal run of non-blank
+        lines (a fenced code block is kept intact even if it contains blank
+        lines). `start_line` may fall before or inside the first paragraph to
+        return; `end_line` may fall inside or after the last one. Lets an
+        agent fetch "the paragraph(s) around line N" without reading the
+        whole file.
+
+        Args:
+            path: Path to the markdown file
+            start_line: 1-based line before or inside the first paragraph to return
+            end_line: 1-based line inside or after the last paragraph to return
+        """
+        from mdship.markdown import get_paragraphs as get_paragraphs_fn
+        _, content = _read(path)
+        try:
+            return get_paragraphs_fn(content, start_line, end_line)
+        except ValueError as e:
+            return f"ERROR: {e}"
+
+    @server.tool()
+    def frontmatter_get(path: str, key: str | None = None) -> str:
+        """Return a value (or the whole block) from YAML front-matter.
+
+        Scalars are returned as plain text; mappings and lists are returned
+        as YAML text.
+
+        Args:
+            path: Path to the markdown file
+            key: Dot-notation key path, e.g. "author.name". Omit for the whole block.
+        """
+        import yaml as _yaml
+        from mdship.markdown import get_front_matter_value
+        _, content = _read(path)
+        try:
+            value = get_front_matter_value(content, key)
+        except ValueError as e:
+            return f"ERROR: {e}"
+        if isinstance(value, (dict, list)):
+            return _yaml.dump(value, default_flow_style=False, sort_keys=False, allow_unicode=True).rstrip()
+        return str(value)
+
+    @server.tool()
+    def frontmatter_set(path: str, key: str, value: str, backup: bool = True) -> str:
+        """Set a value in YAML front-matter, creating the block if needed.
+
+        `value` is parsed as YAML, so "true", "42", "[1, 2]" etc. get their
+        proper type; quote it (e.g. '"42"') to force a string.
+
+        Args:
+            path: Path to the markdown file
+            key: Dot-notation key path, e.g. "author.name"
+            value: Value to set, parsed as YAML
+            backup: Create a .bak backup before modifying (default: True)
+        """
+        import yaml as _yaml
+        from mdship.markdown import set_front_matter_value
+        p, content = _read(path)
+        try:
+            parsed_value = _yaml.safe_load(value)
+        except _yaml.YAMLError as e:
+            return f"ERROR: invalid value: {e}"
+        try:
+            updated = set_front_matter_value(content, key, parsed_value)
+        except ValueError as e:
+            return f"ERROR: {e}"
+        _write(p, updated, backup)
+        return f"OK: processed {path}"
+
+    @server.tool()
+    def find_replace(
+        path: str,
+        pattern: str,
+        replacement: str,
+        start_line: int | None = None,
+        end_line: int | None = None,
+        count: int = 0,
+        flags: str = "",
+        backup: bool = True,
+    ) -> str:
+        """Replace regex matches in a document, skipping fenced code blocks.
+
+        Args:
+            path: Path to the markdown file
+            pattern: Regex pattern to search for
+            replacement: Replacement text; supports backreferences (\\1, \\g<name>)
+            start_line: Only replace matches starting on or after this line (1-based)
+            end_line: Only replace matches starting on or before this line (1-based)
+            count: Maximum number of replacements to apply; 0 means unlimited
+            flags: Any combination of 'i' (IGNORECASE), 'm' (MULTILINE), 's' (DOTALL), 'x' (VERBOSE)
+            backup: Create a .bak backup before modifying (default: True)
+        """
+        from mdship.markdown import find_replace as find_replace_fn
+        p, content = _read(path)
+        try:
+            updated = find_replace_fn(content, pattern, replacement,
+                                       start_line=start_line, end_line=end_line,
+                                       count=count, flags=flags)
+        except ValueError as e:
+            return f"ERROR: {e}"
+        _write(p, updated, backup)
+        return f"OK: processed {path}"
+
+    @server.tool()
+    def extract_table(path: str, index: int = 1, line: int | None = None) -> str:
+        """Return one GFM pipe table as JSON: {"header": [...], "rows": [[...], ...]}.
+
+        Select the table with `line` (any 1-based line within it), or by
+        `index` (1-based position among tables in document order, default 1)
+        when `line` is not given.
+
+        Args:
+            path: Path to the markdown file
+            index: 1-based table position in document order
+            line: Select the table spanning this 1-based line instead of index
+        """
+        import json as _json
+        from mdship.markdown import extract_table as extract_table_fn
+        _, content = _read(path)
+        try:
+            table = extract_table_fn(content, index=index, line=line)
+        except ValueError as e:
+            return f"ERROR: {e}"
+        return _json.dumps(table)
+
+    @server.tool()
+    def update_table(
+        path: str,
+        header: list[str],
+        rows: list[list[str]],
+        index: int = 1,
+        line: int | None = None,
+        backup: bool = True,
+    ) -> str:
+        """Replace one GFM pipe table's header and rows, re-rendered with aligned columns.
+
+        Select the table with `line` (any 1-based line within it), or by
+        `index` (1-based position among tables in document order, default 1)
+        when `line` is not given.
+
+        Args:
+            path: Path to the markdown file
+            header: New column headers
+            rows: New row cells, one list per row
+            index: 1-based table position in document order
+            line: Select the table spanning this 1-based line instead of index
+            backup: Create a .bak backup before modifying (default: True)
+        """
+        from mdship.markdown import update_table as update_table_fn
+        p, content = _read(path)
+        try:
+            updated = update_table_fn(content, header, rows, index=index, line=line)
+        except ValueError as e:
+            return f"ERROR: {e}"
+        _write(p, updated, backup)
+        return f"OK: processed {path}"
+
     server.tool()(update)
+
+    @server.tool()
+    def list_ai_placeholders(path: str) -> str:
+        """List every AI placeholder in the document as JSON: name, line, and status.
+
+        Discovery primitive: call this first to find which AI placeholders
+        exist and which need attention, instead of reading the whole
+        document. No generated content or dep bodies are read or returned —
+        follow up with ai_context (by `name`, or by `line` for an unnamed
+        placeholder) for what's needed to regenerate one.
+
+        Each entry: {"name": str | None, "line": int, "status": str}, where
+        status is one of:
+          "never_generated" — no checksum recorded yet (cold start)
+          "edited"          — managed content changed since generation;
+                              ai_fix must run before regenerating
+          "needs_update"    — an input (prompt/brief/dep) changed
+          "may_need_update" — checksums match, but no deps: are declared, so
+                              referenced files can't be verified
+          "up_to_date"      — every recorded checksum matches
+
+        Args:
+            path: Path to the markdown file
+        """
+        import json as _json
+        from mdship.markdown import list_ai_placeholders as list_ai_placeholders_fn
+        p, content = _read(path)
+        return _json.dumps(list_ai_placeholders_fn(content, markdown_dir=str(p.parent)))
+
+    @server.tool()
+    def list_ai_comments(path: str) -> str:
+        """List every //AI: inline review-comment line as JSON: line number and text.
+
+        //AI: is the ai-review/ai-fix convention for a human- or agent-inserted
+        review annotation sitting on its own line. Discovery primitive: call
+        this to find every such annotation without reading the whole
+        document. Follow up with get_lines or get_paragraphs (using the
+        reported line) to fetch the annotation and its surrounding content
+        before acting on it.
+
+        A multi-line comment (consecutive //AI:-prefixed lines) is returned
+        as separate entries, one per physical line. Lines inside fenced code
+        blocks are skipped (e.g. documentation showing the syntax as an
+        example).
+
+        Args:
+            path: Path to the markdown file
+        """
+        import json as _json
+        from mdship.markdown import list_ai_comments as list_ai_comments_fn
+        _, content = _read(path)
+        return _json.dumps(list_ai_comments_fn(content))
 
     @server.tool()
     def ai_fix(path: str, name: str | None = None, backup: bool = True) -> str:

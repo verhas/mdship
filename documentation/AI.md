@@ -135,6 +135,8 @@ Generated content lives here.
 ## CLI Commands
 
 ```bash
+mdship ai-list file.md               # List every placeholder's name, line, and status (JSON)
+
 mdship ai-fix file.md               # Record checksums for all AI placeholders
 mdship ai-fix file.md --name intro  # Record for a specific placeholder only
 
@@ -149,8 +151,31 @@ Placeholders without a `_content_generated_` entry are skipped.
 
 ## MCP Tools
 
-Four MCP tools support AI placeholders. They are the preferred interface when Claude is acting as the agent, because
+Five MCP tools support AI placeholders. They are the preferred interface when Claude is acting as the agent, because
 they keep the full source document out of the agent's context window.
+
+### `list_ai_placeholders`
+
+Discovery call, used before processing "all" placeholders in a file (or to find an unnamed one's line number) so the
+agent never has to read the whole document just to find out what `<!--AI-->` sections exist:
+
+```
+list_ai_placeholders(path)
+```
+
+Returns every placeholder in document order — `name` (or `null` if unnamed), `line`, and a cheap `status` — with no
+generated content or dep bodies read or returned:
+
+```json
+[
+  {"name": "intro", "line": 3, "status": "may_need_update"},
+  {"name": null, "line": 22, "status": "up_to_date"}
+]
+```
+
+`status` previews what `ai_context` would return: `"up_to_date"` means skip without even calling `ai_context`;
+`"never_generated"`, `"needs_update"`, `"may_need_update"`, and `"edited"` all mean proceed to `ai_context` for that
+one (addressing it by `name`, or by `line` as a decimal string when `name` is `null`).
 
 ### `ai_context`
 
@@ -202,9 +227,13 @@ Claude handles `AI` placeholders through the `/ai-placeholder` skill:
 /ai-placeholder documentation/AI.md intro
 ```
 
-The skill follows this workflow for each placeholder:
+The skill follows this workflow:
 
-1. **Call `ai_context`** — if `up_to_date`, skip. If `error`, stop and report. If `needs_update`, proceed.
+0. **Discover (when processing "all" placeholders, or an unnamed one)** — call `list_ai_placeholders` to get every
+   placeholder's name/line/status without reading the file. Skip straight to step 1 with a known `name` if the user
+   already named one.
+1. **Call `ai_context`** for each placeholder that wasn't already `up_to_date` in step 0 — if `error`, stop and
+   report; if `needs_update` or `may_need_update`, proceed.
 2. **Prepare** — the `needs_update` response contains the prompt, previous content, brief, and dep slices. No
    additional file reads are needed (except files referenced in the prompt that are not in `deps:`).
 3. **Generate** — write the new content based on prompt, brief, previous content, and dep context.
@@ -249,7 +278,7 @@ prompt: |
 
 ```
 /ai-placeholder file.md overview    ← updates only the first
-/ai-placeholder file.md             ← updates both in order
+/ai-placeholder file.md             ← calls list_ai_placeholders, then updates both in order
 ```
 
 ## Inline Review Comments: `//AI:`
@@ -272,8 +301,10 @@ The actual content is untouched. The author can read, agree, edit, or delete any
 
 ### `/ai-fix` — apply the comments
 
-`/ai-fix` reads every `//AI:` comment in the file, applies each suggestion to the surrounding content, and removes the
-comment line. The result is a clean document with all accepted suggestions incorporated.
+`/ai-fix` calls `list_ai_comments` to find every `//AI:` comment's line and text — it does not read the whole file.
+For each one, it fetches just the surrounding text with `get_paragraphs` (or `get_lines`), applies the suggestion in
+place, and removes the comment line, working in reverse document order so earlier line numbers stay valid throughout
+the pass. The result is a clean document with all accepted suggestions incorporated.
 
 ### The workflow
 
