@@ -1025,6 +1025,32 @@ def update_table(
     _exit_if_errors(errors)
 
 
+@app.command("ft", hidden=True)
+@app.command("format-tables")
+def format_tables(
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")] = [],
+) -> None:
+    """Reformat every GFM pipe table so its columns are padded to align. (alias: ft)
+
+    Purely cosmetic: cell content and declared column alignment (:---, ---:,
+    :---:) are unchanged, only inter-cell padding. A document with no tables
+    is left untouched.
+    """
+    from mdship.markdown import format_tables as format_tables_fn
+
+    errors = []
+    for file in _resolve_files(files):
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+        content = file.read_text()
+        updated_content = format_tables_fn(content)
+        if _write_file(file, updated_content, "format-tables: aligned table columns"):
+            err.print(f"[green]✓[/green] Processed {file}")
+    _exit_if_errors(errors)
+
+
 @app.command()
 def update(
     files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")] = [],

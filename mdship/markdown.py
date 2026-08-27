@@ -2819,13 +2819,22 @@ def _escape_table_cell(text: str) -> str:
     return text.replace("|", "\\|").replace("\n", " ")
 
 
+def _parse_table_alignment(delimiter_cells: list) -> list:
+    """Return, per column, the (left_colon, right_colon) bools from a GFM
+    delimiter row's cells (e.g. ':---' -> (True, False), '---:' -> (False,
+    True), ':---:' -> (True, True), '---' -> (False, False))."""
+    return [(cell.startswith(':'), cell.endswith(':')) for cell in delimiter_cells]
+
+
 def _find_tables(content: str) -> list:
     """Return all GFM pipe tables in content.
 
-    Each entry: {'header': [...], 'rows': [[...], ...], 'start_line': int,
-    'end_line': int} — both line numbers 1-based, inclusive, spanning the
-    whole table (header, delimiter row, and body rows). Tables inside fenced
-    code blocks are skipped.
+    Each entry: {'header': [...], 'rows': [[...], ...], 'align': [...],
+    'start_line': int, 'end_line': int} — both line numbers 1-based,
+    inclusive, spanning the whole table (header, delimiter row, and body
+    rows). `align` is one (left_colon, right_colon) bool pair per column,
+    parsed from the delimiter row, e.g. ':---:' -> (True, True). Tables
+    inside fenced code blocks are skipped.
     """
     lines = content.split("\n")
     n = len(lines)
@@ -2843,6 +2852,7 @@ def _find_tables(content: str) -> list:
         if not in_code_block and i + 1 < n and '|' in line:
             header = _split_table_row(line)
             if header and _is_table_delimiter_row(lines[i + 1]):
+                align = _parse_table_alignment(_split_table_row(lines[i + 1]))
                 start_line = i + 1
                 j = i + 2
                 rows = []
@@ -2852,6 +2862,7 @@ def _find_tables(content: str) -> list:
                 tables.append({
                     'header': header,
                     'rows': rows,
+                    'align': align,
                     'start_line': start_line,
                     'end_line': j,
                 })
@@ -2896,8 +2907,15 @@ def extract_table(content: str, index: int = 1, line: Optional[int] = None) -> d
     return {'header': table['header'], 'rows': table['rows']}
 
 
-def _render_table(header: list, rows: list) -> list:
-    """Render a GFM pipe table with aligned columns from header + row cells."""
+def _render_table(header: list, rows: list, align: Optional[list] = None) -> list:
+    """Render a GFM pipe table with aligned columns from header + row cells.
+
+    `align` is an optional list of (left_colon, right_colon) bool pairs, one
+    per column (see _parse_table_alignment) — when given, it controls the
+    colon placement in the rendered delimiter row so declared column
+    alignment (:---, ---:, :---:) survives a reformat. Missing or `None`
+    entries render as a plain '---'.
+    """
     header = [str(c) for c in header]
     rows = [[str(c) for c in row] for row in rows]
     ncols = len(header)
@@ -2915,7 +2933,19 @@ def _render_table(header: list, rows: list) -> list:
             padded.append(cell.ljust(widths[i]))
         return "| " + " | ".join(padded) + " |"
 
-    lines = [_format_row(header), "| " + " | ".join("-" * w for w in widths) + " |"]
+    def _format_delimiter_cell(width: int, mark: Optional[tuple]) -> str:
+        if not mark:
+            return "-" * width
+        left, right = mark
+        dash_count = max(1, width - (1 if left else 0) - (1 if right else 0))
+        return (":" if left else "") + "-" * dash_count + (":" if right else "")
+
+    delimiter_cells = [
+        _format_delimiter_cell(widths[i], align[i] if align and i < len(align) else None)
+        for i in range(ncols)
+    ]
+
+    lines = [_format_row(header), "| " + " | ".join(delimiter_cells) + " |"]
     lines.extend(_format_row(row) for row in rows)
     return lines
 
@@ -2939,6 +2969,27 @@ def update_table(content: str, header: list, rows: list, index: int = 1, line: O
     lines = content.split("\n")
     result = lines[:table['start_line'] - 1] + new_lines + lines[table['end_line']:]
     return "\n".join(result)
+
+
+def format_tables(content: str) -> str:
+    """Reformat every GFM pipe table in the document so its columns are
+    padded to align, without changing any cell content or declared column
+    alignment (:---, ---:, :---:).
+
+    Purely cosmetic: only inter-cell padding changes. Returns content
+    unchanged if the document has no tables. Tables inside fenced code
+    blocks are left untouched (see _find_tables).
+    """
+    tables = _find_tables(content)
+    if not tables:
+        return content
+
+    lines = content.split("\n")
+    for table in reversed(tables):
+        new_lines = _render_table(table['header'], table['rows'], align=table['align'])
+        lines = lines[:table['start_line'] - 1] + new_lines + lines[table['end_line']:]
+
+    return "\n".join(lines)
 
 
 def generate_table_of_contents(content: str, min_level: int = 1, max_level: int = 6) -> str:

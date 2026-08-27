@@ -14,6 +14,7 @@ from mdship.markdown import (
     delete_lines,
     extract_table,
     fix_heading_levels,
+    format_tables,
     generate_table_of_contents,
     get_front_matter_value,
     get_lines,
@@ -766,6 +767,83 @@ class TestTables:
     def test_update_table_not_found_raises(self):
         with pytest.raises(ValueError, match="No tables found"):
             update_table("# No tables\n", ["A"], [["1"]])
+
+
+class TestFormatTables:
+    def test_aligns_ragged_table_from_user_example(self):
+        content = (
+            "| Document | Reaches | Purpose |\n"
+            "|---|---|---|\n"
+            "| 5-minute tutorial | stage 1–2 | One program, one vocabulary, the thesis made visible |\n"
+            "| 15-minute tutorial | stage 1–5 | Enough language to write a real rule |\n"
+            "| The book | the full ladder | Everything, chapter by chapter |\n"
+        )
+        result = format_tables(content)
+        expected = (
+            "| Document           | Reaches         | Purpose                                              |\n"
+            "| ------------------ | --------------- | ---------------------------------------------------- |\n"
+            "| 5-minute tutorial  | stage 1–2       | One program, one vocabulary, the thesis made visible |\n"
+            "| 15-minute tutorial | stage 1–5       | Enough language to write a real rule                 |\n"
+            "| The book           | the full ladder | Everything, chapter by chapter                       |\n"
+        )
+        assert result == expected
+
+    def test_no_tables_returns_unchanged(self):
+        content = "# Just a doc\nNo tables here.\n"
+        assert format_tables(content) == content
+
+    def test_preserves_cell_content_and_data(self):
+        content = "| A | B |\n|---|---|\n| 1 | 2 |\n"
+        result = format_tables(content)
+        assert extract_table(result) == extract_table(content)
+
+    def test_preserves_surrounding_content(self):
+        content = "# Title\n\n| A |\n|---|\n| 1 |\n\nSome text after.\n"
+        result = format_tables(content)
+        assert result.startswith("# Title\n\n")
+        assert result.endswith("Some text after.\n")
+
+    def test_formats_multiple_tables_independently(self):
+        content = "| A | BB |\n|---|---|\n| 1 | 2 |\n\nText.\n\n| X |\n|---|\n| looooong |\n"
+        result = format_tables(content)
+        assert extract_table(result, index=1) == {"header": ["A", "BB"], "rows": [["1", "2"]]}
+        assert extract_table(result, index=2) == {"header": ["X"], "rows": [["looooong"]]}
+        assert "Text." in result
+
+    def test_is_idempotent(self):
+        content = "| Name | Age |\n|---|---|\n| Ada | 30 |\n| Carol | 4 |\n"
+        once = format_tables(content)
+        twice = format_tables(once)
+        assert once == twice
+
+    def test_preserves_left_alignment_marker(self):
+        content = "| A |\n|:---|\n| 1 |\n"
+        cell = _first_delimiter_cell(format_tables(content))
+        assert cell.startswith(":") and not cell.endswith(":")
+
+    def test_preserves_right_alignment_marker(self):
+        content = "| Amount |\n|---:|\n| 1 |\n| 22 |\n"
+        cell = _first_delimiter_cell(format_tables(content))
+        assert cell.endswith(":") and not cell.startswith(":")
+
+    def test_preserves_center_alignment_marker(self):
+        content = "| A |\n|:---:|\n| 1 |\n"
+        cell = _first_delimiter_cell(format_tables(content))
+        assert cell.startswith(":") and cell.endswith(":")
+
+    def test_preserves_no_alignment_marker(self):
+        content = "| A |\n|---|\n| 1 |\n"
+        cell = _first_delimiter_cell(format_tables(content))
+        assert not cell.startswith(":") and not cell.endswith(":")
+
+    def test_skips_table_inside_fenced_code_block(self):
+        content = "```\n| a | b |\n|---|---|\n| 1 | 2 |\n```\n"
+        assert format_tables(content) == content
+
+
+def _first_delimiter_cell(rendered_table: str) -> str:
+    delimiter_line = rendered_table.split("\n")[1]
+    return delimiter_line.strip().strip("|").split("|")[0].strip()
 
 
 class TestTableOfContents:

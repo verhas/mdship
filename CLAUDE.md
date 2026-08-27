@@ -239,6 +239,12 @@ Raises `ValueError` if `header` is empty, no table is found, or `index`/`line` m
 
 **Status**: Full implementation
 
+### `format_tables(content: str) -> str`
+
+Reformats every GFM pipe table in the document so its columns are padded to align — purely cosmetic: cell content and declared column alignment (`:---`, `---:`, `:---:`) are unchanged, only inter-cell padding. Returns content unchanged if the document has no tables. Idempotent.
+
+**Status**: Full implementation
+
 ### `generate_table_of_contents(content: str, min_level: int, max_level: int) -> str`
 
 Generates a markdown table of contents from headings in the document.
@@ -459,6 +465,7 @@ mdship frontmatter-set file.md --key author.name --value "Ada"  # Set a front-ma
 mdship find-replace file.md --pattern 'v\d+\.\d+\.\d+' --replacement 'v2.0.0'  # Regex replace, skips code blocks
 mdship extract-table file.md --index 1                     # Print one table as JSON
 mdship update-table file.md --data '{"header": [...], "rows": [[...]]}'  # Replace a table (or pipe JSON via stdin)
+mdship format-tables file.md                                # Align every table's columns (cosmetic only)
 mdship toc file.md                                         # Generate TOC between <!--TOC--> markers
 mdship toc file.md --max-level 2                           # Include only h1-h2
 mdship toc file.md --min-level 2                           # Start from h2
@@ -480,7 +487,11 @@ The `verify` command is special—it prints "OK" on success and an error message
 
 ### Command aliases
 
-The longer, multi-word command names have short aliases, registered by stacking a second `@app.command("xx", hidden=True)` decorator on the same function in `cli.py` (Typer's `command()` decorator just registers a name and returns the function unchanged, so this costs nothing). The alias registration itself is hidden from `mdship --help`'s command list, to avoid a second row per command — instead, each aliased command's one-line summary ends with `(alias: xx)`, e.g. `semantic-line-breaks`'s row (and its own `--help`) reads "Break lines at semantic boundaries (sentences, clauses). (alias: slb)". The alias itself works exactly like the full name:
+The longer, multi-word command names have short aliases, registered by stacking a second `@app.command("xx", hidden=True)` decorator on the same function in `cli.py` (Typer's `command()` decorator just registers a name and returns the function unchanged, so this costs nothing). The alias registration itself is hidden from Click's command dispatch table, so it never appears as a second row — instead, `mdship --help`'s top-level command list shows it right next to the name, e.g. `semantic-line-breaks (slb)`, with descriptions still aligned in a column after it.
+
+This is rendered by `_AliasAwareGroup` (`cli.py`), a `TyperGroup` subclass that derives the name→alias mapping automatically — by grouping every registered command by its underlying callback function and pairing each visible command with the hidden one sharing its callback, so there's no separate list to keep in sync — and temporarily swaps in a patched `typer.rich_utils._print_commands_panel` for one `--help` render to inject `(alias)` into the name column and recompute that column's width, restoring the original afterward. If that patch ever breaks against a future Typer/Rich version, `format_help` catches the exception and falls back to Typer's unmodified rendering (no alias annotations, but never a crash). A subcommand's own `--help` (e.g. `mdship semantic-line-breaks --help`) is unaffected by this — it renders through `TyperCommand`, not the group, and still shows `(alias: slb)` in its description because that text lives directly in the docstring.
+
+The alias itself works exactly like the full name:
 
 | Alias | Full command |
 |---|---|
@@ -497,6 +508,7 @@ The longer, multi-word command names have short aliases, registered by stacking 
 | `fr` | `find-replace` |
 | `et` | `extract-table` |
 | `ut` | `update-table` |
+| `ft` | `format-tables` |
 | `fg` | `frontmatter-get` |
 | `fs` | `frontmatter-set` |
 | `ac` | `ai-comments` |
@@ -510,7 +522,7 @@ The longer, multi-word command names have short aliases, registered by stacking 
 The `mcp_server.py` module implements a stdio-based MCP server that exposes the same markdown functions as async tools. The server:
 
 - Runs on stdin/stdout only (no network)
-- Exposes tools: `fix_headings`, `shift_headings`, `add_checksum`, `check_checksum`, `reflow`, `semantic_line_breaks`, `number`, `unnumber`, `list_headings`, `get_section`, `replace_section`, `get_lines`, `insert_lines`, `delete_lines`, `get_paragraphs`, `frontmatter_get`, `frontmatter_set`, `find_replace`, `extract_table`, `update_table`, `toc`, `include`, `mermaid`, `update`, `list_ai_placeholders`, `list_ai_comments`, `ai_fix`, `ai_check`, `ai_context`, `ai_update`
+- Exposes tools: `fix_headings`, `shift_headings`, `add_checksum`, `check_checksum`, `reflow`, `semantic_line_breaks`, `number`, `unnumber`, `list_headings`, `get_section`, `replace_section`, `get_lines`, `insert_lines`, `delete_lines`, `get_paragraphs`, `frontmatter_get`, `frontmatter_set`, `find_replace`, `extract_table`, `update_table`, `format_tables`, `toc`, `include`, `mermaid`, `update`, `list_ai_placeholders`, `list_ai_comments`, `ai_fix`, `ai_check`, `ai_context`, `ai_update`
 - `insert_lines`/`delete_lines` are deliberately low-level primitives (no heading/code-block/table awareness) for edits `replace_section` can't reach with a heading anchor — their tool descriptions say so explicitly so an agent reaches for the structural tools first
 - Handles errors gracefully and returns error messages as text content
 

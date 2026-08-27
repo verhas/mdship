@@ -417,6 +417,7 @@ These are deliberate **primitives**: no heading, code-block, or table awareness 
 | `shift_headings` | `shift-headings` | Shifts every heading by N levels, optionally within a line range |
 | `number` / `unnumber` | `number` / `unnumber` | Adds/removes hierarchical heading numbering (period, space, or parenthesis style) |
 | `reflow` / `semantic_line_breaks` | `reflow` / `semantic-line-breaks` | Reflows paragraphs to a width, or to one sentence per line |
+| `format_tables` | `format-tables` | Pads every table's columns to align; purely cosmetic — cell content and declared alignment (`:---`/`---:`/`:---:`) are unchanged |
 
 ### Checksums, validation, and the placeholder pipeline
 

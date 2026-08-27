@@ -564,6 +564,24 @@ def main() -> None:
         _write(p, updated, backup)
         return f"OK: processed {path}"
 
+    @server.tool()
+    def format_tables(path: str, backup: bool = True) -> str:
+        """Reformat every GFM pipe table so its columns are padded to align.
+
+        Purely cosmetic: cell content and declared column alignment (:---,
+        ---:, :---:) are unchanged, only inter-cell padding. A document with
+        no tables is left untouched.
+
+        Args:
+            path: Path to the markdown file
+            backup: Create a .bak backup before modifying (default: True)
+        """
+        from mdship.markdown import format_tables as format_tables_fn
+        p, content = _read(path)
+        updated = format_tables_fn(content)
+        _write(p, updated, backup)
+        return f"OK: processed {path}"
+
     server.tool()(update)
 
     @server.tool()
