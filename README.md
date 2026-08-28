@@ -2,7 +2,7 @@
 last-updated: '2026-06-10T11:37:48.418276'
 mdship-log: |
   2026-06-10 11:37:48 - update: processed all placeholders
-checksum: 808f703eb5da07740a5f04b7b8afc2f0428b150ef9e75ee63104d0108efa4b61
+checksum: 2b7b8089423e10df9fe8b7d78b22b232ebdf6e66799734b9740c0bf45f889800
 checksum_algorithm: sha256
 ---
 # 1. mdship
@@ -92,8 +92,15 @@ _content_generated_: 2030:md5:78586dd9870b3f16ce99e6edb9eb51b5
 
 ```bash
 uv sync
-uv run pip install -e .
+uv run pip install mdship
 ```
+
+or just
+
+```
+pip install mdship
+```
+
 
 ## 1.3. Usage
 

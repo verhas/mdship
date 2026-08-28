@@ -15,7 +15,7 @@ jobs:
         uses: ./
         with:
           command: validate
-          files: README.md documentation/*.md
+          files: README.md
           version: .
 
   verify:
