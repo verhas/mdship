@@ -1,6 +1,7 @@
 ---
 name: mdship
 description: "Use when creating, editing, or reviewing markdown documents that mdship can process — placeholder comments (SET, IMPORT, SLURP, SIP, SUP, TEMPLATE, JINJA2, INCLUDE, TOC, MERMAID, PYTHON, AI), Python script hooks (define/run/transform/audit), and mdship's discovery/editing tools (list_headings, get_section, replace_section, find_replace, get_lines, insert_lines, delete_lines, get_paragraphs, frontmatter_get/set, extract_table/update_table, list_ai_placeholders, list_ai_comments). Helps an LLM agent author valid mdship-ready markdown and edit existing documents through mdship instead of raw Read/Edit."
+disable-model-invocation: true
 ---
 
 # mdship — Authoring, Scripting, and Editing
@@ -192,7 +193,7 @@ Fields:
 - `from`: required path relative to the markdown file.
 - `prefix` / `postfix`: optional text to wrap included content.
 - `range: "x..y"`: include 1-based inclusive line range.
-- `start` / `end`: regex selection, excluding matching marker lines by default.
+- `start` / `end`: regex selection, excluding matching marker lines by default. Each configured pattern must actually match — a `start` or `end` that never matches anywhere in the file is an error, not an empty block; a matched `start` with no matching `end` before EOF is also an error, not a silent fall-through to end of file. (Omitting `end` entirely, rather than giving one that fails to match, is the documented way to select "from `start` to EOF".)
 - `section`: include a markdown section by bare heading title, ignoring heading numbering.
 - `margin`: indent included lines so the leftmost line has exactly this many spaces.
 - `transform`: optional script (or list of scripts) to post-process the included content — see **Script Hooks** below.

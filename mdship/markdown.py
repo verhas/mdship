@@ -1312,10 +1312,13 @@ def _extract_lines_from_file(filepath: str, config: dict) -> list:
 
         extracted = []
         in_section = False
+        start_matched = False
+        end_matched = False
 
         for i, line in enumerate(lines):
             # Check for section start
             if start_pattern and start_pattern.search(line):
+                start_matched = True
                 in_section = True
                 # Include the marker line if include=true, otherwise skip it
                 if start_include:
@@ -1328,6 +1331,7 @@ def _extract_lines_from_file(filepath: str, config: dict) -> list:
                 if end_include:
                     extracted.append(line)
                 in_section = False
+                end_matched = True
                 continue
 
             # Collect lines in section
@@ -1337,10 +1341,26 @@ def _extract_lines_from_file(filepath: str, config: dict) -> list:
                     if end_pattern and end_pattern.search(line):
                         if end_include:
                             extracted.append(line)
+                        end_matched = True
                         break
                     extracted.append(line)
                 elif in_section:
                     extracted.append(line)
+
+        # A configured pattern that never matches is almost always a typo or a
+        # stale marker, not "include nothing" / "include to end of file" — so
+        # it must fail loudly rather than silently produce an empty or
+        # unexpectedly long block.
+        if start_pattern and not start_matched:
+            raise ValueError(f"Start pattern not found in {filepath}: {start_config!r}")
+        if end_pattern:
+            if start_pattern:
+                if in_section:
+                    raise ValueError(
+                        f"End pattern not found in {filepath} after the matched start: {end_config!r}"
+                    )
+            elif not end_matched:
+                raise ValueError(f"End pattern not found in {filepath}: {end_config!r}")
 
     # Method 3: Section-based extraction
     elif 'section' in config:

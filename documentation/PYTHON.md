@@ -9,9 +9,9 @@ allow-list file in your home directory that mdship never writes and that must be
 read-only. See [Security Model](#security-model).
 
 - [The PYTHON placeholder](#the-python-placeholder)
-  - [`run:` mode — content generation](#run-mode--content-generation)
-  - [`_yolo_` — bypassing integrity protection](#_yolo_--bypassing-integrity-protection)
-  - [`define:` mode — variable source](#define-mode--variable-source)
+  - [`run:` mode — content generation](#run-mode-content-generation)
+  - [`_yolo_` — bypassing integrity protection](#yolo-bypassing-integrity-protection)
+  - [`define:` mode — variable source](#define-mode-variable-source)
 - [The `transform:` hook](#the-transform-hook)
 - [The `audit:` hook](#the-audit-hook)
 - [Python API](#python-api)

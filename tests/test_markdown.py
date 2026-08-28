@@ -3043,6 +3043,83 @@ class TestContentGeneratedHash:
         assert "indented" in result
         assert "## Next" not in result
 
+    # ------------------------------------------------------------------
+    # start:/end: regex extraction — a marker that never matches is an
+    # error, and a matched start without a matched end is an error, not a
+    # silent empty block or a silent fall-through to end of file.
+    # ------------------------------------------------------------------
+
+    def test_start_and_end_both_match(self, tmp_path):
+        """Sanity check: a normal start/end pair still extracts correctly."""
+        src = tmp_path / "doc.txt"
+        src.write_text("before\nSTART\nkeep this\nEND\nafter\n")
+        result = _extract_lines_from_file(str(src), {"start": "START", "end": "END"})
+        assert result == ["keep this"]
+
+    def test_start_not_found_raises(self, tmp_path):
+        """A start: pattern that matches nowhere is an error, not an empty block."""
+        src = tmp_path / "doc.txt"
+        src.write_text("before\nkeep this\nafter\n")
+        with pytest.raises(ValueError, match="Start pattern not found"):
+            _extract_lines_from_file(str(src), {"start": "NOPE", "end": "after"})
+
+    def test_start_only_not_found_raises(self, tmp_path):
+        """start: with no end: at all still errors if start never matches."""
+        src = tmp_path / "doc.txt"
+        src.write_text("a\nb\nc\n")
+        with pytest.raises(ValueError, match="Start pattern not found"):
+            _extract_lines_from_file(str(src), {"start": "NOPE"})
+
+    def test_start_only_matches_runs_to_eof(self, tmp_path):
+        """start: alone (no end: key at all) intentionally extracts to EOF — not an error."""
+        src = tmp_path / "doc.txt"
+        src.write_text("before\nSTART\nkeep 1\nkeep 2\n")
+        result = _extract_lines_from_file(str(src), {"start": "START"})
+        assert result == ["keep 1", "keep 2"]
+
+    def test_end_not_found_after_start_raises(self, tmp_path):
+        """start: matches but end: never does -> error, not 'to end of file'."""
+        src = tmp_path / "doc.txt"
+        src.write_text("before\nSTART\nkeep 1\nkeep 2\n")
+        with pytest.raises(ValueError, match="End pattern not found.*after the matched start"):
+            _extract_lines_from_file(str(src), {"start": "START", "end": "NOPE"})
+
+    def test_end_only_matches(self, tmp_path):
+        """end: alone extracts from the beginning up to the match."""
+        src = tmp_path / "doc.txt"
+        src.write_text("keep 1\nkeep 2\nEND\nafter\n")
+        result = _extract_lines_from_file(str(src), {"end": "END"})
+        assert result == ["keep 1", "keep 2"]
+
+    def test_end_only_not_found_raises(self, tmp_path):
+        """end: alone that never matches is an error, not 'include the whole file'."""
+        src = tmp_path / "doc.txt"
+        src.write_text("a\nb\nc\n")
+        with pytest.raises(ValueError, match="End pattern not found"):
+            _extract_lines_from_file(str(src), {"end": "NOPE"})
+
+    def test_multiple_start_end_pairs(self, tmp_path):
+        """Multiple complete start/end pairs are all extracted (documented behavior)."""
+        src = tmp_path / "doc.txt"
+        src.write_text("BEGIN\nfirst\nSTOP\nmiddle\nBEGIN\nsecond\nSTOP\n")
+        result = _extract_lines_from_file(str(src), {"start": "BEGIN", "end": "STOP"})
+        assert result == ["first", "second"]
+
+    def test_last_of_multiple_sections_unclosed_raises(self, tmp_path):
+        """One complete pair followed by a dangling, unclosed start still errors."""
+        src = tmp_path / "doc.txt"
+        src.write_text("BEGIN\nfirst\nSTOP\nBEGIN\nsecond, never closed\n")
+        with pytest.raises(ValueError, match="End pattern not found.*after the matched start"):
+            _extract_lines_from_file(str(src), {"start": "BEGIN", "end": "STOP"})
+
+    def test_start_end_via_include_placeholder_raises(self, tmp_path):
+        """The same error surfaces through the INCLUDE placeholder, not an empty block."""
+        src = tmp_path / "snippet.txt"
+        src.write_text("no markers here\n")
+        content = f'<!--INCLUDE\nfrom: "{src}"\nstart: "MISSING"\n-->\n<!--/INCLUDE-->\n'
+        with pytest.raises(ValueError, match="Start pattern not found"):
+            update_includes(content, str(tmp_path))
+
 
 class TestAIDepsExtension:
     """Tests for the deps: extension to AI placeholders."""

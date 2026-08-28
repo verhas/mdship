@@ -5,7 +5,7 @@ name: "include"
 deps:
   - path: ../README.md
     section: Including Files
-    checksum: md5:4b43cb11467cbe92e04bae514956a389
+    checksum: md5:5d420224f39cb0f5f61eed0b1e47b0b8
 prompt: |
     Write documentation for the INCLUDE placeholder in mdship.
 
@@ -27,8 +27,8 @@ prompt: |
     Explain when to choose INCLUDE (embed entire file content) vs. IMPORT (load data as variables).
     Link to: [SET](SET.md), [IMPORT](IMPORT.md), [SLURP](SLURP.md), [SIP](SIP.md),
     [SUP](SUP.md), [TOC](TOC.md), [MERMAID](MERMAID.md)
-_prompt_checksum_: md5:ca8e84d315a39d676ebdf189de1c028b
-_content_generated_: 4167:md5:690f92fe0227e3a26320b8a50b183e0f
+_prompt_checksum_: md5:ea42614f2d9507fb294e651e1b56ab54
+_content_generated_: 5033:md5:7066f3cf912475ac7c9e3581761c46d4
 # ⚠️ MANAGED CONTENT: Edits will be lost.
 # danger zone: Delete _content_generated_ to override.
 -->
@@ -55,8 +55,8 @@ postfix: "```"
 - `prefix` *(optional)*: Text inserted on a line before the included content (e.g. an opening code fence).
 - `postfix` *(optional)*: Text inserted on a line after the included content (e.g. a closing code fence).
 - `range: "x..y"` *(optional)*: Include only lines x through y (1-based, inclusive). Mutually exclusive with `start`/`end`/`section`.
-- `start` *(optional)*: Start including from the line after the first line matching this regex. Accepts a plain string pattern, or a structure with `pattern` and `include: true` to include the matched line itself. Mutually exclusive with `range`/`section`.
-- `end` *(optional)*: Stop including at the first line matching this regex (after `start`). Same structure support as `start`.
+- `start` *(optional)*: Start including from the line after the first line matching this regex. Accepts a plain string pattern, or a structure with `pattern` and `include: true` to include the matched line itself. Mutually exclusive with `range`/`section`. If `start` never matches anywhere in the file, `mdship update` fails with an error rather than silently including nothing — a pattern that matches zero times is almost always a stale or mistyped marker.
+- `end` *(optional)*: Stop including at the first line matching this regex (after `start`). Same structure support as `start`. Given alone (no `start`), extraction runs from the beginning of the file up to the match. Given together with `start`, multiple `start`/`end` pairs may repeat through the file and every segment they bound is concatenated — but each `start` match must be followed by a matching `end` before the file ends. If a configured `end` never matches — whether because `start` matched but nothing after it satisfies `end`, or because `end` alone never matches — `mdship update` fails with an error instead of defaulting to the rest of the file. Omitting `end` entirely (not configuring it at all) is different: that intentionally extracts from `start` through end of file.
 - `section: "Title"` *(optional)*: Include a markdown section by its heading title (without numbering). Selects the heading line whose bare title matches (case-insensitive) plus all following lines until the next heading at the same or higher level, or end of file. Mutually exclusive with `range`/`start`/`end`.
 - `margin: N` *(optional)*: Re-indent the included content so the leftmost non-empty line has exactly N spaces, preserving relative indentation.
 - `_terminate_` *(optional)*: Custom closing marker name. If set to e.g. `"CODE"`, the region ends at `<!--/CODE-->` instead of `<!--/INCLUDE-->`.
