@@ -3120,6 +3120,72 @@ class TestContentGeneratedHash:
         with pytest.raises(ValueError, match="Start pattern not found"):
             update_includes(content, str(tmp_path))
 
+    def test_identical_start_and_end_pattern_extracts_between_two_occurrences(self, tmp_path):
+        """start: and end: may be the same pattern: while a section is open,
+        only 'end' is checked, so the first occurrence opens and the next
+        occurrence (checked in isolation, not as a candidate 'start') closes it."""
+        src = tmp_path / "doc.txt"
+        src.write_text("before\nMARK\nmiddle\nMARK\nafter\n")
+        result = _extract_lines_from_file(str(src), {"start": "MARK", "end": "MARK"})
+        assert result == ["middle"]
+
+    def test_identical_start_and_end_pattern_supports_multiple_sections(self, tmp_path):
+        """Four occurrences of the same marker give two ranges, concatenated —
+        same 'multiple sections' semantics as distinct start/end patterns."""
+        src = tmp_path / "doc.txt"
+        src.write_text("MARK\na\nMARK\nx\nMARK\nb\nMARK\n")
+        result = _extract_lines_from_file(str(src), {"start": "MARK", "end": "MARK"})
+        assert result == ["a", "b"]
+
+    def test_identical_start_and_end_pattern_single_occurrence_raises(self, tmp_path):
+        """A single occurrence opens a section with nothing left to close it —
+        still an error, not an empty or unbounded result."""
+        src = tmp_path / "doc.txt"
+        src.write_text("before\nMARK\nmiddle\nafter\n")
+        with pytest.raises(ValueError, match="End pattern not found.*after the matched start"):
+            _extract_lines_from_file(str(src), {"start": "MARK", "end": "MARK"})
+
+    def test_identical_start_and_end_pattern_odd_occurrences_raises(self, tmp_path):
+        """An odd number of occurrences leaves the last section dangling open."""
+        src = tmp_path / "doc.txt"
+        src.write_text("MARK\na\nMARK\nx\nMARK\nb\n")
+        with pytest.raises(ValueError, match="End pattern not found.*after the matched start"):
+            _extract_lines_from_file(str(src), {"start": "MARK", "end": "MARK"})
+
+    def test_overlapping_start_and_end_pattern_single_ambiguous_line_raises(self, tmp_path):
+        """start and end are different patterns but both match the same line.
+        That line opens a section (start is checked first, and only while not
+        already in one); with no distinct later line satisfying 'end', it's
+        still an error, not a silent fallback."""
+        src = tmp_path / "doc.txt"
+        src.write_text("before\n// MARK\nmiddle\nafter\n")
+        with pytest.raises(ValueError, match="End pattern not found.*after the matched start"):
+            _extract_lines_from_file(str(src), {"start": "// MARK", "end": "// .ARK"})
+
+    def test_overlapping_start_and_end_pattern_second_occurrence_closes(self, tmp_path):
+        """A second line satisfying the (different, but overlapping) end pattern
+        closes the section correctly, since only 'end' is checked once inside."""
+        src = tmp_path / "doc.txt"
+        src.write_text("before\n// MARK\nmiddle\n// MARK\nafter\n")
+        result = _extract_lines_from_file(str(src), {"start": "// MARK", "end": "// .ARK"})
+        assert result == ["middle"]
+
+    def test_line_resembling_start_marker_mid_section_is_kept_as_content(self, tmp_path):
+        """A line that happens to match 'start' while already inside a section
+        is not a phantom restart — it's just content, since only 'end' is
+        checked once a section is open."""
+        src = tmp_path / "doc.txt"
+        src.write_text("BEGIN\nlooks like BEGIN but isn't END\nSTOP\n")
+        result = _extract_lines_from_file(str(src), {"start": "BEGIN", "end": "STOP"})
+        assert result == ["looks like BEGIN but isn't END"]
+
+    def test_similar_but_distinct_start_and_end_patterns_are_allowed(self, tmp_path):
+        """Sanity check: merely similar-looking patterns are not falsely flagged."""
+        src = tmp_path / "doc.txt"
+        src.write_text("MARK_START\nkeep this\nMARK_END\n")
+        result = _extract_lines_from_file(str(src), {"start": "MARK_START", "end": "MARK_END"})
+        assert result == ["keep this"]
+
 
 class TestAIDepsExtension:
     """Tests for the deps: extension to AI placeholders."""

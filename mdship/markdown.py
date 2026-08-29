@@ -1315,37 +1315,48 @@ def _extract_lines_from_file(filepath: str, config: dict) -> list:
         start_matched = False
         end_matched = False
 
-        for i, line in enumerate(lines):
-            # Check for section start
-            if start_pattern and start_pattern.search(line):
-                start_matched = True
-                in_section = True
-                # Include the marker line if include=true, otherwise skip it
-                if start_include:
-                    extracted.append(line)
-                continue
-
-            # Check for section end
-            if in_section and end_pattern and end_pattern.search(line):
-                # Include the marker line if include=true, otherwise skip it
-                if end_include:
-                    extracted.append(line)
-                in_section = False
-                end_matched = True
-                continue
-
-            # Collect lines in section
-            if in_section or (not start_pattern and not in_section):
-                # If only end_pattern specified, start from beginning
-                if not start_pattern:
-                    if end_pattern and end_pattern.search(line):
+        if not start_pattern:
+            # end-only mode: collect from the beginning until 'end' matches.
+            for line in lines:
+                if end_pattern.search(line):
+                    if end_include:
+                        extracted.append(line)
+                    end_matched = True
+                    break
+                extracted.append(line)
+        elif not end_pattern:
+            # start-only mode: collect everything from the first 'start' match to EOF.
+            for line in lines:
+                if not in_section:
+                    if start_pattern.search(line):
+                        start_matched = True
+                        in_section = True
+                        if start_include:
+                            extracted.append(line)
+                    continue
+                extracted.append(line)
+        else:
+            # start+end pairs, possibly repeated. While a section is open, only
+            # 'end' is checked — a line that merely resembles a start marker is
+            # just content until 'end' actually matches. This also means
+            # 'start' and 'end' may be identical, or overlap on the same line:
+            # the first match always opens, and only the next line 'end'
+            # matches (checked in isolation from 'start') closes it.
+            for line in lines:
+                if in_section:
+                    if end_pattern.search(line):
                         if end_include:
                             extracted.append(line)
+                        in_section = False
                         end_matched = True
-                        break
+                        continue
                     extracted.append(line)
-                elif in_section:
-                    extracted.append(line)
+                    continue
+                if start_pattern.search(line):
+                    start_matched = True
+                    in_section = True
+                    if start_include:
+                        extracted.append(line)
 
         # A configured pattern that never matches is almost always a typo or a
         # stale marker, not "include nothing" / "include to end of file" — so

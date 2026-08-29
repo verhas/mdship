@@ -5,7 +5,7 @@ name: "include"
 deps:
   - path: ../README.md
     section: Including Files
-    checksum: md5:5d420224f39cb0f5f61eed0b1e47b0b8
+    checksum: md5:32c48a0a3d59e8ea0ae00bd354e3e6dc
 prompt: |
     Write documentation for the INCLUDE placeholder in mdship.
 
@@ -28,7 +28,7 @@ prompt: |
     Link to: [SET](SET.md), [IMPORT](IMPORT.md), [SLURP](SLURP.md), [SIP](SIP.md),
     [SUP](SUP.md), [TOC](TOC.md), [MERMAID](MERMAID.md)
 _prompt_checksum_: md5:ea42614f2d9507fb294e651e1b56ab54
-_content_generated_: 5033:md5:7066f3cf912475ac7c9e3581761c46d4
+_content_generated_: 6074:md5:4ba0dbb700e4faacf800a44965e0001b
 # ⚠️ MANAGED CONTENT: Edits will be lost.
 # danger zone: Delete _content_generated_ to override.
 -->
@@ -60,6 +60,21 @@ postfix: "```"
 - `section: "Title"` *(optional)*: Include a markdown section by its heading title (without numbering). Selects the heading line whose bare title matches (case-insensitive) plus all following lines until the next heading at the same or higher level, or end of file. Mutually exclusive with `range`/`start`/`end`.
 - `margin: N` *(optional)*: Re-indent the included content so the leftmost non-empty line has exactly N spaces, preserving relative indentation.
 - `_terminate_` *(optional)*: Custom closing marker name. If set to e.g. `"CODE"`, the region ends at `<!--/CODE-->` instead of `<!--/INCLUDE-->`.
+
+**`start` and `end` may be the same pattern, or otherwise overlap.** Once a section is open, only `end` is checked against each line — `start` is not re-tested until the section closes. So the same marker text can open and close a region: the first occurrence opens it, and the *next* occurrence (evaluated purely as a candidate `end`, not as a competing `start`) closes it.
+
+```markdown
+<!--INCLUDE
+from: "example.java"
+start: "// MARK"
+end: "// MARK"
+-->
+<!--/INCLUDE-->
+```
+
+extracts everything strictly between the first `// MARK` and the second one. This also means a line that merely *resembles* `start` while a section is already open is not treated as a phantom restart — it's just ordinary content, since it doesn't satisfy `end`.
+
+The failure mode to watch for is a marker that appears only once (or an odd number of times): the section it opens then has nothing left to close it, and `mdship update` fails with "End pattern not found ... after the matched start" rather than silently including nothing or running to end of file.
 
 ## Examples
 
