@@ -2,93 +2,138 @@
 last-updated: '2026-06-10T11:37:48.418276'
 mdship-log: |
   2026-06-10 11:37:48 - update: processed all placeholders
-checksum: 2b7b8089423e10df9fe8b7d78b22b232ebdf6e66799734b9740c0bf45f889800
+checksum: 98633f2d1eb663293a80cf07fb463618e47d88176c6200e73690b549994774eb
 checksum_algorithm: sha256
 ---
 # 1. mdship
 
-A command-line and MCP tool for manipulating markdown files.
+mdship keeps generated and AI-authored regions of a Markdown document synchronized with the sources they depend on — a command-line tool and MCP server for maintaining documentation as code, not just editing text.
 
 <!--TOC _terminate_: "TIC" 
-_content_generated_: 2030:md5:78586dd9870b3f16ce99e6edb9eb51b5
+_content_generated_: 2080:md5:ed76e9f6b560f78228b9ad7c329cd940
 # ⚠️ MANAGED CONTENT: Edits will be lost.
 # danger zone: Delete _content_generated_ to override.
 -->
 - [1. mdship](#1-mdship)
-  - [1.1. Features](#11-features)
-  - [1.2. Installation](#12-installation)
-  - [1.3. Usage](#13-usage)
-    - [1.3.1. Command Line](#131-command-line)
-    - [1.3.2. Shift Validation](#132-shift-validation)
-    - [1.3.3. Shift Line Range](#133-shift-line-range)
-    - [1.3.4. Semantic Line Breaks](#134-semantic-line-breaks)
-    - [1.3.5. Number Headings](#135-number-headings)
-    - [1.3.6. Variables](#136-variables)
-      - [1.3.6.1. IMPORT: Load from External Files](#1361-import-load-from-external-files)
-      - [1.3.6.2. SLURP: Extract Names and Values from Files](#1362-slurp-extract-names-and-values-from-files)
-      - [1.3.6.3. SIP: Extract Predefined Variables from Files](#1363-sip-extract-predefined-variables-from-files)
-      - [1.3.6.4. SUP: Extract from Document Lines](#1364-sup-extract-from-document-lines)
-      - [1.3.6.5. Pattern Dictionary](#1365-pattern-dictionary)
-    - [1.3.7. Template Placeholders](#137-template-placeholders)
-      - [1.3.7.1. Jinja2 Template Placeholders](#1371-jinja2-template-placeholders)
-    - [1.3.8. Placeholder Processing Order](#138-placeholder-processing-order)
-    - [1.3.9. Table of Contents](#139-table-of-contents)
-    - [1.3.10. Including Files](#1310-including-files)
-    - [1.3.11. Rendering Mermaid Diagrams](#1311-rendering-mermaid-diagrams)
-    - [1.3.12. Checksums](#1312-checksums)
-    - [1.3.13. Skipping Backups](#1313-skipping-backups)
-    - [1.3.14. Tracking Changes](#1314-tracking-changes)
-    - [1.3.15. Validating Links](#1315-validating-links)
-    - [1.3.16. Placeholder Validation](#1316-placeholder-validation)
-    - [1.3.17. Managed Content Integrity](#1317-managed-content-integrity)
-    - [1.3.18. AI Placeholders](#1318-ai-placeholders)
-    - [1.3.19. MCP Server](#1319-mcp-server)
-    - [1.3.20. GitHub Action](#1320-github-action)
-  - [1.4. Design](#14-design)
-    - [1.4.1. Dependencies](#141-dependencies)
-    - [1.4.2. Development Dependencies](#142-development-dependencies)
-  - [1.5. Development](#15-development)
+  - [1.1. What mdship Does](#11-what-mdship-does)
+  - [1.2. Features](#12-features)
+  - [1.3. Installation](#13-installation)
+  - [1.4. Usage](#14-usage)
+    - [1.4.1. Command Line](#141-command-line)
+    - [1.4.2. Shift Validation](#142-shift-validation)
+    - [1.4.3. Shift Line Range](#143-shift-line-range)
+    - [1.4.4. Semantic Line Breaks](#144-semantic-line-breaks)
+    - [1.4.5. Number Headings](#145-number-headings)
+    - [1.4.6. Variables](#146-variables)
+      - [1.4.6.1. IMPORT: Load from External Files](#1461-import-load-from-external-files)
+      - [1.4.6.2. SLURP: Extract Names and Values from Files](#1462-slurp-extract-names-and-values-from-files)
+      - [1.4.6.3. SIP: Extract Predefined Variables from Files](#1463-sip-extract-predefined-variables-from-files)
+      - [1.4.6.4. SUP: Extract from Document Lines](#1464-sup-extract-from-document-lines)
+      - [1.4.6.5. Pattern Dictionary](#1465-pattern-dictionary)
+    - [1.4.7. Template Placeholders](#147-template-placeholders)
+      - [1.4.7.1. Jinja2 Template Placeholders](#1471-jinja2-template-placeholders)
+    - [1.4.8. Placeholder Processing Order](#148-placeholder-processing-order)
+    - [1.4.9. Table of Contents](#149-table-of-contents)
+    - [1.4.10. Including Files](#1410-including-files)
+    - [1.4.11. Rendering Mermaid Diagrams](#1411-rendering-mermaid-diagrams)
+    - [1.4.12. Checksums](#1412-checksums)
+    - [1.4.13. Skipping Backups](#1413-skipping-backups)
+    - [1.4.14. Tracking Changes](#1414-tracking-changes)
+    - [1.4.15. Validating Links](#1415-validating-links)
+    - [1.4.16. Placeholder Validation](#1416-placeholder-validation)
+    - [1.4.17. Managed Content Integrity](#1417-managed-content-integrity)
+    - [1.4.18. AI Placeholders](#1418-ai-placeholders)
+    - [1.4.19. MCP Server](#1419-mcp-server)
+    - [1.4.20. GitHub Action](#1420-github-action)
+  - [1.5. Design](#15-design)
+    - [1.5.1. Dependencies](#151-dependencies)
+    - [1.5.2. Development Dependencies](#152-development-dependencies)
+  - [1.6. Development](#16-development)
 <!--/TIC-->
 
-## 1.1. Features
+## 1.1. What mdship Does
+
+Most of mdship's individual commands — fixing headings, reflowing paragraphs, generating a table of contents — are ordinary Markdown utilities, and useful on their own. What makes the project different is what they add up to: **mdship keeps generated and AI-authored regions of a Markdown document synchronized with the sources they declare as dependencies.**
+
+All of the control information lives in HTML comments, so GitHub and every ordinary Markdown renderer see nothing but plain, readable Markdown. On top of that, mdship layers three things:
+
+1. **Markdown tools** — heading fixes, numbering, reflow, semantic line breaks, table alignment, link validation, and a set of section/line-level editing primitives for agents to use instead of reading and rewriting a whole file.
+2. **A document consistency system** — variables (`SET`/`IMPORT`/`SLURP`/`SIP`/`SUP`), `INCLUDE`, `TEMPLATE`/`JINJA2`, Mermaid diagrams, and project-local Python scripts, all producing *managed regions*. Each one's checksum is recorded, so a hand-edit to generated content is caught on the next run instead of silently overwritten or silently kept stale.
+3. **An AI document system** — the same idea extended to prose an LLM writes. An `AI` placeholder declares what it depends on, its prompt, and, optionally, a shared writing brief:
+
+   ```markdown
+   <!--AI
+   name: "api-summary"
+   prompt: |
+       Summarize the public API.
+   deps:
+     - path: src/api.py
+     - path: src/models.py
+       range: "1..80"
+   -->
+
+   ...generated documentation...
+
+   <!--/AI-->
+   ```
+
+   mdship extracts the declared source slices and records a checksum of each dependency, the prompt, the brief, and the generated content itself. `ai_context` is a gate call: before any generation happens, it tells an agent whether anything relevant has actually changed, and — only if so — returns exactly the inputs needed to regenerate: the source slices, the previous content, the brief. `ai_update` then writes the new content and records every checksum atomically. The agent is never handed "here's the repository, edit whatever's needed" — it's handed "here is the information relevant to placeholder X, produce its value," then "here is the value, install it."
+
+Change `src/api.py`, and `ai-check` (or the discovery command `ai-list`) reports precisely that the `api-summary` block is now stale — not "some paragraph looks different," but *this dependency changed*, or *this prompt changed*, or *this brief changed*, or *nothing relevant changed, regeneration isn't needed*. That is the same distinction a build system draws between inputs and outputs, applied to prose, and it answers a question that is normally unanswerable about AI-generated documentation: why did this paragraph change?
+
+If the AI layer disappeared tomorrow, the deterministic half of mdship would still be a complete, useful tool on its own — the AI placeholder extends an existing dependency-tracking model instead of being the reason the tool exists.
+
+## 1.2. Features
+
+Grouped by the three layers above.
+
+**Markdown tools** — useful independent of everything else:
 
 - **Fix heading levels**: Ensure consistent heading hierarchy
 - **Shift headings**: Move all headings up or down by N levels
-- **Add checksums**: Insert content checksums into front-matter
-- **Check checksums**: Verify checksums against content (useful in scripts)
+- **Number / unnumber headings**: Add or strip hierarchical numbering (1. 1.1. 1.1.1.)
 - **Reflow paragraphs**: Reflow text to a specific width
 - **Semantic line breaks**: Break lines at sentence/clause boundaries for better readability and diffs
-- **Number headings**: Add hierarchical numbering to headings (1. 1.1. 1.1.1.)
-- **Remove numbering**: Strip numbering from headings
+- **Format tables**: Align a GFM table's columns without touching its data or declared alignment
+- **Validate links**: Check for broken anchor references, missing file references, and unused anchors
+- **Editing and discovery primitives**: `list-headings`, `get-section`/`replace-section`, `extract-table`/`update-table`, `frontmatter-get`/`frontmatter-set`, `find-replace`, and line-level `get-lines`/`insert-lines`/`delete-lines`/`get-paragraphs` — so an agent can read and edit exactly the part of a document it needs, not the whole file (see [documentation/commands/](documentation/commands/))
+
+**Document consistency system** — deterministic managed regions with dependency tracking:
+
 - **Variables**: Define and use variables throughout your document with hierarchical support
   - **SET**: Define variables with scalar or YAML values
   - **IMPORT**: Load data from JSON, YAML, TOML, or XML files
   - **SLURP**: Extract variable names and values from files using regex patterns
   - **SIP**: Extract predefined variables from files with simpler patterns
   - **SUP**: Extract a single value from the next line in the document
-- **Hierarchical names**: Support dot-notation variable naming (e.g., `config.database.host`)
+  - **Hierarchical names**: Dot-notation variable naming (e.g., `config.database.host`)
+  - **Pattern dictionary**: Built-in patterns for common extraction tasks (@heading, @version) and support for custom patterns
 - **Table of contents**: Generate and insert a TOC with anchor links between markers
 - **Include files**: Embed code snippets and content from other files with flexible line selection
 - **Render Mermaid diagrams**: Generate SVG/PNG diagrams from Mermaid source code with variable substitution
 - **Template placeholders**: Insert dynamic content with `$variable` substitution or Jinja2 rendering
-- **Pattern dictionary**: Built-in patterns for common extraction tasks (@heading, @version) and support for custom patterns
-- **Placeholder validation**: Early detection of mistyped closing tags, unclosed placeholders, and duplicate AI placeholder names before processing
-- **Managed content integrity**: Hash-based protection against accidental manual edits inside managed blocks (TOC, INCLUDE, TEMPLATE, JINJA2, MERMAID)
 - **Python scripting**: Extend mdship with project-local scripts in `.mdship/scripts/`, gated by a read-only allow-list you control (see [documentation/PYTHON.md](documentation/PYTHON.md))
   - **PYTHON `run:`**: Generate managed content from a script, with the previous output passed back in for incremental generation
   - **PYTHON `define:`**: Define document variables from a script, alongside SET and IMPORT
   - **`transform:`**: Post-process what INCLUDE, TOC, MERMAID, TEMPLATE or JINJA2 produced, single script or pipeline
   - **`audit:`**: Validate or cross-check collected variables and abort the run when something is wrong
   - **`mdship scripts`**: Install, update, and list bundled factory scripts; verify that execution is enabled
+- **Managed content integrity**: Hash-based protection against accidental manual edits inside managed blocks (TOC, INCLUDE, TEMPLATE, JINJA2, MERMAID, PYTHON `run:`)
+- **Checksums**: Insert and verify a whole-document content checksum in front-matter
+- **Placeholder validation**: Early detection of mistyped closing tags, unclosed placeholders, and duplicate AI placeholder names before processing
 - **Track changes**: Automatically maintain `last-updated` timestamp and operation logs in front-matter (use `--track` or `-t` flag)
-- **Validate links**: Check for broken anchor references, missing file references, and unused anchors
-- **AI placeholders**: Embed generation prompts in markdown documents for Claude to fill or update
-  - **`deps:`**: Declare file dependencies; mdship extracts content and computes checksums so Claude never reads source files directly
-  - **`brief:`**: Shared writing instructions (style, tone, audience) applied to every generation run
-  - **`ai-fix`**: Record content, prompt, brief, and dep checksums after generation so accidental edits are detectable
-  - **`ai-check`**: Verify that all stored checksums still match — use in CI or pre-commit hooks
 
-## 1.2. Installation
+**AI document system** — the same dependency model extended to LLM-generated prose:
+
+- **AI placeholders**: Embed generation prompts in markdown documents for an agent to fill or update
+  - **`deps:`**: Declare file dependencies; mdship extracts content and computes checksums so the agent never reads source files directly
+  - **`brief:`**: Shared writing instructions (style, tone, audience) applied to every generation run
+  - **`ai_context` / `ai_update`**: The gate-and-write pair that gives an agent exactly what's needed to regenerate one placeholder, and nothing more
+  - **`ai-fix`**: Record content, prompt, brief, and dep checksums after generation, or after an accepted manual edit
+  - **`ai-check`** / **`ai-list`**: Verify all stored checksums still match, or list every placeholder's status — use in CI, pre-commit hooks, or as an agent's first discovery step
+  - **`//AI:` review comments**: A separate, lighter-weight convention — a human or agent annotates a document with suggestions via the `/ai-review` skill, discoverable with `ai-comments`, then applied with the `/ai-fix` skill (not to be confused with the `ai-fix` command above, which fixes AI-placeholder checksums, not review comments)
+
+## 1.3. Installation
 
 ```bash
 uv sync
@@ -102,9 +147,9 @@ pip install mdship
 ```
 
 
-## 1.3. Usage
+## 1.4. Usage
 
-### 1.3.1. Command Line
+### 1.4.1. Command Line
 
 Most commands modify the file in place and create a backup with a `.md.bak` extension (use `--no-bak` to skip):
 
@@ -122,7 +167,7 @@ mdship update file.md                    # Update all placeholders (variables, i
 mdship update --force file.md            # Update and skip managed-content hash checks (-f for short)
 ```
 
-### 1.3.2. Shift Validation
+### 1.4.2. Shift Validation
 
 The `shift-headings` command validates that the shift won't create invalid heading levels:
 
@@ -134,7 +179,7 @@ mdship shift-headings file.md --levels 10   # ERROR if any h6 (can't demote belo
 
 If validation fails, the file is not modified and an error is printed.
 
-### 1.3.3. Shift Line Range
+### 1.4.3. Shift Line Range
 
 Use `--lines START:END` to only shift headings within a specific line range (1-based, inclusive):
 
@@ -146,7 +191,7 @@ mdship shift-headings file.md --levels 1 --lines :50      # From start to line 5
 
 Headings outside the specified range are not modified.
 
-### 1.3.4. Semantic Line Breaks
+### 1.4.4. Semantic Line Breaks
 
 Split lines at sentence and clause boundaries for better readability and cleaner diffs:
 
@@ -171,7 +216,7 @@ Each sentence contains important information.
 The text flows together making diffs harder to read.
 ```
 
-### 1.3.5. Number Headings
+### 1.4.5. Number Headings
 
 Add hierarchical numbering to your headings for automatic outline creation:
 
@@ -190,7 +235,7 @@ mdship unnumber file.md                # Remove all numbering
 mdship unnumber file.md --lines 10:50  # Only lines 10-50
 ```
 
-### 1.3.6. Variables
+### 1.4.6. Variables
 
 Define and use variables throughout your document. Variables can come from multiple sources: SET placeholders (inline definitions), IMPORT (load from files), SLURP (extract names and values from files), SIP (extract predefined variable names), and SUP (extract from document lines). All variables support hierarchical names using dot notation.
 
@@ -271,7 +316,7 @@ Variables can come from multiple sources, all processed together:
 - **SIP**: Extract values using predefined variable names and regex patterns
 - **SUP**: Extract a single value from the next line in the document
 
-#### 1.3.6.1. IMPORT: Load from External Files
+#### 1.4.6.1. IMPORT: Load from External Files
 
 Import complete data structures from JSON, YAML, TOML, or XML files:
 
@@ -297,7 +342,7 @@ Port: <!--$config.database.port-->0<!---->
 - `.toml`: TOML configuration
 - `.xml`: XML with attribute support (use `@attribute` for attributes)
 
-#### 1.3.6.2. SLURP: Extract Names and Values from Files
+#### 1.4.6.2. SLURP: Extract Names and Values from Files
 
 Extract both variable names and values from files using regex patterns with 2 capturing groups:
 
@@ -327,7 +372,7 @@ Port: <!--$config.port-->0<!---->
 - `strategy`: Handle multiple matches: `fail`, `first`, `last`, `concatenate` (default: `fail`)
 - `separator`: String separator for concatenate strategy (default: empty)
 
-#### 1.3.6.3. SIP: Extract Predefined Variables from Files
+#### 1.4.6.3. SIP: Extract Predefined Variables from Files
 
 Extract values for predefined variables using regex patterns with 1 capturing group:
 
@@ -355,7 +400,7 @@ Author: <!--$app.author-->unknown<!---->
 - `strategy`: Handle multiple matches: `fail`, `first`, `last`, `concatenate` (default: `fail`)
 - `separator`: String separator for concatenate strategy (default: empty)
 
-#### 1.3.6.4. SUP: Extract from Document Lines
+#### 1.4.6.4. SUP: Extract from Document Lines
 
 Extract a single value from the next non-empty line in the document:
 
@@ -376,7 +421,7 @@ Title: <!--$doc.title-->placeholder<!---->
 
 The pattern is matched against the first non-empty line following the placeholder, and the captured value is stored.
 
-#### 1.3.6.5. Pattern Dictionary
+#### 1.4.6.5. Pattern Dictionary
 
 SUP and SIP support a built-in pattern dictionary for common extraction tasks. Pre-defined patterns are available:
 
@@ -432,7 +477,7 @@ Available patterns: <!--$pattern<>-->
   - Built-in patterns are automatically available
   - Custom patterns extend the built-in set (they don't replace it)
 
-### 1.3.7. Template Placeholders
+### 1.4.7. Template Placeholders
 
 Insert dynamic content between opening and closing markers. TEMPLATE is useful for:
 - Code blocks with dynamic values
@@ -501,7 +546,7 @@ After running `mdship update`:
 - Idempotent: running update multiple times produces the same result
 - Perfect for code examples with dynamic values
 
-#### 1.3.7.1. Jinja2 Template Placeholders
+#### 1.4.7.1. Jinja2 Template Placeholders
 
 Use `JINJA2` when the generated content needs real template logic such as loops, conditionals, filters, or nested object access. It works like `TEMPLATE`: the rendered result is inserted between the opening and closing markers and protected as managed content.
 
@@ -543,7 +588,7 @@ After running `mdship update`:
 
 Use `TEMPLATE` for simple `$var` substitution. Use `JINJA2` when you need template control flow or richer formatting.
 
-### 1.3.8. Placeholder Processing Order
+### 1.4.8. Placeholder Processing Order
 
 The `update` command processes placeholders in a specific order to enable powerful workflows:
 
@@ -597,7 +642,7 @@ This order allows:
 - Safe inclusion of code with `$var` notation since code blocks are skipped
 - Pattern references (@heading, @version) to work in SUP placeholders
 
-### 1.3.9. Table of Contents
+### 1.4.9. Table of Contents
 
 Generate and insert a table of contents between `<!--TOC-->` markers. Configuration is specified inside the marker using YAML. Also adds anchor links to headings:
 
@@ -678,7 +723,7 @@ max-level: 3
 ### Configuration
 ```
 
-### 1.3.10. Including Files
+### 1.4.10. Including Files
 
 Include content from other files between `<​!--INCLUDE-->` markers. Useful for embedding code examples, documentation snippets, or keeping content synchronized:
 
@@ -829,7 +874,7 @@ After running `mdship update`, the file contains:
 [included code from lines 5-7 of hello.py]
 ```
 
-### 1.3.11. Rendering Mermaid Diagrams
+### 1.4.11. Rendering Mermaid Diagrams
 
 Generate Mermaid diagrams and embed them as images using `<!--MERMAID-->` markers. Diagrams are rendered to SVG or PNG files:
 
@@ -941,7 +986,7 @@ Supported themes are `default`, `forest`, `dark`, and `neutral`. The theme affec
 
 **Note:** PNG rendering requires the `cairosvg` library. SVG rendering works out of the box.
 
-### 1.3.12. Checksums
+### 1.4.12. Checksums
 
 Use `sum` to add or update checksums, and `verify` to check them:
 
@@ -968,7 +1013,7 @@ else
 fi
 ```
 
-### 1.3.13. Skipping Backups
+### 1.4.13. Skipping Backups
 
 To skip backup creation, use the `--no-bak` option:
 
@@ -979,7 +1024,7 @@ mdship --no-bak shift-headings file.md --levels 1
 
 The `--no-bak` option can be used with any modifying command.
 
-### 1.3.14. Tracking Changes
+### 1.4.14. Tracking Changes
 
 Use the `--track` (or `-t`) option to automatically track changes in the document's front-matter:
 
@@ -1031,7 +1076,7 @@ mdship --track --no-bak update file.md
 mdship -t --no-bak number file.md --style period
 ```
 
-### 1.3.15. Validating Links
+### 1.4.15. Validating Links
 
 Use the `validate` command to check for broken links and unused anchors in your markdown document:
 
@@ -1085,7 +1130,7 @@ Headings are automatically converted to anchor IDs using the same algorithm as G
 - Ensure heading references in tables of contents are correct
 - Quality assurance checks in documentation workflows
 
-### 1.3.16. Placeholder Validation
+### 1.4.16. Placeholder Validation
 
 mdship automatically validates placeholder syntax before processing to prevent silent data corruption. All opening placeholders must have matching closing tags (where required).
 
@@ -1162,7 +1207,7 @@ mdship update myfile.md
 diff myfile.md.bak myfile.md  # See exactly what changed
 ```
 
-### 1.3.17. Managed Content Integrity
+### 1.4.17. Managed Content Integrity
 
 When `mdship update` writes content between placeholder markers (TOC, INCLUDE, MERMAID), it automatically records a hash of that content inside the opening marker. On every subsequent run it verifies the hash before overwriting the block. If the hash does not match — meaning the content was edited manually — mdship refuses to continue and prints an error.
 
@@ -1226,7 +1271,7 @@ Delete _content_generated_ line to override and accept data loss.
 - The length-based check makes the parser resilient to generated content that itself contains a closing-tag-like string (e.g. an INCLUDE that pulls in a file mentioning `<!--/INCLUDE-->`).
 - You can freely edit the YAML configuration keys inside the opening marker (e.g. `min-level`, `from`, `file`) — those are outside the managed block and are never overwritten.
 
-### 1.3.18. AI Placeholders
+### 1.4.18. AI Placeholders
 
 The `<!--AI-->` placeholder embeds a generation prompt directly in a markdown document. Claude reads the prompt, generates the content, and writes it between the markers. Unlike all other placeholders, **AI placeholders are not processed by `mdship update`** — they are handled by Claude through the `/ai-placeholder` skill.
 
@@ -1306,7 +1351,7 @@ mdship validate file.md
 
 For full details on deps, brief, the MCP tools (`ai_context`, `ai_update`), and the Claude workflow see [documentation/AI.md](documentation/AI.md).
 
-### 1.3.19. MCP Server
+### 1.4.19. MCP Server
 
 Configure in your Claude settings:
 
@@ -1332,7 +1377,7 @@ Available tools include all CLI operations plus four AI-specific tools:
 
 The `/ai-placeholder` skill uses `ai_context` → generate → `ai_update` so the full source document never enters the agent's context window.
 
-### 1.3.20. GitHub Action
+### 1.4.20. GitHub Action
 
 Use mdship as a GitHub Action to check markdown documents in CI. The action installs mdship from PyPI and runs one of the check commands on the given files, failing the job when a check reports a problem:
 
@@ -1362,7 +1407,7 @@ The modifying commands (`update`, `number`, `reflow`, …) are intentionally not
 
 For a step-by-step cookbook with copy-paste workflow recipes see [documentation/GITHUB_ACTIONS.md](documentation/GITHUB_ACTIONS.md).
 
-## 1.4. Design
+## 1.5. Design
 
 **mdship** uses `markdown-it-py` to parse markdown into an AST (Abstract Syntax Tree). This ensures:
 
@@ -1371,7 +1416,7 @@ For a step-by-step cookbook with copy-paste workflow recipes see [documentation/
 - Proper handling of inline formatting (bold, italic, links, etc.)
 - Reliable reflow operations that respect markdown semantics
 
-### 1.4.1. Dependencies
+### 1.5.1. Dependencies
 
 Production dependencies used by mdship:
 
@@ -1384,7 +1429,7 @@ Production dependencies used by mdship:
 | pyyaml | >=6 | MIT | YAML parser and emitter for configuration |
 | merm | >=0.1 | WTFPL | Mermaid diagram rendering to SVG/PNG |
 
-### 1.4.2. Development Dependencies
+### 1.5.2. Development Dependencies
 
 Testing and code quality tools (not included in distribution):
 
@@ -1395,7 +1440,7 @@ Testing and code quality tools (not included in distribution):
 
 All dependencies are pinned to minimum compatible versions for stability and compatibility. Most use permissive open-source licenses (MIT, BSD, WTFPL).
 
-## 1.5. Development
+## 1.6. Development
 
 Install dependencies:
 
