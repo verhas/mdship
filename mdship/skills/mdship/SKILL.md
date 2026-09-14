@@ -27,7 +27,7 @@ mdship covers two different jobs. Use whichever fits the task:
 1. Variable sources: `SET`, `IMPORT`, `SLURP`, `SIP`, `SUP`, `PYTHON define:`. Each may carry an `audit:` hook, run once its variables are merged.
 2. `INCLUDE` blocks.
 3. Variable references in original and included content.
-4. `TEMPLATE` and `JINJA2` blocks.
+4. `JINJA2` blocks and deprecated `TEMPLATE` blocks.
 5. `PYTHON run:` blocks — before the TOC so any headings they generate get indexed.
 6. `TOC` blocks.
 7. `MERMAID` diagrams.
@@ -139,9 +139,9 @@ Rules:
 - Front matter YAML is available as `$fm`.
 - Variable references are not replaced inside fenced code blocks.
 
-### TEMPLATE
+### TEMPLATE (deprecated)
 
-Use `TEMPLATE` when generated content needs variables inside a managed block, especially for code blocks or multi-line formatted content that should not use inline HTML comments.
+`TEMPLATE` is deprecated; do not add new `TEMPLATE` placeholders — use `JINJA2`. When migrating one, rename the markers to `JINJA2` and replace `$variable` / `${variable}` with `{{ variable }}`; an undefined variable stays literal `$name` in `TEMPLATE` but renders empty in `JINJA2`, and `TEMPLATE` adds a trailing blank line that `JINJA2` does not. Existing `TEMPLATE` blocks still work and look like this:
 
 ```markdown
 <!--TEMPLATE
@@ -348,7 +348,7 @@ When authoring:
 
 Use exact matching tags:
 
-- `TEMPLATE`: `<!--TEMPLATE ... -->` with `<!--/TEMPLATE-->`.
+- `TEMPLATE` (deprecated): `<!--TEMPLATE ... -->` with `<!--/TEMPLATE-->`.
 - `JINJA2`: `<!--JINJA2 ... -->` with `<!--/JINJA2-->`.
 - `INCLUDE`: `<!--INCLUDE ... -->` with `<!--/INCLUDE-->`.
 - `TOC`: `<!--TOC ... -->` with `<!--/TOC-->`.

@@ -36,7 +36,7 @@ mdship/
 │   │   ├── variable_sources.py # IMPORT, SLURP, SIP, SUP
 │   │   ├── values.py          # Nested variable lookup, assignment, merge, substitution
 │   │   ├── includes.py        # INCLUDE
-│   │   ├── templates.py       # TEMPLATE and JINJA2
+│   │   ├── templates.py       # JINJA2 and deprecated TEMPLATE
 │   │   ├── python_scripts.py  # PYTHON run:
 │   │   ├── mermaid.py         # MERMAID
 │   │   ├── toc.py             # TOC generation and heading anchors
@@ -403,7 +403,7 @@ The order is defined in exactly one place: `update_document()` in `operations.py
    - Variables are NOT replaced inside code blocks (between ``` markers)
    - Safe for including code with `$var` notation
 
-4. **TEMPLATE and JINJA2 placeholders** - Render inline templates with the collected variables
+4. **JINJA2 and TEMPLATE placeholders** - Render inline templates with the collected variables (TEMPLATE is deprecated in favor of JINJA2)
 
 5. **PYTHON `run:` placeholders** - Generate content with a project-local Python script
    - Before the TOC so generated headings are indexed

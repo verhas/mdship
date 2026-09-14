@@ -1077,7 +1077,7 @@ def update(
     3. Variable references (replace $variable in document and included content)
        - Works in regular text, not in code blocks (between ```)
        - Included content variables are replaced here
-    4. <!--TEMPLATE--> and <!--JINJA2--> placeholders (render templates, insert content)
+    4. <!--JINJA2--> and deprecated <!--TEMPLATE--> placeholders (render templates, insert content)
        - Useful for code blocks and formatted content with variables
     5. <!--TOC--> placeholders (generate table of contents)
        - Can include headings from both original and included content
@@ -1122,14 +1122,6 @@ def update(
         prefix: "```python"
         postfix: "```"
         range: "10..20"
-        -->
-
-        <!--TEMPLATE
-        content: |
-          ```python
-          # Using $pattern variable
-          patterns = $pattern
-          ```
         -->
 
         <!--JINJA2
@@ -1249,7 +1241,7 @@ def ai_fix(
     Computes the character count and MD5 hash of the content between each
     <!--AI ... --> and <!--/AI--> marker pair and writes _content_generated_
     into the opening marker, exactly as mdship does for TOC, INCLUDE, MERMAID
-    and TEMPLATE placeholders.
+    and JINJA2 placeholders.
 
     Run this after writing or updating an AI placeholder section so that
     subsequent ai-check calls can detect unintended manual edits.

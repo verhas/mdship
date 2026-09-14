@@ -5,7 +5,7 @@ Processes all placeholders in a markdown file in a fixed order:
 1. **Variable sources** (SET, IMPORT, SLURP, SIP, SUP, PYTHON `define:`) — collect variables from all sources
 2. **INCLUDE** — embed content from external files
 3. **Variable references** (`<!--$var-->`) — substitute collected variables in the document and included content
-4. **TEMPLATE** and **JINJA2** — render inline templates with variable substitution
+4. **JINJA2** and the deprecated **TEMPLATE** — render inline templates with variable substitution
 5. **PYTHON `run:`** — generate content with a project-local Python script
 6. **TOC** — generate or refresh the table of contents
 7. **MERMAID** — render diagrams with variable substitution

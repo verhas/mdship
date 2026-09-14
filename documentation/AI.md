@@ -333,6 +333,7 @@ is not something a program can resolve on its own.
 - [SET](SET.md) — define variables inline
 - [IMPORT](IMPORT.md) — load data from external files
 - [INCLUDE](INCLUDE.md) — embed file content
-- [TEMPLATE](TEMPLATE.md) — render variables inside code blocks
+- [JINJA2](JINJA2.md) — render templates with variables, loops, and conditionals
+- [TEMPLATE](TEMPLATE.md) — deprecated; use JINJA2
 - [TOC](TOC.md) — generate table of contents
 - [MERMAID](MERMAID.md) — render diagrams

@@ -132,8 +132,8 @@ ordering dependency that mdship cannot detect or enforce.
 
 ## The `transform:` hook
 
-Any content-manager placeholder — `INCLUDE`, `TOC`, `MERMAID`, `TEMPLATE`,
-`JINJA2` — may name one or more scripts that post-process its generated content
+Any content-manager placeholder — `INCLUDE`, `TOC`, `MERMAID`, `JINJA2`,
+or the deprecated `TEMPLATE` — may name one or more scripts that post-process its generated content
 before it is written:
 
 ```markdown
@@ -382,5 +382,5 @@ script performs itself — writing a cache, sending a request — does happen.
 
 - [`mdship scripts` commands](commands/scripts.md)
 - [SET](SET.md), [IMPORT](IMPORT.md), [SLURP](SLURP.md), [SIP](SIP.md), [SUP](SUP.md) — the other variable sources
-- [INCLUDE](INCLUDE.md), [TOC](TOC.md), [MERMAID](MERMAID.md), [TEMPLATE](TEMPLATE.md), [JINJA2](JINJA2.md) — the placeholders that accept `transform:`
+- [INCLUDE](INCLUDE.md), [TOC](TOC.md), [MERMAID](MERMAID.md), [JINJA2](JINJA2.md), [TEMPLATE](TEMPLATE.md) (deprecated) — the placeholders that accept `transform:`
 - [Managed content integrity](content_integrity.md)
