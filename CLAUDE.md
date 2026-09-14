@@ -554,7 +554,7 @@ MCP ──┘
 - `markdown.py` transforms content and raises typed errors from `errors.py`.
 - `operations.py` is the application layer: it validates paths, reads a document
   once, runs the workflow, applies tracking, compares, backs up and writes, and
-  returns an `OperationResult`. It must not import Typer, Rich or FastMCP.
+  returns an `OperationResult`. It must not import Typer, Rich or the MCP SDK.
 - `cli.py` and `mcp_server.py` are adapters: they convert their own options into
   `WriteOptions`, call a named operation, and render or serialize the result.
 - `update_document()` in `operations.py` is the single definition of the

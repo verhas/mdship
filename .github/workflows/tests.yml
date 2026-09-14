@@ -1,0 +1,25 @@
+name: Tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  pytest:
+    name: pytest (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install package with dev dependencies
+        run: pip install -e ".[dev]"
+      - name: Run tests
+        run: pytest -v

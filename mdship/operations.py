@@ -4,7 +4,7 @@ This module implements the file-level mdship use cases shared by the CLI and the
 MCP server. It owns reading, comparing, backing up and writing documents, and it
 defines the canonical placeholder update workflow.
 
-It must stay free of Typer, Rich and FastMCP dependencies: it returns structured
+It must stay free of Typer, Rich and MCP SDK dependencies: it returns structured
 results and raises typed errors, and the adapters decide how to present them.
 """
 
