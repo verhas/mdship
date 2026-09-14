@@ -1150,7 +1150,7 @@ def update(
     for file in _resolve_files(files):
         try:
             result = operations.update_file(file, force=force, options=_write_options())
-        # Plain ValueError is still raised by not-yet-typed markdown.py phases;
+        # Plain ValueError is still raised by not-yet-typed mdship.markdown phases;
         # later phases narrow those to MdshipError subclasses.
         except (MdshipError, ValueError) as e:
             _render_error(file, e)
@@ -1181,7 +1181,7 @@ def ai_list(
     needed to regenerate one.
 
     status is one of: never_generated, edited, needs_update, may_need_update,
-    up_to_date. See list_ai_placeholders in markdown.py for what each means.
+    up_to_date. See list_ai_placeholders in mdship.markdown for what each means.
     """
     if state.track:
         err.print(f"[red]Error:[/red] --track option is not supported for read-only commands")
