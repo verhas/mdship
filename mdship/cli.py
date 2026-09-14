@@ -238,9 +238,9 @@ def _render_error(file: Path, error: Exception) -> None:
     from mdship.errors import FileOperationError
 
     if isinstance(error, FileOperationError):
-        err.print(f"[red]Error:[/red] {error}")
+        err.print(f"[red]Error:[/red] {escape(str(error))}")
     else:
-        err.print(f"[red]Error:[/red] {file}: {error}")
+        err.print(f"[red]Error:[/red] {file}: {escape(str(error))}")
 
 
 def _parse_line_range(lines: str) -> tuple[int | None, int | None]:
@@ -342,7 +342,7 @@ def shift_headings(
         try:
             start_line, end_line = _parse_line_range(lines)
         except ValueError as e:
-            err.print(f"[red]Error:[/red] invalid line range: {e}")
+            err.print(f"[red]Error:[/red] invalid line range: {escape(str(e))}")
             raise typer.Exit(1)
 
     errors = []
@@ -355,7 +355,7 @@ def shift_headings(
         try:
             shifted_content = shift_heading_levels(content, levels, start_line=start_line, end_line=end_line)
         except ValueError as e:
-            err.print(f"[red]Error:[/red] {file}: {e}")
+            err.print(f"[red]Error:[/red] {file}: {escape(str(e))}")
             errors.append((file, str(e)))
             continue
         if _write_file(file, shifted_content, f"shift-headings: shifted headings by {levels} level(s)"):
@@ -408,7 +408,7 @@ def frontmatter_get(
         try:
             value = get_front_matter_value(content, key)
         except ValueError as e:
-            err.print(f"[red]Error:[/red] {file}: {e}")
+            err.print(f"[red]Error:[/red] {file}: {escape(str(e))}")
             errors.append((file, str(e)))
             continue
         if isinstance(value, (dict, list)):
@@ -436,7 +436,7 @@ def frontmatter_set(
     try:
         parsed_value = yaml.safe_load(value)
     except yaml.YAMLError as e:
-        err.print(f"[red]Error:[/red] invalid --value: {e}")
+        err.print(f"[red]Error:[/red] invalid --value: {escape(str(e))}")
         raise typer.Exit(1)
 
     errors = []
@@ -449,7 +449,7 @@ def frontmatter_set(
         try:
             updated_content = set_front_matter_value(content, key, parsed_value)
         except ValueError as e:
-            err.print(f"[red]Error:[/red] {file}: {e}")
+            err.print(f"[red]Error:[/red] {file}: {escape(str(e))}")
             errors.append((file, str(e)))
             continue
         if _write_file(file, updated_content, f"frontmatter-set: set '{key}'"):
@@ -479,7 +479,7 @@ def verify(
         if is_valid:
             print(f"OK: {file}")
         else:
-            err.print(f"[red]Error:[/red] {file}: {message}")
+            err.print(f"[red]Error:[/red] {file}: {escape(str(message))}")
             errors.append((file, message))
     _exit_if_errors(errors)
 
@@ -549,7 +549,7 @@ def semantic_line_breaks(
         try:
             start_line, end_line = _parse_line_range(lines)
         except ValueError as e:
-            err.print(f"[red]Error:[/red] invalid line range: {e}")
+            err.print(f"[red]Error:[/red] invalid line range: {escape(str(e))}")
             raise typer.Exit(1)
 
     errors = []
@@ -584,7 +584,7 @@ def number(
         try:
             start_line, end_line = _parse_line_range(lines)
         except ValueError as e:
-            err.print(f"[red]Error:[/red] invalid line range: {e}")
+            err.print(f"[red]Error:[/red] invalid line range: {escape(str(e))}")
             raise typer.Exit(1)
 
     errors = []
@@ -621,7 +621,7 @@ def number(
                 content, style=style, start_line=start_line, end_line=end_line, skip_title=skip_title
             )
         except ValueError as e:
-            err.print(f"[red]Error:[/red] {file}: {e}")
+            err.print(f"[red]Error:[/red] {file}: {escape(str(e))}")
             errors.append((file, str(e)))
             continue
 
@@ -645,7 +645,7 @@ def unnumber(
         try:
             start_line, end_line = _parse_line_range(lines)
         except ValueError as e:
-            err.print(f"[red]Error:[/red] invalid line range: {e}")
+            err.print(f"[red]Error:[/red] invalid line range: {escape(str(e))}")
             raise typer.Exit(1)
 
     errors = []
@@ -719,7 +719,7 @@ def get_section(
         try:
             section = get_section_fn(content, heading, occurrence=occurrence)
         except ValueError as e:
-            err.print(f"[red]Error:[/red] {file}: {e}")
+            err.print(f"[red]Error:[/red] {file}: {escape(str(e))}")
             errors.append((file, str(e)))
             continue
         print(section)
@@ -755,7 +755,7 @@ def replace_section(
         try:
             updated_content = replace_section_fn(content, heading, new_content, occurrence=occurrence)
         except ValueError as e:
-            err.print(f"[red]Error:[/red] {file}: {e}")
+            err.print(f"[red]Error:[/red] {file}: {escape(str(e))}")
             errors.append((file, str(e)))
             continue
         if _write_file(file, updated_content, f"replace-section: replaced section '{heading}'"):
@@ -792,7 +792,7 @@ def get_lines(
         try:
             result = get_lines_fn(content, start_line, end_line)
         except ValueError as e:
-            err.print(f"[red]Error:[/red] {file}: {e}")
+            err.print(f"[red]Error:[/red] {file}: {escape(str(e))}")
             errors.append((file, str(e)))
             continue
         print(result)
@@ -828,7 +828,7 @@ def insert_lines(
         try:
             updated_content = insert_lines_fn(content, after_line, new_content)
         except ValueError as e:
-            err.print(f"[red]Error:[/red] {file}: {e}")
+            err.print(f"[red]Error:[/red] {file}: {escape(str(e))}")
             errors.append((file, str(e)))
             continue
         if _write_file(file, updated_content, f"insert-lines: inserted after line {after_line}"):
@@ -861,7 +861,7 @@ def delete_lines(
         try:
             updated_content = delete_lines_fn(content, start_line, end_line)
         except ValueError as e:
-            err.print(f"[red]Error:[/red] {file}: {e}")
+            err.print(f"[red]Error:[/red] {file}: {escape(str(e))}")
             errors.append((file, str(e)))
             continue
         if _write_file(file, updated_content, f"delete-lines: deleted lines {start_line}:{end_line}"):
@@ -900,7 +900,7 @@ def get_paragraphs(
         try:
             result = get_paragraphs_fn(content, start_line, end_line)
         except ValueError as e:
-            err.print(f"[red]Error:[/red] {file}: {e}")
+            err.print(f"[red]Error:[/red] {file}: {escape(str(e))}")
             errors.append((file, str(e)))
             continue
         print(result)
@@ -929,7 +929,7 @@ def find_replace(
         try:
             start_line, end_line = _parse_line_range(lines)
         except ValueError as e:
-            err.print(f"[red]Error:[/red] invalid line range: {e}")
+            err.print(f"[red]Error:[/red] invalid line range: {escape(str(e))}")
             raise typer.Exit(1)
 
     errors = []
@@ -945,7 +945,7 @@ def find_replace(
                 start_line=start_line, end_line=end_line, count=count, flags=flags,
             )
         except ValueError as e:
-            err.print(f"[red]Error:[/red] {file}: {e}")
+            err.print(f"[red]Error:[/red] {file}: {escape(str(e))}")
             errors.append((file, str(e)))
             continue
         if _write_file(file, updated_content, f"find-replace: replaced matches of /{pattern}/"):
@@ -978,7 +978,7 @@ def extract_table(
         try:
             table = extract_table_fn(content, index=index, line=line)
         except ValueError as e:
-            err.print(f"[red]Error:[/red] {file}: {e}")
+            err.print(f"[red]Error:[/red] {file}: {escape(str(e))}")
             errors.append((file, str(e)))
             continue
         print(json.dumps(table))
@@ -1001,7 +1001,7 @@ def update_table(
     try:
         payload = json.loads(raw)
     except json.JSONDecodeError as e:
-        err.print(f"[red]Error:[/red] invalid JSON: {e}")
+        err.print(f"[red]Error:[/red] invalid JSON: {escape(str(e))}")
         raise typer.Exit(1)
     if not isinstance(payload, dict) or "header" not in payload or "rows" not in payload:
         err.print('[red]Error:[/red] JSON must be an object with "header" and "rows" keys')
@@ -1019,7 +1019,7 @@ def update_table(
         try:
             updated_content = update_table_fn(content, payload["header"], payload["rows"], index=index, line=line)
         except ValueError as e:
-            err.print(f"[red]Error:[/red] {file}: {e}")
+            err.print(f"[red]Error:[/red] {file}: {escape(str(e))}")
             errors.append((file, str(e)))
             continue
         if _write_file(file, updated_content, "update-table: replaced table"):
@@ -1261,7 +1261,7 @@ def ai_fix(
         try:
             new_content, count = ai_fix_placeholders(content, name=name, markdown_dir=str(file.parent))
         except Exception as e:
-            err.print(f"[red]Error:[/red] {file}: {e}")
+            err.print(f"[red]Error:[/red] {file}: {escape(str(e))}")
             errors.append((file, str(e)))
             continue
 
@@ -1299,7 +1299,7 @@ def ai_check(
         try:
             issues = ai_check_placeholders(content, name=name, markdown_dir=str(file.parent))
         except Exception as e:
-            err.print(f"[red]Error:[/red] {file}: {e}")
+            err.print(f"[red]Error:[/red] {file}: {escape(str(e))}")
             errors.append((file, str(e)))
             continue
 
