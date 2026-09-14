@@ -439,7 +439,7 @@ dev = [
 requires-dist = [
     { name = "jinja2", specifier = ">=3" },
     { name = "markdown-it-py", specifier = ">=3" },
-    { name = "mcp", specifier = ">=1.0" },
+    { name = "mcp", specifier = ">=1.0,<2" },
     { name = "merm", specifier = ">=0.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
     { name = "pyyaml", specifier = ">=6" },
