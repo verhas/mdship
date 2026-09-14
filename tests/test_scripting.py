@@ -466,8 +466,9 @@ class TestTransform:
 
     def test_mermaid_transform_must_return_one_line(self, project, monkeypatch):
         import mdship.markdown as md
+        import mdship.markdown.mermaid as mermaid_module
 
-        monkeypatch.setattr(md, "_check_content_hash", lambda *a, **k: None)
+        monkeypatch.setattr(mermaid_module, "_check_content_hash", lambda *a, **k: None)
         script(
             project,
             "split.py",

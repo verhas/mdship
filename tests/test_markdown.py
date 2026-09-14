@@ -37,8 +37,6 @@ from mdship.markdown import (
     update_mermaid,
     update_tracking,
     validate_links,
-    _validate_placeholder_structure,
-    _extract_lines_from_file,
     ai_fix_placeholders,
     ai_check_placeholders,
     ai_check_and_get_context,
@@ -46,6 +44,8 @@ from mdship.markdown import (
     validate_ai_placeholders,
     ai_update_placeholder,
 )
+from mdship.markdown.extract import _extract_lines_from_file
+from mdship.markdown.variables import _validate_placeholder_structure
 
 
 class TestFixHeadingLevels:

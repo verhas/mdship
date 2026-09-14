@@ -282,7 +282,7 @@ class TestParity:
         assert "mdship" in cli_file.read_text()
 
     def test_neither_adapter_runs_its_own_pipeline(self, tmp_path, monkeypatch):
-        """Both must go through update_file, not markdown.py directly."""
+        """Both must go through update_file, not mdship.markdown directly."""
         calls = []
 
         def fake_update_file(path, *, force=False, options=WriteOptions()):
@@ -294,7 +294,7 @@ class TestParity:
         import mdship.markdown as md
 
         def forbidden(*args, **kwargs):
-            raise AssertionError("adapter called markdown.py directly")
+            raise AssertionError("adapter called mdship.markdown directly")
 
         for name in (
             "collect_set_variables",

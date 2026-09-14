@@ -29,7 +29,27 @@ mdship/
 │   ├── errors.py              # Typed mdship exceptions
 │   ├── scripting.py           # User scripts: trust gate, loading, ctx, hooks
 │   ├── factory_scripts/       # Bundled scripts installable into a project
-│   ├── markdown.py            # Core markdown manipulation functions
+│   ├── markdown/              # Core markdown manipulation (package; __init__ re-exports the public API)
+│   │   ├── managed.py         # Managed regions: placeholder parsing, content-hash integrity
+│   │   ├── ai.py              # AI placeholders (dependency tracking) and //AI: comments
+│   │   ├── variables.py       # SET / PYTHON define: collection, variable references
+│   │   ├── variable_sources.py # IMPORT, SLURP, SIP, SUP
+│   │   ├── values.py          # Nested variable lookup, assignment, merge, substitution
+│   │   ├── includes.py        # INCLUDE
+│   │   ├── templates.py       # TEMPLATE and JINJA2
+│   │   ├── python_scripts.py  # PYTHON run:
+│   │   ├── mermaid.py         # MERMAID
+│   │   ├── toc.py             # TOC generation and heading anchors
+│   │   ├── headings.py        # fix / shift / number / unnumber headings
+│   │   ├── editing.py         # Sections, line ranges, paragraphs, find/replace
+│   │   ├── tables.py          # GFM tables
+│   │   ├── reflow.py          # Reflow and semantic line breaks
+│   │   ├── frontmatter.py     # Front-matter access, checksums, update tracking
+│   │   ├── links.py           # Link and anchor validation
+│   │   ├── extract.py         # Slicing source files (INCLUDE and AI deps)
+│   │   ├── hooks.py           # Placeholder ↔ user script glue
+│   │   ├── codeblocks.py      # Fenced code block detection
+│   │   └── _optional.py       # Optional imports bound to None when missing
 │   └── mcp_server.py          # MCP server implementation
 │
 └── tests/                     # Test suite
@@ -547,11 +567,14 @@ Configure in Claude's MCP settings:
 
 ```text
 CLI ──┐
-      ├──> operations.py ──> markdown.py
+      ├──> operations.py ──> markdown/
 MCP ──┘
 ```
 
-- `markdown.py` transforms content and raises typed errors from `errors.py`.
+- `markdown/` transforms content and raises typed errors from `errors.py`. Import
+  public functions from `mdship.markdown`; each lives in one feature submodule.
+  To monkeypatch a helper in tests, patch the submodule that *calls* it (e.g.
+  `mdship.markdown.mermaid._check_content_hash`), not the package.
 - `operations.py` is the application layer: it validates paths, reads a document
   once, runs the workflow, applies tracking, compares, backs up and writes, and
   returns an `OperationResult`. It must not import Typer, Rich or the MCP SDK.
@@ -565,7 +588,7 @@ MCP ──┘
   script resolution and loading, the `ctx` object, the hook runners, and factory
   script provenance. It never writes the allow-list and never changes permissions.
 - Migration status: `update` is migrated (see `REFACTOR-2026-07-30.md`, phases 1
-  and 2). The other commands still call `markdown.py` directly from the adapters.
+  and 2). The other commands still call `mdship.markdown` directly from the adapters.
 
 ### Notes
 
