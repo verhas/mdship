@@ -318,8 +318,8 @@ Commands are dispatched via `typer.Typer` in `cli.py`. Each command:
 
 - Takes a markdown file as an argument
 - Overwrites the file with the modified content
-- Creates a backup file with `.md.bak` extension by default
-- Uses the global `--no-bak` option to skip backup creation
+- Creates a `.md.bak` backup unless git already holds the file's content (tracked, nothing modified or staged); the decision is `operations.needs_backup()`
+- Uses the global `--no-bak` option to never back up, and `--bak` to always back up
 
 ```bash
 mdship fix-headings file.md
@@ -347,7 +347,7 @@ mdship --no-bak number file.md --style period
 mdship --no-bak update file.md
 ```
 
-The `--no-bak` flag is a global option that works with any modifying command.
+The `--no-bak` and `--bak` flags are global options that work with any modifying command.
 
 The `verify` command is special—it prints "OK" on success and an error message on failure, with appropriate exit codes for use in shell scripts.
 

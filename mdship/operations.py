@@ -10,6 +10,7 @@ results and raises typed errors, and the adapters decide how to present them.
 
 from __future__ import annotations
 
+import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -24,6 +25,7 @@ from mdship.errors import (
 
 __all__ = [
     "WriteOptions",
+    "needs_backup",
     "OperationResult",
     "CheckResult",
     "DocumentUpdate",
@@ -39,11 +41,53 @@ __all__ = [
 
 @dataclass(frozen=True)
 class WriteOptions:
-    """Policy for committing a generated document to disk."""
+    """Policy for committing a generated document to disk.
 
-    backup: bool = True
+    ``backup`` is True to always write a ``.bak`` copy, False to never write
+    one, and None to write one unless git already holds the file's current
+    content (see ``needs_backup``).
+    """
+
+    backup: bool | None = None
     dry_run: bool = False
     track: bool = False
+
+
+def needs_backup(path: Path, backup: bool | None) -> bool:
+    """Decide whether to write a ``.bak`` copy of ``path`` before modifying it.
+
+    An explicit True or False wins. With None, the backup is skipped only when
+    git can restore the exact current content: the file is tracked, unchanged
+    against HEAD (nothing staged or modified), and a regular file. Anything
+    else — not a repository, untracked or ignored, local edits, a symlink,
+    assume-unchanged/skip-worktree flags hiding edits, git missing or failing —
+    keeps the backup, so skipping it never loses uncommitted content.
+    """
+    if backup is not None:
+        return backup
+    return not _git_holds_current_content(path)
+
+
+def _git_holds_current_content(path: Path) -> bool:
+    if path.is_symlink() or not path.is_file():
+        return False
+    directory, name = str(path.parent), path.name
+    try:
+        # -v tags each entry: "H" is a normal tracked file; lowercase letters
+        # (assume-unchanged) and "S" (skip-worktree) mean status can hide edits.
+        listed = subprocess.run(
+            ["git", "-C", directory, "ls-files", "-z", "-v", "--error-unmatch", "--", name],
+            capture_output=True, text=True, timeout=10,
+        )
+        if listed.returncode != 0 or listed.stdout != f"H {name}\0":
+            return False
+        status = subprocess.run(
+            ["git", "-C", directory, "status", "--porcelain", "--", name],
+            capture_output=True, text=True, timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return status.returncode == 0 and status.stdout == ""
 
 
 @dataclass(frozen=True)
@@ -131,7 +175,7 @@ def _commit(
         )
 
     try:
-        if options.backup:
+        if needs_backup(path, options.backup):
             path.with_suffix(path.suffix + ".bak").write_text(before)
         path.write_text(after)
     except OSError as e:

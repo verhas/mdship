@@ -2,7 +2,7 @@
 last-updated: '2026-06-10T11:37:48.418276'
 mdship-log: |
   2026-06-10 11:37:48 - update: processed all placeholders
-checksum: 00368ae5a1980508b612eef388266fb2fae5d48d44e63ca8f59d98630ef75c4a
+checksum: 9370f7ad4a559823d309aea640937875f0dffcc0544918610b67aced16ff955c
 checksum_algorithm: sha256
 ---
 # 1. mdship
@@ -157,7 +157,7 @@ pip install 'mdship[mermaid]'
 
 ### 1.4.1. Command Line
 
-Most commands modify the file in place and create a backup with a `.md.bak` extension (use `--no-bak` to skip):
+Most commands modify the file in place. Before writing, they save the previous content to a `.md.bak` file, unless git already holds it (see [Skipping Backups](#1413-skipping-backups)):
 
 ```bash
 mdship fix-headings file.md              # Fix heading hierarchy
@@ -1021,14 +1021,25 @@ fi
 
 ### 1.4.13. Skipping Backups
 
-To skip backup creation, use the `--no-bak` option:
+By default, a modifying command writes a `.md.bak` copy of the previous content only when git could not restore it. The backup is skipped when the file is tracked by git and has no uncommitted changes (nothing modified or staged), because `git diff` and `git restore` already cover that case. In every other case the backup is written:
+
+| File state                                  | Backup by default |
+|---------------------------------------------|-------------------|
+| Not in a git repository                     | yes               |
+| Untracked or ignored in a git repository    | yes               |
+| Tracked, with uncommitted or staged changes | yes               |
+| Tracked and unchanged                       | no                |
+
+Symlinks, files marked `assume-unchanged` or `skip-worktree`, and any case where `git` is not available are also backed up.
+
+Override the default with a global option on any modifying command:
 
 ```bash
-mdship --no-bak fix-headings file.md
-mdship --no-bak shift-headings file.md --levels 1
+mdship --no-bak fix-headings file.md   # never create a backup
+mdship --bak fix-headings file.md      # always create a backup
 ```
 
-The `--no-bak` option can be used with any modifying command.
+The MCP tools follow the same rule: their `backup` parameter is `true` to always back up, `false` to never, and omitted for the default.
 
 ### 1.4.14. Tracking Changes
 
@@ -1206,11 +1217,12 @@ Line 3: Closing <!--/TEMPLATE--> does not match opening <!--INCLUDE--> at line 2
 
 **Safety with backups:**
 
-Combined with the `.md.bak` backup files, you can always compare changes using `diff`:
+You can always see exactly what changed: in a git repository with a committed file use `git diff`, otherwise compare with the `.md.bak` backup:
 
 ```bash
 mdship update myfile.md
-diff myfile.md.bak myfile.md  # See exactly what changed
+git diff myfile.md            # tracked file: git holds the previous content
+diff myfile.md.bak myfile.md  # otherwise, the backup does
 ```
 
 ### 1.4.17. Managed Content Integrity

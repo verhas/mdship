@@ -24,11 +24,11 @@ DOC_UPDATED = '<!--SET\nname: "mdship"\n-->\n\n<!--$name-->mdship\n'
 def reset_state(monkeypatch):
     # Keep the tests from touching a real .mdship/.lastfiles up the tree.
     monkeypatch.setattr(cli, "_find_mdship_dir", lambda: None)
-    cli.state.no_bak = False
+    cli.state.backup = None
     cli.state.track = False
     cli.state.dry_run = False
     yield
-    cli.state.no_bak = False
+    cli.state.backup = None
     cli.state.track = False
     cli.state.dry_run = False
 
@@ -74,7 +74,23 @@ class TestCliAdapter:
         runner.invoke(cli.app, ["update", str(file)])
 
         assert spy[0]["force"] is False
+        assert spy[0]["options"] == WriteOptions(backup=None, dry_run=False, track=False)
+
+    def test_bak_option_forces_a_backup(self, tmp_path, spy):
+        file = doc(tmp_path)
+
+        runner.invoke(cli.app, ["--bak", "update", str(file)])
+
         assert spy[0]["options"] == WriteOptions(backup=True, dry_run=False, track=False)
+
+    def test_bak_and_no_bak_together_are_rejected(self, tmp_path, spy):
+        file = doc(tmp_path)
+
+        result = runner.invoke(cli.app, ["--bak", "--no-bak", "update", str(file)])
+
+        assert result.exit_code == 2
+        assert "cannot be used together" in result.output
+        assert spy == []
 
     def test_dry_run_option(self, tmp_path, spy):
         file = doc(tmp_path)
@@ -227,7 +243,7 @@ class TestMcpAdapter:
         mcp_server.update(str(file))
 
         assert spy[0]["force"] is False
-        assert spy[0]["options"] == WriteOptions(backup=True, dry_run=False, track=False)
+        assert spy[0]["options"] == WriteOptions(backup=None, dry_run=False, track=False)
 
     def test_result_serialization(self, tmp_path):
         path = tmp_path / "a.md"

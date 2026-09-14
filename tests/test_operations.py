@@ -5,6 +5,8 @@ adapters that must both go through it. Markdown transformation details stay in
 tests/test_markdown.py.
 """
 
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -125,6 +127,115 @@ class TestEditFileWritePolicy:
 
         assert file.read_text() == "hello\n"
         assert not (tmp_path / "a.md.bak").exists()
+
+
+requires_git = pytest.mark.skipif(shutil.which("git") is None, reason="git not installed")
+
+
+def git(repo: Path, *args: str) -> str:
+    return subprocess.run(
+        ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t",
+         "-c", "commit.gpgsign=false", *args],
+        check=True, capture_output=True, text=True,
+    ).stdout
+
+
+@pytest.fixture
+def repo(tmp_path):
+    """A git repository with a committed, clean a.md."""
+    root = tmp_path / "repo"
+    root.mkdir()
+    git(root, "init", "-q")
+    write(root, "a.md", "hello\n")
+    git(root, "add", "a.md")
+    git(root, "commit", "-q", "-m", "init")
+    return root
+
+
+@requires_git
+class TestGitAwareBackup:
+    """Default backup policy: skip the .bak only when git holds the exact content."""
+
+    def test_outside_a_repository_backs_up(self, tmp_path):
+        file = write(tmp_path, "a.md", "hello\n")
+        assert operations.needs_backup(file, None) is True
+
+    def test_tracked_and_clean_skips_the_backup(self, repo):
+        assert operations.needs_backup(repo / "a.md", None) is False
+
+    def test_untracked_backs_up(self, repo):
+        assert operations.needs_backup(write(repo, "new.md", "x\n"), None) is True
+
+    def test_ignored_backs_up(self, repo):
+        write(repo, ".gitignore", "ignored.md\n")
+        assert operations.needs_backup(write(repo, "ignored.md", "x\n"), None) is True
+
+    def test_uncommitted_edit_backs_up(self, repo):
+        (repo / "a.md").write_text("edited\n")
+        assert operations.needs_backup(repo / "a.md", None) is True
+
+    def test_staged_edit_backs_up(self, repo):
+        (repo / "a.md").write_text("edited\n")
+        git(repo, "add", "a.md")
+        assert operations.needs_backup(repo / "a.md", None) is True
+
+    def test_skip_worktree_hiding_an_edit_backs_up(self, repo):
+        git(repo, "update-index", "--skip-worktree", "a.md")
+        (repo / "a.md").write_text("edited\n")
+        assert git(repo, "status", "--porcelain") == ""  # git itself hides the edit
+        assert operations.needs_backup(repo / "a.md", None) is True
+
+    def test_assume_unchanged_hiding_an_edit_backs_up(self, repo):
+        git(repo, "update-index", "--assume-unchanged", "a.md")
+        (repo / "a.md").write_text("edited\n")
+        assert operations.needs_backup(repo / "a.md", None) is True
+
+    def test_tracked_symlink_backs_up(self, repo, tmp_path):
+        target = write(tmp_path, "outside.md", "content git does not have\n")
+        (repo / "link.md").symlink_to(target)
+        git(repo, "add", "link.md")
+        git(repo, "commit", "-q", "-m", "link")
+        assert operations.needs_backup(repo / "link.md", None) is True
+
+    def test_non_ascii_name_tracked_and_clean_skips_the_backup(self, repo):
+        write(repo, "é.md", "x\n")
+        git(repo, "add", "é.md")
+        git(repo, "commit", "-q", "-m", "accent")
+        assert operations.needs_backup(repo / "é.md", None) is False
+
+    def test_file_in_subdirectory(self, repo):
+        (repo / "docs").mkdir()
+        write(repo / "docs", "b.md", "x\n")
+        git(repo, "add", "docs/b.md")
+        git(repo, "commit", "-q", "-m", "docs")
+        assert operations.needs_backup(repo / "docs" / "b.md", None) is False
+
+    def test_git_unavailable_backs_up(self, repo, monkeypatch):
+        def missing(*args, **kwargs):
+            raise FileNotFoundError("git")
+
+        monkeypatch.setattr(operations.subprocess, "run", missing)
+        assert operations.needs_backup(repo / "a.md", None) is True
+
+    def test_explicit_true_backs_up_even_when_git_has_it(self, repo):
+        assert operations.needs_backup(repo / "a.md", True) is True
+
+    def test_explicit_false_never_backs_up(self, tmp_path):
+        assert operations.needs_backup(write(tmp_path, "a.md", "x\n"), False) is False
+
+    def test_edit_file_default_policy_in_a_clean_repo(self, repo):
+        result = operations._edit_file(repo / "a.md", upper, operation="op")
+
+        assert result.written is True
+        assert (repo / "a.md").read_text() == "HELLO\n"
+        assert not (repo / "a.md.bak").exists()
+
+    def test_edit_file_default_policy_with_local_edits(self, repo):
+        (repo / "a.md").write_text("edited\n")
+
+        operations._edit_file(repo / "a.md", upper, operation="op")
+
+        assert (repo / "a.md.bak").read_text() == "edited\n"
 
 
 class TestUpdateDocumentPhases:

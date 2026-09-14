@@ -141,7 +141,7 @@ def _version_callback(value: bool) -> None:
 
 
 class State:
-    no_bak: bool = False
+    backup: bool | None = None  # None: back up unless git holds the file's content
     track: bool = False
     dry_run: bool = False
 
@@ -155,11 +155,15 @@ def _main(
         bool | None,
         typer.Option("--version", "-V", callback=_version_callback, is_eager=True, help="Show version and exit."),
     ] = None,
-    no_bak: Annotated[bool, typer.Option("--no-bak", help="Do not create backup files")] = False,
+    no_bak: Annotated[bool, typer.Option("--no-bak", help="Never create .bak backups")] = False,
+    bak: Annotated[bool, typer.Option("--bak", help="Always create .bak backup files. Default: back up unless the file is tracked by git and unchanged")] = False,
     track: Annotated[bool, typer.Option("--track", "-t", help="Track changes in front-matter (last-updated and mdship-log)")] = False,
     dry_run: Annotated[bool, typer.Option("--dry-run", help="Show what would change without modifying any files")] = False,
 ) -> None:
-    state.no_bak = no_bak
+    if bak and no_bak:
+        err.print("[red]Error:[/red] --bak and --no-bak cannot be used together")
+        raise typer.Exit(2)
+    state.backup = True if bak else False if no_bak else None
     state.track = track
     state.dry_run = dry_run
 
@@ -202,7 +206,9 @@ def _write_file(file: Path, content: str, operation: str = "") -> bool:
         _print_diff(file, original_content, content)
         return False
 
-    if not state.no_bak:
+    from mdship.operations import needs_backup
+
+    if needs_backup(file, state.backup):
         backup_path = file.with_suffix(file.suffix + ".bak")
         backup_path.write_text(original_content)
 
@@ -215,7 +221,7 @@ def _write_options() -> "WriteOptions":
     from mdship import operations
 
     return operations.WriteOptions(
-        backup=not state.no_bak, dry_run=state.dry_run, track=state.track
+        backup=state.backup, dry_run=state.dry_run, track=state.track
     )
 
 

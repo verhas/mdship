@@ -15,7 +15,7 @@ runner = CliRunner()
 @pytest.fixture(autouse=True)
 def reset_state(monkeypatch):
     monkeypatch.setattr(cli, "_find_mdship_dir", lambda: None)
-    cli.state.no_bak = False
+    cli.state.backup = None
     cli.state.track = False
     cli.state.dry_run = False
 

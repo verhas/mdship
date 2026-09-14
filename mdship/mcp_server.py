@@ -23,13 +23,15 @@ def _read(path: str) -> tuple[Path, str]:
     return p, p.read_text()
 
 
-def _write(p: Path, content: str, backup: bool) -> None:
-    if backup:
+def _write(p: Path, content: str, backup: bool | None) -> None:
+    from mdship.operations import needs_backup
+
+    if needs_backup(p, backup):
         p.with_suffix(p.suffix + ".bak").write_text(p.read_text())
     p.write_text(content)
 
 
-def update(path: str, backup: bool = True, force: bool = False) -> str:
+def update(path: str, backup: bool | None = None, force: bool = False) -> str:
     """Update all placeholders (variables, includes, TOC, diagrams, etc).
 
     Unchanged documents are neither rewritten nor backed up. A missing <!--TOC-->
@@ -38,7 +40,8 @@ def update(path: str, backup: bool = True, force: bool = False) -> str:
 
     Args:
         path: Path to the markdown file
-        backup: Create a .bak backup before modifying (default: True)
+        backup: true always writes a .bak backup before modifying, false never
+            does; omit to back up unless git already holds the file's current content
         force: Ignore managed content hash checks and regenerate all placeholders
     """
     from mdship import operations
@@ -72,12 +75,13 @@ def main() -> None:
     server = MCPServer("mdship", debug=False, log_level="ERROR")
 
     @server.tool()
-    def fix_headings(path: str, backup: bool = True) -> str:
+    def fix_headings(path: str, backup: bool | None = None) -> str:
         """Fix heading levels to ensure consistent hierarchy.
 
         Args:
             path: Path to the markdown file
-            backup: Create a .bak backup before modifying (default: True)
+            backup: true always writes a .bak backup before modifying, false never
+                does; omit to back up unless git already holds the file's current content
         """
         from mdship.markdown import fix_heading_levels
         p, content = _read(path)
@@ -90,7 +94,7 @@ def main() -> None:
         levels: int = 1,
         start_line: int | None = None,
         end_line: int | None = None,
-        backup: bool = True,
+        backup: bool | None = None,
     ) -> str:
         """Shift all headings by the specified number of levels.
 
@@ -99,7 +103,8 @@ def main() -> None:
             levels: Number of levels to shift (positive=lower, negative=higher)
             start_line: Starting line number (1-based, inclusive)
             end_line: Ending line number (1-based, inclusive)
-            backup: Create a .bak backup before modifying (default: True)
+            backup: true always writes a .bak backup before modifying, false never
+                does; omit to back up unless git already holds the file's current content
         """
         from mdship.markdown import shift_heading_levels
         p, content = _read(path)
@@ -107,13 +112,14 @@ def main() -> None:
         return f"OK: processed {path}"
 
     @server.tool()
-    def add_checksum(path: str, algorithm: str = "sha256", backup: bool = True) -> str:
+    def add_checksum(path: str, algorithm: str = "sha256", backup: bool | None = None) -> str:
         """Add or update checksum in front-matter.
 
         Args:
             path: Path to the markdown file
             algorithm: Hash algorithm (md5, sha256, sha1)
-            backup: Create a .bak backup before modifying (default: True)
+            backup: true always writes a .bak backup before modifying, false never
+                does; omit to back up unless git already holds the file's current content
         """
         from mdship.markdown import add_content_checksum
         p, content = _read(path)
@@ -138,7 +144,7 @@ def main() -> None:
         width: int | None = None,
         start_line: int | None = None,
         end_line: int | None = None,
-        backup: bool = True,
+        backup: bool | None = None,
     ) -> str:
         """Reflow paragraphs to specified width or one sentence per line.
 
@@ -147,7 +153,8 @@ def main() -> None:
             width: Line width (0 or None for one sentence per line)
             start_line: Starting line number (1-based, inclusive)
             end_line: Ending line number (1-based, inclusive)
-            backup: Create a .bak backup before modifying (default: True)
+            backup: true always writes a .bak backup before modifying, false never
+                does; omit to back up unless git already holds the file's current content
         """
         from mdship.markdown import reflow_paragraphs
         p, content = _read(path)
@@ -159,7 +166,7 @@ def main() -> None:
         path: str,
         start_line: int | None = None,
         end_line: int | None = None,
-        backup: bool = True,
+        backup: bool | None = None,
     ) -> str:
         """Break lines at semantic boundaries (sentences, clauses).
 
@@ -167,7 +174,8 @@ def main() -> None:
             path: Path to the markdown file
             start_line: Starting line number (1-based, inclusive)
             end_line: Ending line number (1-based, inclusive)
-            backup: Create a .bak backup before modifying (default: True)
+            backup: true always writes a .bak backup before modifying, false never
+                does; omit to back up unless git already holds the file's current content
         """
         from mdship.markdown import reflow_paragraphs
         p, content = _read(path)
@@ -181,7 +189,7 @@ def main() -> None:
         start_line: int | None = None,
         end_line: int | None = None,
         skip_title: bool = False,
-        backup: bool = True,
+        backup: bool | None = None,
     ) -> str:
         """Add hierarchical numbering to headings.
 
@@ -191,7 +199,8 @@ def main() -> None:
             start_line: Starting line number (1-based, inclusive)
             end_line: Ending line number (1-based, inclusive)
             skip_title: Treat a single h1 as a document title and exclude it from numbering
-            backup: Create a .bak backup before modifying (default: True)
+            backup: true always writes a .bak backup before modifying, false never
+                does; omit to back up unless git already holds the file's current content
         """
         from mdship.markdown import add_heading_numbers
         p, content = _read(path)
@@ -203,7 +212,7 @@ def main() -> None:
         path: str,
         start_line: int | None = None,
         end_line: int | None = None,
-        backup: bool = True,
+        backup: bool | None = None,
     ) -> str:
         """Remove hierarchical numbering from headings.
 
@@ -211,7 +220,8 @@ def main() -> None:
             path: Path to the markdown file
             start_line: Starting line number (1-based, inclusive)
             end_line: Ending line number (1-based, inclusive)
-            backup: Create a .bak backup before modifying (default: True)
+            backup: true always writes a .bak backup before modifying, false never
+                does; omit to back up unless git already holds the file's current content
         """
         from mdship.markdown import remove_heading_numbers
         p, content = _read(path)
@@ -219,12 +229,13 @@ def main() -> None:
         return f"OK: processed {path}"
 
     @server.tool()
-    def toc(path: str, backup: bool = True) -> str:
+    def toc(path: str, backup: bool | None = None) -> str:
         """Generate and insert table of contents between <!--TOC--> markers.
 
         Args:
             path: Path to the markdown file
-            backup: Create a .bak backup before modifying (default: True)
+            backup: true always writes a .bak backup before modifying, false never
+                does; omit to back up unless git already holds the file's current content
         """
         from mdship.markdown import insert_table_of_contents
         p, content = _read(path)
@@ -233,12 +244,13 @@ def main() -> None:
         return f"OK: processed {path}"
 
     @server.tool()
-    def include(path: str, backup: bool = True) -> str:
+    def include(path: str, backup: bool | None = None) -> str:
         """Include content from other files between <!--INCLUDE--> markers.
 
         Args:
             path: Path to the markdown file
-            backup: Create a .bak backup before modifying (default: True)
+            backup: true always writes a .bak backup before modifying, false never
+                does; omit to back up unless git already holds the file's current content
         """
         from mdship.markdown import update_includes
         p, content = _read(path)
@@ -246,12 +258,13 @@ def main() -> None:
         return f"OK: processed {path}"
 
     @server.tool()
-    def mermaid(path: str, backup: bool = True) -> str:
+    def mermaid(path: str, backup: bool | None = None) -> str:
         """Render Mermaid diagrams between <!--MERMAID--> markers.
 
         Args:
             path: Path to the markdown file
-            backup: Create a .bak backup before modifying (default: True)
+            backup: true always writes a .bak backup before modifying, false never
+                does; omit to back up unless git already holds the file's current content
         """
         from mdship.markdown import update_mermaid
         p, content = _read(path)
@@ -306,7 +319,7 @@ def main() -> None:
         heading: str,
         new_content: str,
         occurrence: int = 1,
-        backup: bool = True,
+        backup: bool | None = None,
     ) -> str:
         """Replace one section (heading line through its subsections) with new text.
 
@@ -320,7 +333,8 @@ def main() -> None:
             heading: Heading title, or a " > "-separated ancestor path
             new_content: Replacement text for the whole section span
             occurrence: 1-based match index when heading/path is ambiguous
-            backup: Create a .bak backup before modifying (default: True)
+            backup: true always writes a .bak backup before modifying, false never
+                does; omit to back up unless git already holds the file's current content
         """
         from mdship.markdown import replace_section as replace_section_fn
         p, content = _read(path)
@@ -352,7 +366,7 @@ def main() -> None:
             return f"ERROR: {e}"
 
     @server.tool()
-    def insert_lines(path: str, after_line: int, text: str, backup: bool = True) -> str:
+    def insert_lines(path: str, after_line: int, text: str, backup: bool | None = None) -> str:
         """Insert `text` as new lines after `after_line`. PRIMITIVE — prefer
         replace_section when a heading anchor exists.
 
@@ -366,7 +380,8 @@ def main() -> None:
             path: Path to the markdown file
             after_line: 1-based line to insert after; 0 inserts at the document start
             text: Text to insert, split on newlines
-            backup: Create a .bak backup before modifying (default: True)
+            backup: true always writes a .bak backup before modifying, false never
+                does; omit to back up unless git already holds the file's current content
         """
         from mdship.markdown import insert_lines as insert_lines_fn
         p, content = _read(path)
@@ -378,7 +393,7 @@ def main() -> None:
         return f"OK: processed {path}"
 
     @server.tool()
-    def delete_lines(path: str, start_line: int, end_line: int, backup: bool = True) -> str:
+    def delete_lines(path: str, start_line: int, end_line: int, backup: bool | None = None) -> str:
         """Delete lines `start_line`:`end_line` (1-based, inclusive). PRIMITIVE —
         prefer replace_section when a heading anchor exists.
 
@@ -392,7 +407,8 @@ def main() -> None:
             path: Path to the markdown file
             start_line: First 1-based line to delete
             end_line: Last 1-based line to delete (inclusive)
-            backup: Create a .bak backup before modifying (default: True)
+            backup: true always writes a .bak backup before modifying, false never
+                does; omit to back up unless git already holds the file's current content
         """
         from mdship.markdown import delete_lines as delete_lines_fn
         p, content = _read(path)
@@ -450,7 +466,7 @@ def main() -> None:
         return str(value)
 
     @server.tool()
-    def frontmatter_set(path: str, key: str, value: str, backup: bool = True) -> str:
+    def frontmatter_set(path: str, key: str, value: str, backup: bool | None = None) -> str:
         """Set a value in YAML front-matter, creating the block if needed.
 
         `value` is parsed as YAML, so "true", "42", "[1, 2]" etc. get their
@@ -460,7 +476,8 @@ def main() -> None:
             path: Path to the markdown file
             key: Dot-notation key path, e.g. "author.name"
             value: Value to set, parsed as YAML
-            backup: Create a .bak backup before modifying (default: True)
+            backup: true always writes a .bak backup before modifying, false never
+                does; omit to back up unless git already holds the file's current content
         """
         import yaml as _yaml
         from mdship.markdown import set_front_matter_value
@@ -485,7 +502,7 @@ def main() -> None:
         end_line: int | None = None,
         count: int = 0,
         flags: str = "",
-        backup: bool = True,
+        backup: bool | None = None,
     ) -> str:
         """Replace regex matches in a document, skipping fenced code blocks.
 
@@ -497,7 +514,8 @@ def main() -> None:
             end_line: Only replace matches starting on or before this line (1-based)
             count: Maximum number of replacements to apply; 0 means unlimited
             flags: Any combination of 'i' (IGNORECASE), 'm' (MULTILINE), 's' (DOTALL), 'x' (VERBOSE)
-            backup: Create a .bak backup before modifying (default: True)
+            backup: true always writes a .bak backup before modifying, false never
+                does; omit to back up unless git already holds the file's current content
         """
         from mdship.markdown import find_replace as find_replace_fn
         p, content = _read(path)
@@ -539,7 +557,7 @@ def main() -> None:
         rows: list[list[str]],
         index: int = 1,
         line: int | None = None,
-        backup: bool = True,
+        backup: bool | None = None,
     ) -> str:
         """Replace one GFM pipe table's header and rows, re-rendered with aligned columns.
 
@@ -553,7 +571,8 @@ def main() -> None:
             rows: New row cells, one list per row
             index: 1-based table position in document order
             line: Select the table spanning this 1-based line instead of index
-            backup: Create a .bak backup before modifying (default: True)
+            backup: true always writes a .bak backup before modifying, false never
+                does; omit to back up unless git already holds the file's current content
         """
         from mdship.markdown import update_table as update_table_fn
         p, content = _read(path)
@@ -565,7 +584,7 @@ def main() -> None:
         return f"OK: processed {path}"
 
     @server.tool()
-    def format_tables(path: str, backup: bool = True) -> str:
+    def format_tables(path: str, backup: bool | None = None) -> str:
         """Reformat every GFM pipe table so its columns are padded to align.
 
         Purely cosmetic: cell content and declared column alignment (:---,
@@ -574,7 +593,8 @@ def main() -> None:
 
         Args:
             path: Path to the markdown file
-            backup: Create a .bak backup before modifying (default: True)
+            backup: true always writes a .bak backup before modifying, false never
+                does; omit to back up unless git already holds the file's current content
         """
         from mdship.markdown import format_tables as format_tables_fn
         p, content = _read(path)
@@ -637,7 +657,7 @@ def main() -> None:
         return _json.dumps(list_ai_comments_fn(content))
 
     @server.tool()
-    def ai_fix(path: str, name: str | None = None, backup: bool = True) -> str:
+    def ai_fix(path: str, name: str | None = None, backup: bool | None = None) -> str:
         """Record checksums for AI placeholders to protect against accidental edits.
 
         Writes _content_generated_, _prompt_checksum_, and per-dep checksum: fields
@@ -647,7 +667,8 @@ def main() -> None:
         Args:
             path: Path to the markdown file
             name: If given, only fix the AI placeholder with this name field
-            backup: Create a .bak backup before modifying (default: True)
+            backup: true always writes a .bak backup before modifying, false never
+                does; omit to back up unless git already holds the file's current content
         """
         from mdship.markdown import ai_fix_placeholders
         p, content = _read(path)
@@ -680,7 +701,7 @@ def main() -> None:
         return f"OK: AI placeholder content verified in {path}"
 
     @server.tool()
-    def ai_update(path: str, name: str, new_content: str, backup: bool = True) -> str:
+    def ai_update(path: str, name: str, new_content: str, backup: bool | None = None) -> str:
         """Write new content into an AI placeholder and update all checksums atomically.
 
         Replaces the managed content between the opening marker and closing tag,
@@ -696,7 +717,8 @@ def main() -> None:
             path: Path to the markdown file
             name: Placeholder name string or its opening line number as a decimal string
             new_content: The generated text to place between the markers
-            backup: Create a .bak backup before modifying (default: True)
+            backup: true always writes a .bak backup before modifying, false never
+                does; omit to back up unless git already holds the file's current content
         """
         from mdship.markdown import ai_update_placeholder
         p, content = _read(path)
