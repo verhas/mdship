@@ -10,7 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from mcp.server import FastMCP
+from mcp.server import MCPServer
 
 if TYPE_CHECKING:
     from mdship.operations import OperationResult
@@ -69,7 +69,7 @@ def _serialize_result(result: OperationResult) -> str:
 
 def main() -> None:
     """Run the MCP server on stdio."""
-    server = FastMCP("mdship", debug=False, log_level="ERROR")
+    server = MCPServer("mdship", debug=False, log_level="ERROR")
 
     @server.tool()
     def fix_headings(path: str, backup: bool = True) -> str:
