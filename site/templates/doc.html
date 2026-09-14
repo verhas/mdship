@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block body_class %}docs{% endblock %}
+{% block topbar_extra %}<button class="menu-toggle" type="button" aria-controls="sidebar" aria-expanded="false">☰ <span>Menu</span></button>{% endblock %}
+{% block content %}
+<div class="docs-layout">
+  {% include "_sidebar.html" %}
+  <main id="main" class="doc">
+    <p class="crumb"><span class="crumb-section">{{ page.section }}</span></p>
+    <article class="prose">
+      {{ page.body | safe }}
+    </article>
+    <nav class="pager" aria-label="Previous and next page">
+      {% if prev_page %}<a class="pager-prev" href="{{ relative(page.url, prev_page.url) }}"><small>← Previous</small>{{ prev_page.label }}</a>{% else %}<span></span>{% endif %}
+      {% if next_page %}<a class="pager-next" href="{{ relative(page.url, next_page.url) }}"><small>Next →</small>{{ next_page.label }}</a>{% endif %}
+    </nav>
+    {% if edit_url %}<p class="edit"><a href="{{ edit_url }}">Edit this page on GitHub</a></p>{% endif %}
+  </main>
+  {% if page.toc|length > 1 %}
+  <nav class="onpage" aria-label="On this page">
+    <h3>On this page</h3>
+    <ul>
+      {% for level, slug, text in page.toc %}
+      <li class="lvl{{ level }}"><a href="#{{ slug }}">{{ text }}</a></li>
+      {% endfor %}
+    </ul>
+  </nav>
+  {% endif %}
+</div>
+{% endblock %}

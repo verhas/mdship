@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block body_class %}docs{% endblock %}
+{% block topbar_extra %}<button class="menu-toggle" type="button" aria-controls="sidebar" aria-expanded="false">☰ <span>Menu</span></button>{% endblock %}
+{% block content %}
+<div class="docs-layout">
+  {% include "_sidebar.html" %}
+  <main id="main" class="doc">
+    <p class="crumb"><span class="crumb-section">Commands</span></p>
+    <article class="prose">
+      <h1 id="commands">Commands</h1>
+      <p>Every CLI command has its own page, with its options, examples, and the matching MCP tool where there is one.</p>
+    </article>
+    {% for group, group_pages in commands_nav %}
+    <section class="cmd-group cmd-c{{ loop.index }}">
+      <h2 id="{{ group | lower | replace(' & ', '-') | replace(' ', '-') }}">{{ group }}</h2>
+      <div class="cmd-grid">
+        {% for p in group_pages %}
+        <a class="cmd-card" href="{{ relative(page.url, p.url) }}">
+          <code>{{ p.label }}</code>
+          <span>{{ p.summary or p.title }}</span>
+        </a>
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+  </main>
+</div>
+{% endblock %}

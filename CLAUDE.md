@@ -52,6 +52,9 @@ mdship/
 │   │   └── _optional.py       # Optional imports bound to None when missing
 │   └── mcp_server.py          # MCP server implementation
 │
+├── site/                      # GitHub Pages website: build.py renders README.md + documentation/
+│                              #   (templates/, static/); published by .github/workflows/pages.yml
+│
 └── tests/                     # Test suite
     ├── __init__.py
     ├── test_markdown.py       # Unit tests for markdown functions

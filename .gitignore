@@ -37,3 +37,5 @@ env/
 /.codex/
 *.mp4
 *.mp3
+# Local website builds (site/build.py)
+_site/

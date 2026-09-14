@@ -1,0 +1,26 @@
+<aside class="sidebar" id="sidebar" aria-label="Documentation">
+  <div class="sidebar-search">
+    <input type="search" placeholder="Filter pages…" aria-label="Filter pages" data-nav-filter>
+  </div>
+  {% for section, section_pages in nav %}
+  <div class="nav-section nav-c{{ loop.index }}">
+    <h3>{{ section }}</h3>
+    <ul>
+      {% for p in section_pages %}
+      <li><a href="{{ relative(page.url, p.url) }}"{% if p.url == page.url %} aria-current="page"{% endif %}>{{ p.label }}</a></li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+  <div class="nav-section nav-commands">
+    <h3><a href="{{ relative(page.url, commands_index.url) }}"{% if page.url == commands_index.url %} aria-current="page"{% endif %}>Commands</a></h3>
+    {% for group, group_pages in commands_nav %}
+    <h4>{{ group }}</h4>
+    <ul>
+      {% for p in group_pages %}
+      <li><a class="mono" href="{{ relative(page.url, p.url) }}"{% if p.url == page.url %} aria-current="page"{% endif %}>{{ p.label }}</a></li>
+      {% endfor %}
+    </ul>
+    {% endfor %}
+  </div>
+</aside>

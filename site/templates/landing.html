@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% block title %}mdship · Documentation that knows when it is stale{% endblock %}
+{% block body_class %}landing{% endblock %}
+{% block content %}
+<main id="main">
+
+  <section class="hero">
+    <div class="blob blob-1"></div><div class="blob blob-2"></div><div class="blob blob-3"></div>
+    <div class="hero-inner">
+      <div class="hero-copy">
+        <span class="pill"><span class="pill-dot"></span> Docs-as-code for the AI era · v{{ facts.version }}</span>
+        <h1>Know exactly which paragraph went <span class="grad-text">stale</span>, and why.</h1>
+        <p class="lead">
+          mdship tracks the sources behind every AI-written and generated section of your Markdown.
+          When the code changes, it tells you what to regenerate, and leaves everything else alone.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="docs/index.html#2-quickstart">Get started in 5 minutes →</a>
+          <a class="btn btn-ghost" href="{{ repo_url }}">View on GitHub</a>
+        </div>
+        <button class="install" type="button" data-copy="pip install mdship" aria-label="Copy install command">
+          <span class="prompt">$</span> pip install mdship <span class="install-hint">copy</span>
+        </button>
+      </div>
+
+      <div class="terminal" aria-label="Example mdship session">
+        <div class="terminal-bar"><i></i><i></i><i></i><span>docs — zsh</span></div>
+        <div class="terminal-body" data-typewriter>
+          <p class="t-cmd"><span class="prompt">$</span> mdship ai-list docs/api.md</p>
+          <p class="t-out">[{"name": "api-summary", "line": 3, "status": <span class="st st-ok">"up_to_date"</span>}]</p>
+          <p class="t-cmd"><span class="prompt">$</span> $EDITOR src/api.py <span class="t-dim"># add farewell()</span></p>
+          <p class="t-cmd"><span class="prompt">$</span> mdship ai-check docs/api.md</p>
+          <p class="t-out t-err">Error: docs/api.md: AI placeholder 'api-summary': dep ../src/api.py has changed since last generation</p>
+          <p class="t-cmd"><span class="prompt">$</span> mdship ai-list docs/api.md</p>
+          <p class="t-out">[{"name": "api-summary", "line": 3, "status": <span class="st st-warn">"needs_update"</span>}]</p>
+          <p class="t-cmd t-last"><span class="prompt">$</span> <span class="caret"></span></p>
+        </div>
+      </div>
+    </div>
+
+    <ul class="stats">
+      <li><strong>{{ facts.commands }}</strong><span>CLI commands</span></li>
+      <li><strong>{{ facts.mcp_tools }}</strong><span>MCP tools</span></li>
+      <li><strong>11</strong><span>placeholder types</span></li>
+      <li><strong>100%</strong><span>plain Markdown when rendered</span></li>
+    </ul>
+  </section>
+
+  <section class="works-with">
+    <span>Works with</span>
+    <ul>
+      <li class="ww ww-violet">Claude Code</li>
+      <li class="ww ww-pink">any MCP client</li>
+      <li class="ww ww-orange">GitHub Actions</li>
+      <li class="ww ww-cyan">GitHub &amp; every Markdown renderer</li>
+    </ul>
+  </section>
+
+  <section class="band band-light">
+    <div class="split">
+      <div class="split-card problem">
+        <span class="eyebrow eyebrow-pink">The problem</span>
+        <h2>AI-written docs rot silently.</h2>
+        <p>The code changes. The paragraph that describes it does not. Nothing tells you which paragraph is now wrong, so you either regenerate everything, rewriting text that was fine, or you ship docs that lie.</p>
+        <div class="rot-doc">
+          <p class="rot-line">`greet(name)` returns a friendly greeting…</p>
+          <p class="rot-line rot-faded">…and there is nothing else in the module.</p>
+          <span class="rot-badge">silently wrong since last Tuesday</span>
+        </div>
+      </div>
+      <div class="split-card solution">
+        <span class="eyebrow eyebrow-lime">The mdship way</span>
+        <h2>Treat prose like a build artifact.</h2>
+        <p>Every generated section declares its inputs: the prompt, the source files or slices it depends on, and a shared writing brief. mdship checksums all of them, so staleness is a fact you can check, not a feeling.</p>
+        <ul class="status-list">
+          <li><span class="st-chip st-ok">up_to_date</span> nothing it depends on changed</li>
+          <li><span class="st-chip st-warn">needs_update</span> <em>this</em> dependency, prompt, or brief changed</li>
+          <li><span class="st-chip st-edit">edited</span> someone changed the generated text by hand</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="band band-dark how">
+    <div class="section-head">
+      <span class="eyebrow eyebrow-cyan">How it works</span>
+      <h2>Declare. Generate. Detect.</h2>
+      <p>Three steps, and the loop runs itself from then on.</p>
+    </div>
+    <ol class="steps">
+      <li class="step step-violet">
+        <span class="step-num">1</span>
+        <h3>Declare the inputs</h3>
+        <p>An <code>AI</code> placeholder names its prompt and the sources it depends on.</p>
+<pre class="mini"><span class="c-com">&lt;!--AI</span>
+<span class="c-key">name:</span> <span class="c-str">"api-summary"</span>
+<span class="c-key">prompt:</span> |
+    Summarize the public functions.
+<span class="c-key">deps:</span>
+  - <span class="c-key">path:</span> ../src/api.py
+<span class="c-com">--&gt;</span>
+<span class="c-com">&lt;!--/AI--&gt;</span></pre>
+      </li>
+      <li class="step step-pink">
+        <span class="step-num">2</span>
+        <h3>Generate through the gate</h3>
+        <p><code>ai_context</code> says whether anything relevant changed and, only if something did, hands the agent exactly the source slices, previous text, and brief. <code>ai_update</code> installs the result and records every checksum.</p>
+<pre class="mini"><span class="c-com"># in Claude Code</span>
+/ai-placeholder docs/api.md</pre>
+      </li>
+      <li class="step step-orange">
+        <span class="step-num">3</span>
+        <h3>Detect drift in CI</h3>
+        <p>Change a source file and <code>ai-check</code> fails with the precise reason. Regenerate only what is stale.</p>
+<pre class="mini"><span class="c-err">Error: docs/api.md:
+AI placeholder 'api-summary':
+dep ../src/api.py has changed
+since last generation</span></pre>
+      </li>
+    </ol>
+  </section>
+
+  <section class="band band-light">
+    <div class="section-head">
+      <span class="eyebrow eyebrow-violet">What you get</span>
+      <h2>Everything a living document needs.</h2>
+    </div>
+    <div class="features">
+      <article class="feature f-violet">
+        <div class="f-icon">🔗</div>
+        <h3>Dependency tracking for prose</h3>
+        <p>Depend on whole files or slices by line range, regex markers, or heading. Know which input changed.</p>
+      </article>
+      <article class="feature f-pink">
+        <div class="f-icon">🚦</div>
+        <h3>A gate before every generation</h3>
+        <p><code>ai_context</code> answers "does anything need regenerating?" before a single token is spent on writing.</p>
+      </article>
+      <article class="feature f-orange">
+        <div class="f-icon">🛡️</div>
+        <h3>Hand edits don't vanish silently</h3>
+        <p>Generated regions carry a checksum. Edit one by hand and <code>mdship update</code> stops instead of overwriting your work.</p>
+      </article>
+      <article class="feature f-lime">
+        <div class="f-icon">✂️</div>
+        <h3>Surgical edits for agents</h3>
+        <p><code>get_section</code>, <code>replace_section</code>, <code>list_headings</code> and friends: agents change the part they need, not the whole file.</p>
+      </article>
+      <article class="feature f-cyan">
+        <div class="f-icon">🧩</div>
+        <h3>Deterministic content, too</h3>
+        <p>INCLUDE code, generate a TOC, load variables from JSON/YAML/TOML, render Jinja2 and Mermaid, run project scripts.</p>
+      </article>
+      <article class="feature f-blue">
+        <div class="f-icon">👀</div>
+        <h3>Invisible when rendered</h3>
+        <p>All control lives in HTML comments. GitHub and every renderer show clean, ordinary Markdown.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="band band-gradient ci">
+    <div class="ci-inner">
+      <div class="ci-copy">
+        <span class="eyebrow eyebrow-light">Honest by design</span>
+        <h2>Detection, enforced in CI.</h2>
+        <p>mdship detects problems; it doesn't prevent them. Checksums are compared when a check runs, so put the check where it can't be skipped:</p>
+        <ul class="checklist">
+          <li><b>✓</b> a changed dependency fails the build</li>
+          <li><b>✓</b> a changed prompt or brief fails the build</li>
+          <li><b>✓</b> a hand-edited generated section fails the build</li>
+          <li><b class="warn">!</b> a never-generated placeholder passes; find those with <code>ai-list</code></li>
+        </ul>
+        <a class="btn btn-light" href="docs/github-actions.html">See the CI cookbook →</a>
+      </div>
+      <div class="code-card">
+        <div class="code-card-bar"><span>.github/workflows/docs.yml</span></div>
+<pre><span class="c-key">jobs:</span>
+  <span class="c-key">docs:</span>
+    <span class="c-key">runs-on:</span> ubuntu-latest
+    <span class="c-key">steps:</span>
+      - <span class="c-key">uses:</span> actions/checkout@v4
+      - <span class="c-key">uses:</span> <span class="c-str">verhas/mdship@v1</span>
+        <span class="c-key">with:</span>
+          <span class="c-key">command:</span> <span class="c-hl">ai-check</span>
+          <span class="c-key">files:</span> README.md docs/**/*.md</pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="band band-light">
+    <div class="section-head">
+      <span class="eyebrow eyebrow-orange">Placeholders</span>
+      <h2>A toolbox of managed regions.</h2>
+      <p>Each one is protected by the same checksum model.</p>
+    </div>
+    <div class="ph-grid">
+      <a class="ph ph-violet" href="docs/ai.html"><b>AI</b><span>LLM-written prose with tracked inputs</span></a>
+      <a class="ph ph-pink" href="docs/include.html"><b>INCLUDE</b><span>embed files or slices of them</span></a>
+      <a class="ph ph-orange" href="docs/toc.html"><b>TOC</b><span>tables of contents</span></a>
+      <a class="ph ph-amber" href="docs/set.html"><b>SET</b><span>inline variables</span></a>
+      <a class="ph ph-lime" href="docs/import.html"><b>IMPORT</b><span>JSON · YAML · TOML · XML</span></a>
+      <a class="ph ph-emerald" href="docs/slurp.html"><b>SLURP</b><span>names &amp; values by regex</span></a>
+      <a class="ph ph-cyan" href="docs/sip.html"><b>SIP</b><span>known names by regex</span></a>
+      <a class="ph ph-blue" href="docs/sup.html"><b>SUP</b><span>a value from the next line</span></a>
+      <a class="ph ph-violet" href="docs/jinja2.html"><b>JINJA2</b><span>templates with loops &amp; filters</span></a>
+      <a class="ph ph-pink" href="docs/mermaid.html"><b>MERMAID</b><span>diagrams to SVG or PNG</span></a>
+      <a class="ph ph-orange" href="docs/python.html"><b>PYTHON</b><span>project-local scripts</span></a>
+      <a class="ph ph-muted" href="docs/template.html"><b><s>TEMPLATE</s></b><span>deprecated: use JINJA2</span></a>
+    </div>
+  </section>
+
+  <section class="final-cta">
+    <div class="blob blob-4"></div><div class="blob blob-5"></div>
+    <h2>Ship docs that stay true.</h2>
+    <p>Install, run <code>mdship init</code>, add one placeholder, and let <code>ai-check</code> tell you the moment it goes stale.</p>
+    <div class="cta-row center">
+      <a class="btn btn-primary" href="docs/index.html#2-quickstart">Start the quickstart →</a>
+      <button class="install" type="button" data-copy="pip install mdship" aria-label="Copy install command">
+        <span class="prompt">$</span> pip install mdship <span class="install-hint">copy</span>
+      </button>
+    </div>
+  </section>
+
+</main>
+{% endblock %}
