@@ -4,6 +4,7 @@ import pytest
 
 import hashlib
 import re
+import sys
 
 from mdship.markdown import (
     add_content_checksum,
@@ -2504,6 +2505,23 @@ file: "test.svg"
 """
         with pytest.raises(ValueError, match="requires 'diagram' parameter"):
             update_mermaid(content, str(tmp_path))
+
+    def test_missing_merm_package_names_the_extra(self, tmp_path, monkeypatch):
+        """merm is an optional extra; without it the error says how to install it."""
+        monkeypatch.setitem(sys.modules, "merm", None)  # makes `from merm import ...` fail
+        content = """# Test
+
+<!--MERMAID
+file: "test.svg"
+diagram: |
+  flowchart LR
+    A[Start] --> B[End]
+-->
+<!--/MERMAID-->
+"""
+        with pytest.raises(ValueError, match=r"pip install 'mdship\[mermaid\]'"):
+            update_mermaid(content, str(tmp_path))
+        assert not (tmp_path / "test.svg").exists()
 
     def test_unsupported_file_extension(self, tmp_path):
         """Unsupported file extension should raise an error."""

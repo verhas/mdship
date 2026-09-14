@@ -134,6 +134,12 @@ def update_mermaid(content: str, markdown_dir: str, variables: Optional[dict] = 
         if not dry_run:
             try:
                 from merm import render_to_file
+            except ImportError:
+                raise ValueError(
+                    f"Line {line_num}: MERMAID rendering needs the optional 'merm' package; "
+                    "install it with: pip install 'mdship[mermaid]'"
+                )
+            try:
                 diagram_source = config['diagram']
                 # Unescape --\> to --> (used to prevent premature HTML comment closure)
                 diagram_source = diagram_source.replace('--\\>', '-->')

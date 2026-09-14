@@ -2,7 +2,7 @@
 last-updated: '2026-06-10T11:37:48.418276'
 mdship-log: |
   2026-06-10 11:37:48 - update: processed all placeholders
-checksum: 98633f2d1eb663293a80cf07fb463618e47d88176c6200e73690b549994774eb
+checksum: 00368ae5a1980508b612eef388266fb2fae5d48d44e63ca8f59d98630ef75c4a
 checksum_algorithm: sha256
 ---
 # 1. mdship
@@ -144,6 +144,12 @@ or just
 
 ```
 pip install mdship
+```
+
+Rendering `<!--MERMAID-->` diagrams needs the optional `mermaid` extra, which installs the `merm` renderer:
+
+```
+pip install 'mdship[mermaid]'
 ```
 
 
@@ -876,7 +882,7 @@ After running `mdship update`, the file contains:
 
 ### 1.4.11. Rendering Mermaid Diagrams
 
-Generate Mermaid diagrams and embed them as images using `<!--MERMAID-->` markers. Diagrams are rendered to SVG or PNG files:
+Generate Mermaid diagrams and embed them as images using `<!--MERMAID-->` markers. Diagrams are rendered to SVG or PNG files. Rendering needs the optional extra: `pip install 'mdship[mermaid]'`.
 
 ```bash
 mdship update file.md                  # Update all placeholders
@@ -1424,9 +1430,14 @@ Production dependencies used by mdship:
 |---------|---------|---------|---------|
 | typer | >=0.12 | BSD 3-Clause | CLI framework for building command-line interfaces with type hints |
 | rich | >=13 | MIT | Rich text and beautiful formatting in the terminal |
-| mcp | >=1.0 | MIT | Model Context Protocol for connecting Claude with external tools |
+| mcp | >=2,<3 | MIT | Model Context Protocol for connecting Claude with external tools |
 | markdown-it-py | >=3 | MIT | Markdown parser with AST support |
 | pyyaml | >=6 | MIT | YAML parser and emitter for configuration |
+
+Optional dependency, installed only with the `mermaid` extra (`pip install 'mdship[mermaid]'`):
+
+| Package | Version | License | Purpose |
+|---------|---------|---------|---------|
 | merm | >=0.1 | WTFPL | Mermaid diagram rendering to SVG/PNG |
 
 ### 1.5.2. Development Dependencies
@@ -1438,7 +1449,7 @@ Testing and code quality tools (not included in distribution):
 | pytest | >=8 | MIT | Testing framework |
 | ruff | >=0.4 | MIT | Python linter and formatter |
 
-All dependencies are pinned to minimum compatible versions for stability and compatibility. Most use permissive open-source licenses (MIT, BSD, WTFPL).
+All dependencies are pinned to minimum compatible versions for stability and compatibility. The default install uses permissive open-source licenses (MIT, BSD); the WTFPL-licensed `merm` is only installed with the `mermaid` extra.
 
 ## 1.6. Development
 

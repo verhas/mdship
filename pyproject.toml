@@ -16,7 +16,6 @@ dependencies = [
     "mcp>=2,<3",
     "markdown-it-py>=3",
     "pyyaml>=6",
-    "merm>=0.1",
     "jinja2>=3",
 ]
 
@@ -29,7 +28,12 @@ Repository = "https://github.com/verhas/mdship"
 mdship = "mdship.cli:app"
 
 [project.optional-dependencies]
+# MERMAID rendering; kept optional because merm is WTFPL-licensed.
+mermaid = [
+    "merm>=0.1",
+]
 dev = [
+    "mdship[mermaid]",
     "pytest>=8",
     "ruff>=0.4",
 ]
