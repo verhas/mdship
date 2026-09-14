@@ -129,7 +129,9 @@ app = typer.Typer(
     help=f"mdship — markdown manipulation tool (version {_VERSION})",
     context_settings={"help_option_names": ["-h", "--help"]},
 )
-err = Console(stderr=True)
+# soft_wrap: never insert line breaks. Rich otherwise wraps at 80 columns when
+# stderr is not a terminal, splitting paths and diff lines in CI logs and pipes.
+err = Console(stderr=True, soft_wrap=True)
 
 
 def _version_callback(value: bool) -> None:

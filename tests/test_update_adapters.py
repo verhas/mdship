@@ -150,6 +150,26 @@ class TestCliAdapter:
         assert "-old" in result.output
         assert "+new" in result.output
 
+    def test_messages_are_not_hard_wrapped(self, tmp_path, monkeypatch):
+        # Rich wraps at 80 columns when stderr is not a terminal (CI logs, pipes);
+        # inserted newlines would split paths and diff lines.
+        long_dir = tmp_path / ("very-long-directory-name-" * 6)
+        long_dir.mkdir()
+        file = doc(long_dir)
+        monkeypatch.setattr(
+            operations,
+            "update_file",
+            lambda path, **kw: OperationResult(
+                path=path, changed=True, written=False, before="old\n", after="new\n"
+            ),
+        )
+
+        result = runner.invoke(cli.app, ["--dry-run", "update", str(file)])
+
+        lines = result.output.splitlines()
+        assert f"~ {file}: would change" in lines
+        assert f"--- a/{file}" in lines
+
     def test_artifacts_are_rendered_when_document_written(self, tmp_path, monkeypatch):
         file = doc(tmp_path)
         monkeypatch.setattr(
