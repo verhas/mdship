@@ -3,7 +3,7 @@
 <!--AI
 name: "set"
 deps:
-  - path: ../README.md
+  - path: REFERENCE.md
     section: Variables
     checksum: md5:4b43cb11467cbe92e04bae514956a389
 prompt: |

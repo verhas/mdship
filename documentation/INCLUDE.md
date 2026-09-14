@@ -3,7 +3,7 @@
 <!--AI
 name: "include"
 deps:
-  - path: ../README.md
+  - path: REFERENCE.md
     section: Including Files
     checksum: md5:32c48a0a3d59e8ea0ae00bd354e3e6dc
 prompt: |

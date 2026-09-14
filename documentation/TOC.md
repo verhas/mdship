@@ -5,7 +5,7 @@ name: "toc"
 prompt: |
     Write documentation for the TOC placeholder in mdship.
 
-    Read /Users/verhasp/github/mdship/README.md section 1.3.9 (Table of Contents) for
+    Read /Users/verhasp/github/mdship/documentation/REFERENCE.md section 2.4. Table of Contents for
     the reference material.
 
     Cover:

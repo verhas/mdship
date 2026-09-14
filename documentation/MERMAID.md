@@ -3,8 +3,8 @@
 <!--AI
 name: "mermaid"
 deps:
-  - path: ../README.md
-    start: Rendering Mermaid Diagrams
+  - path: REFERENCE.md
+    start: "^### .*Rendering Mermaid Diagrams"
     end: ^###
     checksum: md5:10aa7a46f74adfdf421d6de15805d0c1
 prompt: |

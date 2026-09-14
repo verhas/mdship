@@ -1,14 +1,24 @@
 # TEMPLATE Placeholder
 
+> **Deprecated:** `TEMPLATE` is deprecated and will be removed in a future release; existing placeholders keep working until then. Use [JINJA2](JINJA2.md) instead: rename the markers to `JINJA2` and replace `$variable` or `${variable}` with `{{ variable }}`. When migrating, note that an undefined variable stays literal `$name` text in `TEMPLATE` but renders as an empty string in `JINJA2`, and that `TEMPLATE` adds a blank line after the generated content where `JINJA2` does not. See the [reference](REFERENCE.md#23-template-placeholders).
+
 <!--AI
 name: "template"
 prompt: |
     Write documentation for the TEMPLATE placeholder in mdship.
 
-    Read /Users/verhasp/github/mdship/README.md section 1.3.7 (Template Placeholders)
+    Read /Users/verhasp/github/mdship/documentation/REFERENCE.md section 2.3. Template Placeholders
     for the reference material. Also read the implementation in
-    /Users/verhasp/github/mdship/mdship/markdown.py, function process_template
-    (around line 1469), to understand the exact behaviour.
+    /Users/verhasp/github/mdship/mdship/markdown/templates.py, function process_template,
+    to understand the exact behaviour.
+
+    TEMPLATE is deprecated and will be removed in a future release. Open the page with a
+    prominent deprecation notice that points to JINJA2 and explains the migration: rename the
+    markers to JINJA2, and replace $variable / ${variable} with {{ variable }}. State the two
+    behaviour differences: an undefined variable stays literal $name text in TEMPLATE but
+    renders as an empty string in JINJA2, and TEMPLATE adds a blank line after the generated
+    content where JINJA2 does not. Describe TEMPLATE itself for readers maintaining existing
+    documents, not as a recommended choice.
 
     Cover:
     - What TEMPLATE does: takes a content block written inline in the placeholder,

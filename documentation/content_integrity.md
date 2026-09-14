@@ -15,7 +15,7 @@ prompt: |
     mdship keeps track of the managed content.
     Explain how and how the user has to use this feature.
 
-    Read /Users/verhasp/github/mdship/README.md section 1.3.17. Managed Content Integrity as
+    Read /Users/verhasp/github/mdship/documentation/REFERENCE.md section 2.8. Managed Content Integrity as
     reference material.
 
     Cover:

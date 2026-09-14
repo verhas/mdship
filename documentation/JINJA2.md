@@ -5,21 +5,21 @@ name: "jinja2"
 prompt: |
     Write documentation for the JINJA2 placeholder in mdship.
 
-    Read /Users/verhasp/github/mdship/README.md 1.3.7.1. (Jinja2 Template Placeholders)
+    Read /Users/verhasp/github/mdship/documentation/REFERENCE.md section 2.3.1. Jinja2 Template Placeholders
     for the reference material. Also read the implementation in
-    /Users/verhasp/github/mdship/mdship/markdown.py, function process_template,
+    /Users/verhasp/github/mdship/mdship/markdown/templates.py, function process_jinja2,
     to understand the exact behavior.
 
     Cover:
     - What JINJA2 does: takes a content block written inline in the placeholder,
-      substitutes $variable references in it, and replaces the region between
+      renders it as a Jinja2 template with the document's variables, and replaces the region between
       <!--JINJA2 --​> and <!--/JINJA2--​> with the substituted result
     - Why it exists: normal $var substitution is intentionally skipped inside fenced
-      code blocks (``` ... ```); TEMPLATE is the way to embed variable values inside
+      code blocks (``` ... ```); JINJA2 is the way to embed variable values inside
       code blocks or any content where the substitution must be explicit and contained
     - Syntax: <!--JINJA2 --​> with a required 'content' YAML field (multiline block),
       followed by the current output and a closing <!--/JINJA2--​>
-    - The content field: the template string with $var or ${var} references
+    - The content field: a Jinja2 template using {{ var }}, loops, conditionals, and filters
     - Variable support: same dot-notation and array indexing as other placeholders
     - The closing <!--/JINJA2--​> is required; the region between markers is fully
       replaced on each run
@@ -30,7 +30,7 @@ prompt: |
     At the end, add a "See Also" section that explains how JINJA2 differs from
     all other placeholders: it is neither a variable source nor a content importer —
     it is a variable consumer that renders an inline template. Contrast with:
-    - TEMPLATE
+    - TEMPLATE: deprecated; JINJA2 replaces it (migration: $var becomes {{ var }})
     - Variable sources (SET, IMPORT, SLURP, SIP, SUP): they define variables;
       JINJA2 uses them
     - INCLUDE: embeds an external file; JINJA2 embeds an inline template string

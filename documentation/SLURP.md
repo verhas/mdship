@@ -3,12 +3,12 @@
 <!--AI
 name: "slurp"
 deps:
-  - path: ../README.md
+  - path: REFERENCE.md
     section: "SLURP: Extract Names and Values from Files"
 prompt: |
     Write documentation for the SLURP placeholder in mdship.
 
-    Read /Users/verhasp/github/mdship/README.md section 1.3.6 (Variables) for the
+    Read /Users/verhasp/github/mdship/documentation/REFERENCE.md section 2.2. Variables for the
     reference material. Focus on SLURP specifically.
 
     Cover:
