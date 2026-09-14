@@ -363,8 +363,8 @@ def shift_headings(
     _exit_if_errors(errors)
 
 
-@app.command()
-def sum(
+@app.command("sum")
+def sum_cmd(
     files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to process")] = [],
     algorithm: Annotated[str, typer.Option("--algorithm", "-a", help="Hash algorithm (md5, sha256, sha1)")] = "sha256",
 ) -> None:
