@@ -1,5 +1,6 @@
 """File-backed variable sources: IMPORT, SLURP, SIP and SUP."""
 
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -191,9 +192,16 @@ def _collect_import_variables(config: dict, line_num: int, markdown_dir: Optiona
                 f"Use 'format' parameter to specify explicitly."
             )
 
+    xmlns = config.get('xmlns')
+    if xmlns is not None and file_format != 'xml':
+        raise ValueError(
+            f"Line {line_num}: IMPORT 'xmlns' applies only to XML files, not {file_format}"
+        )
+    namespaces = _validate_xmlns(xmlns, line_num) if xmlns is not None else {}
+
     # Load the file based on format
     try:
-        data = _load_file_by_format(str(file_path), file_format)
+        data = _load_file_by_format(str(file_path), file_format, namespaces)
     except Exception as e:
         raise ValueError(f"Line {line_num}: Error reading or parsing {from_path}: {e}")
 
@@ -207,12 +215,48 @@ def _collect_import_variables(config: dict, line_num: int, markdown_dir: Optiona
     return result
 
 
-def _load_file_by_format(filepath: str, file_format: str) -> any:
+_XMLNS_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _validate_xmlns(xmlns, line_num: int) -> dict:
+    """Validate an IMPORT `xmlns:` mapping of names to namespace URLs.
+
+    Returns the inverted mapping, namespace URL -> name. Names must be usable in
+    a variable reference, because they become part of the imported keys.
+    """
+    if not isinstance(xmlns, dict):
+        raise ValueError(
+            f"Line {line_num}: IMPORT 'xmlns' must be a mapping of names to namespace URLs"
+        )
+    by_url = {}
+    for name, url in xmlns.items():
+        if not isinstance(name, str) or not _XMLNS_NAME.match(name):
+            raise ValueError(
+                f"Line {line_num}: IMPORT 'xmlns' name {name!r} must start with a letter or '_' "
+                f"and contain only letters, digits and '_'"
+            )
+        if not isinstance(url, str) or not url:
+            raise ValueError(
+                f"Line {line_num}: IMPORT 'xmlns' value for {name!r} must be a namespace URL string"
+            )
+        if url in by_url:
+            raise ValueError(
+                f"Line {line_num}: IMPORT 'xmlns' maps namespace {url} to both "
+                f"{by_url[url]!r} and {name!r}"
+            )
+        by_url[url] = name
+    return by_url
+
+
+def _load_file_by_format(
+    filepath: str, file_format: str, xml_namespaces: Optional[dict] = None
+) -> any:
     """Load a file and parse it based on the specified format.
 
     Args:
         filepath: Path to the file
         file_format: Format of the file ('json', 'yaml', 'toml', 'xml')
+        xml_namespaces: For XML, namespace URL -> name; see _xml_to_dict
 
     Returns:
         Parsed data from the file
@@ -248,41 +292,84 @@ def _load_file_by_format(filepath: str, file_format: str) -> any:
             raise ValueError("xml module not available")
         tree = ET.parse(filepath)
         root = tree.getroot()
+        namespaces = xml_namespaces or {}
         # Wrap the result with the root element name for consistency
-        return {root.tag: _xml_to_dict(root)}
+        return {_xml_key(root.tag, namespaces): _xml_to_dict(root, namespaces)}
 
     else:
         raise ValueError(f"Unsupported file format: {file_format}")
 
 
-def _xml_to_dict(element) -> dict:
+def _xml_key(name: str, namespaces: dict) -> str:
+    """Key for an XML element or attribute name as ElementTree reports it ('{url}local').
+
+    A namespace listed in `namespaces` (URL -> name) becomes a 'name_local' key;
+    every other namespace is stripped, leaving 'local'.
+    """
+    if not name.startswith('{'):
+        return name
+    url, _, local = name[1:].partition('}')
+    return f"{namespaces[url]}_{local}" if url in namespaces else local
+
+
+def _describe_xml_name(name: str) -> str:
+    if name.startswith(('{', '@{')):
+        at = '@' if name.startswith('@') else ''
+        url, _, local = name.lstrip('@')[1:].partition('}')
+        return f"'{at}{local}' in namespace {url}"
+    return f"'{name}' without a namespace"
+
+
+def _xml_to_dict(element, namespaces: Optional[dict] = None) -> dict:
     """Convert an XML element tree to a dictionary.
 
     Attributes are prefixed with '@', text content is under '_text' key.
     Nested elements with same name are collected in a list.
+    Namespaces are stripped from element and attribute names, except those in
+    `namespaces` (URL -> name), whose names become 'name_local'.
 
     Args:
         element: XML element to convert
+        namespaces: Namespace URL -> name for namespaces that must not be stripped
 
     Returns:
         Dictionary representation of the XML element
+
+    Raises:
+        ValueError: If two different names in the element map to the same key,
+            e.g. <a:id> and <b:id> with neither namespace listed in `namespaces`
     """
+    namespaces = namespaces or {}
     result = {}
+    origins = {}  # key -> original name, so different names never merge silently
+
+    def claim(key: str, original: str) -> None:
+        previous = origins.setdefault(key, original)
+        if previous != original:
+            raise ValueError(
+                f"XML {_describe_xml_name(previous)} and {_describe_xml_name(original)} inside "
+                f"<{_xml_key(element.tag, namespaces)}> would both be imported as '{key}'; "
+                f"give one of the namespaces a name with 'xmlns' in the IMPORT placeholder"
+            )
 
     # Add attributes with '@' prefix
-    for key, value in element.attrib.items():
-        result['@' + key] = value
+    for name, value in element.attrib.items():
+        key = '@' + _xml_key(name, namespaces)
+        claim(key, '@' + name)
+        result[key] = value
 
     # Add child elements
     for child in element:
-        child_dict = _xml_to_dict(child)
-        if child.tag in result:
+        key = _xml_key(child.tag, namespaces)
+        claim(key, child.tag)
+        child_dict = _xml_to_dict(child, namespaces)
+        if key in result:
             # Multiple children with same tag - convert to list
-            if not isinstance(result[child.tag], list):
-                result[child.tag] = [result[child.tag]]
-            result[child.tag].append(child_dict)
+            if not isinstance(result[key], list):
+                result[key] = [result[key]]
+            result[key].append(child_dict)
         else:
-            result[child.tag] = child_dict
+            result[key] = child_dict
 
     # Add text content if present
     text = element.text.strip() if element.text else ""

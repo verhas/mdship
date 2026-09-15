@@ -444,12 +444,43 @@ Port: <!--$config.database.port-->0<!---->
 - `name`: Variable name to store data under (required, supports hierarchical names like `app.db`)
 - `from`: File path relative to the markdown file (required)
 - `format`: File format (`json`, `yaml`, `toml`, `xml`). Auto-detected from extension if omitted
+- `xmlns`: XML only. A mapping of names to namespace URLs whose namespaces are kept in the imported names (see below)
 
 **Supported formats:**
 - `.json`: JSON objects and arrays
 - `.yaml` / `.yml`: YAML structures
 - `.toml`: TOML configuration
 - `.xml`: XML with attribute support (use `@attribute` for attributes)
+
+**XML structure and namespaces:**
+
+The imported data is wrapped in the root element's name, so `<project><version>` is `name.project.version`. An element that has both text and attributes or children keeps its text under `_text`, and repeated elements with the same name become a list.
+
+Namespaces are stripped from element and attribute names by default. A Maven POM declares `xmlns="http://maven.apache.org/POM/4.0.0"`, and its values are still reachable by their plain names:
+
+```markdown
+<!--IMPORT
+name: "pom"
+from: "pom.xml"
+-->
+
+Revision: <!--$pom.project.properties.revision-->2.0.0
+```
+
+When the same name appears in different namespaces at the same level, stripping would make them indistinguishable, and the import fails with an error that names both namespaces. Give a namespace a name with `xmlns`, and its elements and attributes are imported as `name_local` instead of being stripped. All other namespaces are still stripped:
+
+```markdown
+<!--IMPORT
+name: "feed"
+from: "feed.xml"
+xmlns:
+  media: "http://search.yahoo.com/mrss/"
+-->
+```
+
+Here `<media:title>` is imported as `media_title` and a plain `<title>` as `title`, and a `media:url` attribute as `@media_url`. An `xmlns` name must start with a letter or `_` and contain only letters, digits, and `_`, and each namespace URL may be mapped only once. Mapping a namespace that the file does not use is harmless.
+
+Variable references (`<!--$...-->`) can only use names made of letters, digits, and `_`, joined by dots. Attributes (`@name`) and elements whose names contain `-` or `.`, such as `<maven.compiler.release>`, are imported but cannot be used in a variable reference; reach them from a `JINJA2` template with brackets instead, for example `{{ feed.rss.channel.item["@media_url"] }}`.
 
 #### 2.2.2. SLURP: Extract Names and Values from Files
 

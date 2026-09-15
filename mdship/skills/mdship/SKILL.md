@@ -72,6 +72,7 @@ Fields:
 - `name`: required variable namespace; dot notation is allowed.
 - `from`: required path relative to the markdown file.
 - `format`: optional explicit format: `json`, `yaml`, `toml`, or `xml`.
+- `xmlns`: optional, XML only: `{name: namespace URL}`. XML data is wrapped in the root element name (`pom.project.version`). Namespaces are stripped from element and attribute names, except mapped ones, which become `name_local` (`<media:title>` → `media_title`). Map a namespace when the same name occurs in two namespaces at one level; otherwise the import fails.
 
 ### SLURP
 

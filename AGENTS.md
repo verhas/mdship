@@ -191,6 +191,9 @@ Collects variables from all variable source placeholders in a document: SET, IMP
    from: "settings.json"
    -->
    ```
+   XML is wrapped in its root element name. Namespaces are stripped from element and
+   attribute names unless listed in an optional `xmlns: {name: URL}` mapping, which
+   imports them as `name_local`; two different names that would collide are an error.
 
 3. **SLURP**: Extract variable names and values from files using regex (2 groups)
    ```

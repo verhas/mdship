@@ -1358,6 +1358,110 @@ from: "{data_file}"
         assert variables["data"]["root"]["person"]["contact"]["@email"] == "charlie@example.com"
         assert variables["data"]["root"]["person"]["contact"]["phone"] == "555-1234"
 
+    POM = """<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <version>${revision}</version>
+    <properties>
+        <revision>2.0.0</revision>
+    </properties>
+    <dependencies>
+        <dependency><artifactId>junit</artifactId></dependency>
+        <dependency><artifactId>assertj</artifactId></dependency>
+    </dependencies>
+</project>
+"""
+
+    def _import_xml(self, tmp_path, xml, extra=""):
+        data_file = tmp_path / "data.xml"
+        data_file.write_text(xml)
+        content = f'<!--IMPORT\nname: "data"\nfrom: "{data_file}"\n{extra}-->\n'
+        return collect_set_variables(content)["data"]
+
+    def test_import_xml_strips_default_namespace(self, tmp_path):
+        """A default namespace (as in every Maven POM) does not leak into the keys."""
+        data = self._import_xml(tmp_path, self.POM)
+
+        assert list(data) == ["project"]
+        assert data["project"]["properties"]["revision"] == "2.0.0"
+        dependencies = data["project"]["dependencies"]["dependency"]
+        assert [d["artifactId"] for d in dependencies] == ["junit", "assertj"]
+
+    def test_import_xml_strips_attribute_namespaces(self, tmp_path):
+        data = self._import_xml(tmp_path, self.POM)
+
+        assert data["project"]["@schemaLocation"].startswith("http://maven.apache.org/POM/4.0.0 ")
+
+    def test_import_xml_namespaced_value_is_usable_in_the_document(self, tmp_path):
+        data_file = tmp_path / "pom.xml"
+        data_file.write_text(self.POM)
+        content = (f'<!--IMPORT\nname: "pom"\nfrom: "{data_file}"\n-->\n\n'
+                   "Version: <!--$pom.project.properties.revision-->\n")
+
+        result = replace_variables_in_document(content, collect_set_variables(content))
+
+        assert "Version: <!--$pom.project.properties.revision-->2.0.0" in result
+
+    def test_import_xml_mapped_namespace_prefixes_the_name(self, tmp_path):
+        xml = """<root xmlns:a="urn:alpha" xmlns:b="urn:beta">
+  <a:id>1</a:id>
+  <b:id>2</b:id>
+</root>
+"""
+        data = self._import_xml(tmp_path, xml, 'xmlns:\n  al: "urn:alpha"\n')
+
+        assert data["root"] == {"al_id": "1", "id": "2"}
+
+    def test_import_xml_every_namespace_mapped(self, tmp_path):
+        xml = '<a:root xmlns:a="urn:alpha" xmlns:b="urn:beta"><a:id>1</a:id><b:id>2</b:id></a:root>'
+        data = self._import_xml(tmp_path, xml, 'xmlns:\n  al: "urn:alpha"\n  be: "urn:beta"\n')
+
+        assert data == {"al_root": {"al_id": "1", "be_id": "2"}}
+
+    def test_import_xml_mapped_namespace_on_attributes(self, tmp_path):
+        xml = '<root xmlns:x="urn:x"><item x:kind="k" kind="plain">v</item></root>'
+        data = self._import_xml(tmp_path, xml, 'xmlns:\n  ex: "urn:x"\n')
+
+        assert data["root"]["item"] == {"@ex_kind": "k", "@kind": "plain", "_text": "v"}
+
+    def test_import_xml_unmapped_namespaces_clashing_is_an_error(self, tmp_path):
+        """Stripping must not silently merge different elements into one list."""
+        xml = '<root xmlns:a="urn:alpha" xmlns:b="urn:beta"><a:id>1</a:id><b:id>2</b:id></root>'
+
+        with pytest.raises(ValueError, match=r"urn:alpha.*urn:beta.*'id'.*xmlns"):
+            self._import_xml(tmp_path, xml)
+
+    def test_import_xml_namespaced_and_plain_attribute_clash_is_an_error(self, tmp_path):
+        xml = '<root xmlns:x="urn:x"><item x:kind="k" kind="plain"/></root>'
+
+        with pytest.raises(ValueError, match="'@kind'"):
+            self._import_xml(tmp_path, xml)
+
+    def test_import_xml_mapping_a_namespace_not_in_the_file_is_harmless(self, tmp_path):
+        data = self._import_xml(tmp_path, self.POM, 'xmlns:\n  unused: "urn:nowhere"\n')
+
+        assert data["project"]["properties"]["revision"] == "2.0.0"
+
+    @pytest.mark.parametrize("xmlns, message", [
+        ('xmlns: "urn:alpha"\n', "must be a mapping"),
+        ('xmlns:\n  "a-b": "urn:alpha"\n', "'a-b'"),
+        ('xmlns:\n  1abc: "urn:alpha"\n', "'1abc'"),
+        ('xmlns:\n  a: 42\n', "namespace URL"),
+        ('xmlns:\n  a: "urn:alpha"\n  b: "urn:alpha"\n', "both 'a' and 'b'"),
+    ])
+    def test_import_xmlns_validation(self, tmp_path, xmlns, message):
+        with pytest.raises(ValueError, match=message):
+            self._import_xml(tmp_path, "<root/>", xmlns)
+
+    def test_import_xmlns_only_for_xml(self, tmp_path):
+        data_file = tmp_path / "data.json"
+        data_file.write_text('{"a": 1}')
+        content = f'<!--IMPORT\nname: "data"\nfrom: "{data_file}"\nxmlns:\n  a: "urn:alpha"\n-->\n'
+
+        with pytest.raises(ValueError, match="only to XML"):
+            collect_set_variables(content)
+
     def test_collect_import_variables_explicit_format(self, tmp_path):
         """Test IMPORT with explicit format specification."""
         # Create a .txt file with JSON content
