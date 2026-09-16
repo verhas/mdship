@@ -35,7 +35,75 @@ prompt: |
       "-", and also between the "--" and ">").
       This prevents mdship, browsers, and other Markdown renderers from treating
       the sequence as a real comment delimiter, while remaining invisible in rendered output.
+_prompt_checksum_: md5:c16bb14c6ee90971af165751b8f2c043
+_content_generated_: 19175:md5:4624fd84b3cb273ef49d5356f419c099
+# ⚠️ MANAGED CONTENT: Edits will be lost.
+# danger zone: Delete _content_generated_ to override.
 -->
+
+## 1.3.0 — 2026-09-16
+
+### MERMAID Rendering Moved to an Optional Extra
+
+The `merm` diagram renderer is no longer installed by default. It is WTFPL-licensed, which many corporate legal reviews reject, and it is only needed to render `<!​--MERMAID-​->` placeholders. A plain `pip install mdship` now pulls in MIT- and BSD-licensed dependencies only.
+
+**If you render diagrams, install the extra when upgrading:**
+
+```bash
+pip install 'mdship[mermaid]'
+```
+
+Without it, a document containing a MERMAID placeholder fails with an error naming the command to run, and no image file is written. Documents without MERMAID placeholders never load the renderer.
+
+### Backups Are Skipped When Git Already Has the File
+
+Modifying commands wrote a `.md.bak` copy every time, which in a git repository mostly produced untracked clutter. The backup is now skipped when git can restore the exact content — the file is tracked and has no uncommitted or staged changes. It is still written in every other case: outside a repository, for untracked or ignored files, when there are local edits, for symlinks, for files flagged `assume-unchanged` or `skip-worktree`, and whenever git is missing or fails. Skipping a backup therefore never loses uncommitted content.
+
+Two global flags override the rule, and the MCP tools follow it through their `backup` parameter: `true` always backs up, `false` never does, and omitting it uses the git-aware default.
+
+```bash
+mdship --bak fix-headings file.md      # always create a backup
+mdship --no-bak fix-headings file.md   # never create one
+```
+
+### MCP Server Ported to the 2.x SDK
+
+mdship now requires `mcp>=2,<3`. The 2.0 SDK renamed `FastMCP` to `MCPServer`, and mdship 1.2.4 could not start its MCP server on it: `mdship mcp` failed with an import error on any fresh install that picked up the new SDK. The server exposes the same 31 tools as before.
+
+### IMPORT: XML Namespaces
+
+`IMPORT` used the names ElementTree reports, so every element of a namespaced XML file arrived as `{http://...}tag`. Those keys were unreachable, because variable references split on dots and a namespace URL contains dots — a Maven POM could not be used at all. Namespaces are now stripped from element and attribute names:
+
+```markdown
+<!​--IMPORT
+name: "pom"
+from: "pom.xml"
+-​->
+
+Revision: <!​--$pom.project.properties.revision-​->2.0.0
+```
+
+A new optional `xmlns` key keeps chosen namespaces apart. It maps names to namespace URLs; elements and attributes in a mapped namespace are imported as `name_local` instead of being stripped, so `<media:title>` becomes `media_title` and a `media:url` attribute becomes `@media_url`. When two different names would collide under one element — `<a:id>` next to `<b:id>` with neither namespace mapped — the import fails with an error naming both namespaces, instead of merging unrelated elements into one list.
+
+### TEMPLATE Is Deprecated
+
+`TEMPLATE` is deprecated in favour of `JINJA2` and will be removed in a future release; existing placeholders keep working. To migrate, rename the markers and replace `$variable` with `{{ variable }}`. Two differences are worth checking: an undefined variable stays literal `$name` text in `TEMPLATE` but renders as an empty string in `JINJA2`, and `TEMPLATE` adds a blank line after the generated content where `JINJA2` does not.
+
+### CLI Output Is No Longer Mangled
+
+Rich wraps at 80 columns when stderr is not a terminal, and mdship inserted real line breaks into its messages — splitting file paths and dry-run diff lines in CI logs and pipes. Messages are no longer wrapped. Error messages also passed exception text to Rich as markup, so anything in square brackets was swallowed: a missing heading named `[draft]` was reported as `Heading not found: ''`, and text containing `[/x]` crashed with a traceback. Such text now prints literally.
+
+### Documentation and Website
+
+The README was rewritten around what mdship is for: the dependency-tracking idea, a quickstart, and a section on enforcing checks in CI that states the limits plainly — `mdship update` does not process AI placeholders, and `ai-check` passes a placeholder that has never been generated, which only `ai-list` reveals as `never_generated`. The full command and placeholder reference moved to [documentation/REFERENCE.md](documentation/REFERENCE.md).
+
+The documentation is now also a website at [verhas.github.io/mdship](https://verhas.github.io/mdship/), rebuilt from the repository's Markdown on every push.
+
+### Internal
+
+`markdown.py` had grown to 5552 lines with 102 functions and is now a package of feature modules (`mdship/markdown/`), with the public API unchanged. The test suite runs in CI on Python 3.11 through 3.14; it did not run there before.
+
+---
 
 ## 1.1.4 — 2026-06-20
 
