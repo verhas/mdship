@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Content Integrity · mdship</title>
+  <meta name="description" content="mdship keeps AI-written and generated Markdown in sync with its sources, and tells you exactly which part is stale and why.">
+  <meta name="theme-color" content="#140b2e">
+  <link rel="icon" href="../static/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../static/style.css">
+  <link rel="stylesheet" href="../static/code.css">
+</head>
+<body class="docs">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../index.html" aria-label="mdship home">
+        <img src="../static/logo.svg" alt="" width="32" height="32">
+        <span>mdship</span>
+      </a>
+      <button class="menu-toggle" type="button" aria-controls="sidebar" aria-expanded="false">☰ <span>Menu</span></button>
+      <nav class="topnav" aria-label="Main">
+        <a href="../docs/index.html#2-quickstart">Quickstart</a>
+        <a href="../docs/ai.html">AI placeholders</a>
+        <a href="../docs/commands/index.html">Commands</a>
+        <a href="../docs/reference.html">Reference</a>
+        <a class="gh" href="https://github.com/verhas/mdship">
+          <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  
+<div class="docs-layout">
+  <aside class="sidebar" id="sidebar" aria-label="Documentation">
+  <div class="sidebar-search">
+    <input type="search" placeholder="Filter pages…" aria-label="Filter pages" data-nav-filter>
+  </div>
+  
+  <div class="nav-section nav-c1">
+    <h3>Get started</h3>
+    <ul>
+      
+      <li><a href="index.html">Overview &amp; quickstart</a></li>
+      
+      <li><a href="ai.html">AI placeholders</a></li>
+      
+      <li><a href="github-actions.html">CI with GitHub Actions</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c2">
+    <h3>Concepts</h3>
+    <ul>
+      
+      <li><a href="placeholder.html">Placeholders in Markdown</a></li>
+      
+      <li><a href="content-integrity.html" aria-current="page">Content integrity</a></li>
+      
+      <li><a href="python.html">Python scripting</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c3">
+    <h3>Placeholders</h3>
+    <ul>
+      
+      <li><a href="include.html">INCLUDE</a></li>
+      
+      <li><a href="toc.html">TOC</a></li>
+      
+      <li><a href="set.html">SET</a></li>
+      
+      <li><a href="import.html">IMPORT</a></li>
+      
+      <li><a href="slurp.html">SLURP</a></li>
+      
+      <li><a href="sip.html">SIP</a></li>
+      
+      <li><a href="sup.html">SUP</a></li>
+      
+      <li><a href="jinja2.html">JINJA2</a></li>
+      
+      <li><a href="mermaid.html">MERMAID</a></li>
+      
+      <li><a href="template.html">TEMPLATE (deprecated)</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c4">
+    <h3>Reference</h3>
+    <ul>
+      
+      <li><a href="reference.html">Full reference</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c5">
+    <h3>Articles</h3>
+    <ul>
+      
+      <li><a href="articles/ai-managed-conten.html">When documentation manages itself</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-commands">
+    <h3><a href="commands/index.html">Commands</a></h3>
+    
+    <h4>AI workflow</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/ai-list.html">ai-list</a></li>
+      
+      <li><a class="mono" href="commands/ai-check.html">ai-check</a></li>
+      
+      <li><a class="mono" href="commands/ai-fix.html">ai-fix</a></li>
+      
+      <li><a class="mono" href="commands/ai-comments.html">ai-comments</a></li>
+      
+      <li><a class="mono" href="commands/ai-context-and-update.html">ai-context-and-update</a></li>
+      
+    </ul>
+    
+    <h4>Content</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/update.html">update</a></li>
+      
+      <li><a class="mono" href="commands/init.html">init</a></li>
+      
+      <li><a class="mono" href="commands/scripts.html">scripts</a></li>
+      
+      <li><a class="mono" href="commands/mcp.html">mcp</a></li>
+      
+    </ul>
+    
+    <h4>Structure</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/fix-headings.html">fix-headings</a></li>
+      
+      <li><a class="mono" href="commands/shift-headings.html">shift-headings</a></li>
+      
+      <li><a class="mono" href="commands/number.html">number</a></li>
+      
+      <li><a class="mono" href="commands/unnumber.html">unnumber</a></li>
+      
+    </ul>
+    
+    <h4>Formatting</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/reflow.html">reflow</a></li>
+      
+      <li><a class="mono" href="commands/semantic-line-breaks.html">semantic-line-breaks</a></li>
+      
+      <li><a class="mono" href="commands/format-tables.html">format-tables</a></li>
+      
+    </ul>
+    
+    <h4>Reading &amp; editing</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/list-headings.html">list-headings</a></li>
+      
+      <li><a class="mono" href="commands/get-section.html">get-section</a></li>
+      
+      <li><a class="mono" href="commands/replace-section.html">replace-section</a></li>
+      
+      <li><a class="mono" href="commands/get-lines.html">get-lines</a></li>
+      
+      <li><a class="mono" href="commands/insert-lines.html">insert-lines</a></li>
+      
+      <li><a class="mono" href="commands/delete-lines.html">delete-lines</a></li>
+      
+      <li><a class="mono" href="commands/get-paragraphs.html">get-paragraphs</a></li>
+      
+      <li><a class="mono" href="commands/find-replace.html">find-replace</a></li>
+      
+      <li><a class="mono" href="commands/extract-table.html">extract-table</a></li>
+      
+      <li><a class="mono" href="commands/update-table.html">update-table</a></li>
+      
+      <li><a class="mono" href="commands/frontmatter-get.html">frontmatter-get</a></li>
+      
+      <li><a class="mono" href="commands/frontmatter-set.html">frontmatter-set</a></li>
+      
+    </ul>
+    
+    <h4>Checking</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/validate.html">validate</a></li>
+      
+      <li><a class="mono" href="commands/sum.html">sum</a></li>
+      
+      <li><a class="mono" href="commands/verify.html">verify</a></li>
+      
+    </ul>
+    
+  </div>
+</aside>
+  <main id="main" class="doc">
+    <p class="crumb"><span class="crumb-section">Concepts</span></p>
+    <article class="prose">
+      <h1 id="content-integrity"><a class="anchor" href="#content-integrity" aria-hidden="true">#</a>Content Integrity</h1>
+<h2 id="the-two-m-problem-managed-and-manual-content-in-the-same-file"><a class="anchor" href="#the-two-m-problem-managed-and-manual-content-in-the-same-file" aria-hidden="true">#</a>The Two-M Problem: Managed and Manual Content in the Same File</h2>
+<p>Most macro-processing tools — Jamal, PET, m4, and similar preprocessors — maintain a strict separation between source and output. You write a template file; the tool reads it and writes a separate output file. The source is never touched. You edit the source, re-run the tool, and the output is fully regenerated. Conflicts between generated and hand-written content are impossible by construction because they live in different files.</p>
+<p>mdship works differently. It is an <strong>in-place editor</strong>: it reads a markdown file, updates specific sections, and writes the result back to the same file. The rest of the document — everything outside the placeholder markers — is yours to write and edit freely. This is a deliberate design choice. It means you can mix generated content (a TOC, an included code snippet, a rendered diagram) with hand-written prose in the same document, commit a single file to git, and share it as-is.</p>
+<p>The trade-off is real: managed sections and manual sections coexist in the same file. That is not a mistake; it is a compromise between the convenience of a single-file workflow and the safety of strict source/output separation.</p>
+<h2 id="the-risk-editing-managed-content-by-accident"><a class="anchor" href="#the-risk-editing-managed-content-by-accident" aria-hidden="true">#</a>The Risk: Editing Managed Content by Accident</h2>
+<p>When a placeholder like <code>&lt;!--TOC--&gt;</code> or <code>&lt;!--INCLUDE--&gt;</code> is updated by mdship, the content between the opening <code>--&gt;</code> and the closing tag is <strong>entirely regenerated</strong>. Any edits made to that region since the last run will be silently overwritten.</p>
+<p>This is easy to do by accident. A developer reads the TOC, notices a typo in a heading link, and fixes it inline. A reviewer edits an included code snippet for clarity. The next <code>mdship update</code> run discards those changes without warning.</p>
+<p>A committed git history is the best safety net — <code>git diff</code> will show you what was lost, and <code>git checkout</code> can recover it. But not every edit ends up in a commit, and not every project uses git.</p>
+<h2 id="how-mdship-tracks-managed-content"><a class="anchor" href="#how-mdship-tracks-managed-content" aria-hidden="true">#</a>How mdship Tracks Managed Content</h2>
+<p>To guard against accidental overwrites, mdship records a <strong>content hash</strong> inside the opening marker every time it generates a managed block. The metadata key is <code>_content_generated_</code>.</p>
+<p>After the first <code>mdship update</code> run, a TOC placeholder looks like this:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>
+</code></pre></div>
+<p>The value <code>312:md5:a3f1c8b2e94d7056...</code> encodes two things:</p>
+<ul>
+<li><strong><code>312</code></strong> — the exact character count of the managed block (from the <code>--&gt;</code> of the opening marker to the start of the closing tag).</li>
+<li><strong><code>md5:...</code></strong> — the MD5 hex digest of that same block. MD5 is always used for this field; no other algorithm is supported.</li>
+</ul>
+<p>On every subsequent run, before regenerating content, mdship:</p>
+<ol>
+<li>Uses the stored character count to locate the closing tag by position rather than by regex. This makes parsing resilient even when the generated content itself contains a string that looks like a closing marker.</li>
+<li>Verifies the MD5 hash of the current content. If it does not match the stored hash, the content has been edited since the last run, and mdship stops with an error.</li>
+</ol>
+<h3 id="the-content-generated-line-must-be-on-its-own-line"><a class="anchor" href="#the-content-generated-line-must-be-on-its-own-line" aria-hidden="true">#</a>The <code>_content_generated_</code> line must be on its own line</h3>
+<p>The value is stored as a plain YAML scalar on a dedicated line. It would be syntactically valid to embed it inside a YAML flow mapping, but mdship requires it as a standalone line:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">yaml</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="c1"># Correct — standalone line:</span>
+<span class="nt">_content_generated_</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">312:md5:a3f1c8b2e94d7056...</span>
+
+<span class="c1"># Not accepted — embedded in a mapping:</span>
+<span class="nt">metadata</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">_content_generated_</span><span class="p">:</span><span class="w"> </span><span class="nv">312</span><span class="p p-Indicator">:</span><span class="nv">md5</span><span class="p p-Indicator">:</span><span class="nv">a3f1c8b2e94d7056...</span><span class="p p-Indicator">}</span>
+</code></pre></div>
+<p>This requirement exists because mdship locates and updates the line with a simple string search, not a full YAML re-serialisation. Embedding it would require re-emitting the entire YAML structure, which would lose any comments and formatting you have added to the opening marker.</p>
+<h2 id="three-scenarios"><a class="anchor" href="#three-scenarios" aria-hidden="true">#</a>Three Scenarios</h2>
+<h3 id="1-first-run-no-hash-present"><a class="anchor" href="#1-first-run-no-hash-present" aria-hidden="true">#</a><span class="num">1</span>First run — no hash present</h3>
+<p><code>_content_generated_</code> is absent from the opening marker. mdship generates the content, computes the character count and MD5, and inserts the <code>_content_generated_</code> line plus two warning comments into the opening marker. The document is updated normally.</p>
+<h3 id="2-subsequent-run-hash-present-and-content-unchanged"><a class="anchor" href="#2-subsequent-run-hash-present-and-content-unchanged" aria-hidden="true">#</a><span class="num">2</span>Subsequent run — hash present and content unchanged</h3>
+<p>mdship locates the closing tag by position, verifies the hash, finds it matches, and regenerates the content. The <code>_content_generated_</code> value is updated to reflect the new content. No user action required.</p>
+<h3 id="3-hash-mismatch-content-was-edited-manually"><a class="anchor" href="#3-hash-mismatch-content-was-edited-manually" aria-hidden="true">#</a><span class="num">3</span>Hash mismatch — content was edited manually</h3>
+<p>mdship detects that the closing tag is not at the expected position (the block length changed) or that the hash does not match (a same-length edit). It stops and prints one of the following errors:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>ERROR: Placeholder TOC document integrity compromised.
+Closing tag not found at expected position.
+Delete _content_generated_ line to override and accept data loss.
+</code></pre></div>
+<div class="code"><div class="code-bar"><span class="code-lang">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>ERROR: Placeholder TOC content was manually edited.
+Hash mismatch detected.
+Delete _content_generated_ line to override and accept data loss.
+</code></pre></div>
+<p>You have two ways to proceed.</p>
+<h2 id="overriding-the-hash-check"><a class="anchor" href="#overriding-the-hash-check" aria-hidden="true">#</a>Overriding the Hash Check</h2>
+<h3 id="manual-override-delete-the-content-generated-line"><a class="anchor" href="#manual-override-delete-the-content-generated-line" aria-hidden="true">#</a>Manual override — delete the <code>_content_generated_</code> line</h3>
+<p>Open the file and remove the <code>_content_generated_</code> line (and optionally the two warning comment lines) from the opening marker. The next <code>mdship update</code> run treats the placeholder as new: it overwrites whatever is between the markers and inserts a fresh hash.</p>
+<p>Use this when you have already decided to discard your manual edits, or when you have preserved them elsewhere and want a clean regeneration.</p>
+<h3 id="command-line-override-force-f"><a class="anchor" href="#command-line-override-force-f" aria-hidden="true">#</a>Command-line override — <code>--force</code> / <code>-f</code></h3>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>update<span class="w"> </span>--force<span class="w"> </span>file.md
+mdship<span class="w"> </span>update<span class="w"> </span>-f<span class="w"> </span>file.md
+</code></pre></div>
+<p>With <code>--force</code>, hash checks are skipped entirely. mdship still uses the stored character count to locate the closing tag when it is at the expected position — resilience against false closing markers is preserved in that case. If the closing tag is not at the expected position (the block length changed), mdship falls back to a regex scan, exactly as if there were no <code>_content_generated_</code> at all. Either way, the content is regenerated and a new hash is written back.</p>
+<p><strong>When <code>--force</code> cannot help:</strong> if the managed content itself contains a string that matches the closing marker pattern (for example, an <code>&lt;!--INCLUDE--&gt;</code> block that pulled in a file mentioning <code>&lt;!--/INCLUDE--&gt;</code>), the regex fallback will stop at that false match. In this case, manually delete everything between the opening <code>--&gt;</code> and the closing tag, leaving both markers intact and the <code>_content_generated_</code> line removed, then run <code>mdship update</code> without <code>--force</code>.</p>
+<h2 id="content-integrity-for-ai-placeholders"><a class="anchor" href="#content-integrity-for-ai-placeholders" aria-hidden="true">#</a>Content Integrity for AI Placeholders</h2>
+<p>The <code>&lt;!--AI--&gt;</code> placeholder is different from TOC, INCLUDE, MERMAID, and TEMPLATE: its content is written by Claude, not by <code>mdship update</code>. mdship itself has no way to know when or what Claude wrote. Two dedicated commands handle integrity for AI placeholders.</p>
+<h3 id="mdship-ai-fix"><a class="anchor" href="#mdship-ai-fix" aria-hidden="true">#</a><code>mdship ai-fix</code></h3>
+<p>Records the current content hash for all AI placeholders in a file:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>ai-fix<span class="w"> </span>file.md<span class="w">              </span><span class="c1"># hash all AI placeholders</span>
+mdship<span class="w"> </span>ai-fix<span class="w"> </span>--name<span class="w"> </span>intro<span class="w"> </span>file.md<span class="w"> </span><span class="c1"># hash only the one named "intro"</span>
+</code></pre></div>
+<p>Call this after writing or updating an AI placeholder section. It inserts the same <code>_content_generated_</code> line and warning comments into the opening <code>&lt;!--AI--&gt;</code> marker that <code>mdship update</code> inserts into TOC/INCLUDE/MERMAID markers.</p>
+<h3 id="mdship-ai-check"><a class="anchor" href="#mdship-ai-check" aria-hidden="true">#</a><code>mdship ai-check</code></h3>
+<p>Verifies that each hashed AI placeholder still matches its recorded hash:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>ai-check<span class="w"> </span>file.md<span class="w">              </span><span class="c1"># check all AI placeholders</span>
+mdship<span class="w"> </span>ai-check<span class="w"> </span>--name<span class="w"> </span>intro<span class="w"> </span>file.md<span class="w"> </span><span class="c1"># check only the one named "intro"</span>
+</code></pre></div>
+<p>Exits 0 if all hashed placeholders are intact. Exits 1 and prints errors for any that differ. Placeholders with no <code>_content_generated_</code> entry are not checked — no hash means either the content was never recorded or the hash was deleted to allow a free update.</p>
+<h3 id="workflow"><a class="anchor" href="#workflow" aria-hidden="true">#</a>Workflow</h3>
+<p><img src="../assets/documentation-_sequence_content_safety.svg" alt="diagram" loading="lazy"></p>
+<p>The intended workflow when Claude updates an AI placeholder:</p>
+<ol>
+<li><strong>Check</strong> — call <code>ai_context</code> to verify whether the content is up to date and detect any manual edits since the last write. If the response is <code>error</code>, stop and report to the user before overwriting.</li>
+<li><strong>Generate</strong> — produce the new content.</li>
+<li><strong>Write and fix atomically</strong> — call <code>ai_update</code>, which replaces the content between the markers and writes all checksums (<code>_content_generated_</code>, <code>_prompt_checksum_</code>, per-dep <code>checksum:</code>) in a single file write.</li>
+</ol>
+<p>This mirrors exactly what <code>mdship update</code> does for its own placeholders: check before overwriting, update the hash after.</p>
+<h3 id="how-the-ai-placeholder-skill-enforces-this"><a class="anchor" href="#how-the-ai-placeholder-skill-enforces-this" aria-hidden="true">#</a>How the <code>/ai-placeholder</code> skill enforces this</h3>
+<p>When you invoke the <code>/ai-placeholder</code> skill in Claude Code, the skill file instructs Claude to call <code>mcp__mdship__ai_context</code> via the mdship MCP server before writing anything. If the server returns an <code>error</code> status, Claude stops and reports the conflict to you rather than silently overwriting your edits. After generating, the skill instructs Claude to call <code>mcp__mdship__ai_update</code> via MCP, which writes the content and records all checksums atomically in a single file write — no separate <code>ai_fix</code> call is needed.</p>
+<p>This means the check-generate-update cycle is not something Claude has to remember to do — it is encoded directly in the skill definition and enforced automatically on every <code>/ai-placeholder</code> invocation. The MCP calls are the machine-readable equivalent of the <code>_content_generated_</code> guard that <code>mdship update</code> applies to its own placeholders.</p>
+<h2 id="see-also"><a class="anchor" href="#see-also" aria-hidden="true">#</a>See Also</h2>
+<p>The content integrity feature applies to all built-in placeholders that use a closing tag:</p>
+<ul>
+<li><code>&lt;!--TOC--&gt;</code> / <code>&lt;!--/TOC--&gt;</code> — table of contents</li>
+<li><code>&lt;!--INCLUDE--&gt;</code> / <code>&lt;!--/INCLUDE--&gt;</code> — file inclusion</li>
+<li><code>&lt;!--MERMAID--&gt;</code> / <code>&lt;!--/MERMAID--&gt;</code> — diagram rendering</li>
+<li><code>&lt;!--TEMPLATE--&gt;</code> / <code>&lt;!--/TEMPLATE--&gt;</code> — variable-substituted template blocks</li>
+<li><code>&lt;!--AI--&gt;</code> / <code>&lt;!--/AI--&gt;</code> — AI-generated content (managed via <code>ai-fix</code> / <code>ai-check</code>)</li>
+</ul>
+<p>For TOC, INCLUDE, MERMAID, and TEMPLATE, the hash check and update are wired directly into each placeholder processor in the code. The feature is not applied automatically to new placeholder types — a new processor must call <code>_check_content_hash</code> before generating content and <code>_apply_content_hash</code> after. For AI placeholders, the same hash mechanism is used but triggered explicitly by the user via <code>mdship ai-fix</code> and <code>mdship ai-check</code>.</p>
+` — AI-generated content (managed via `ai-fix` / `ai-check`)
+<p>For TOC, INCLUDE, MERMAID, and TEMPLATE, the hash check and update are wired directly into each placeholder processor in the code. The feature is not applied automatically to new placeholder types — a new processor must call <code>_check_content_hash</code> before generating content and <code>_apply_content_hash</code> after. For AI placeholders, the same hash mechanism is used but triggered explicitly by the user via <code>mdship ai-fix</code> and <code>mdship ai-check</code>.</p>
+
+    </article>
+    <nav class="pager" aria-label="Previous and next page">
+      <a class="pager-prev" href="placeholder.html"><small>← Previous</small>Placeholders in Markdown</a>
+      <a class="pager-next" href="python.html"><small>Next →</small>Python scripting</a>
+    </nav>
+    <p class="edit"><a href="https://github.com/verhas/mdship/edit/master/documentation/content_integrity.md">Edit this page on GitHub</a></p>
+  </main>
+  
+  <nav class="onpage" aria-label="On this page">
+    <h3>On this page</h3>
+    <ul>
+      
+      <li class="lvl2"><a href="#the-two-m-problem-managed-and-manual-content-in-the-same-file">The Two-M Problem: Managed and Manual Content in the Same File</a></li>
+      
+      <li class="lvl2"><a href="#the-risk-editing-managed-content-by-accident">The Risk: Editing Managed Content by Accident</a></li>
+      
+      <li class="lvl2"><a href="#how-mdship-tracks-managed-content">How mdship Tracks Managed Content</a></li>
+      
+      <li class="lvl3"><a href="#the-content-generated-line-must-be-on-its-own-line">The _content_generated_ line must be on its own line</a></li>
+      
+      <li class="lvl2"><a href="#three-scenarios">Three Scenarios</a></li>
+      
+      <li class="lvl3"><a href="#1-first-run-no-hash-present">First run — no hash present</a></li>
+      
+      <li class="lvl3"><a href="#2-subsequent-run-hash-present-and-content-unchanged">Subsequent run — hash present and content unchanged</a></li>
+      
+      <li class="lvl3"><a href="#3-hash-mismatch-content-was-edited-manually">Hash mismatch — content was edited manually</a></li>
+      
+      <li class="lvl2"><a href="#overriding-the-hash-check">Overriding the Hash Check</a></li>
+      
+      <li class="lvl3"><a href="#manual-override-delete-the-content-generated-line">Manual override — delete the _content_generated_ line</a></li>
+      
+      <li class="lvl3"><a href="#command-line-override-force-f">Command-line override — --force / -f</a></li>
+      
+      <li class="lvl2"><a href="#content-integrity-for-ai-placeholders">Content Integrity for AI Placeholders</a></li>
+      
+      <li class="lvl3"><a href="#mdship-ai-fix">mdship ai-fix</a></li>
+      
+      <li class="lvl3"><a href="#mdship-ai-check">mdship ai-check</a></li>
+      
+      <li class="lvl3"><a href="#workflow">Workflow</a></li>
+      
+      <li class="lvl3"><a href="#how-the-ai-placeholder-skill-enforces-this">How the /ai-placeholder skill enforces this</a></li>
+      
+      <li class="lvl2"><a href="#see-also">See Also</a></li>
+      
+    </ul>
+  </nav>
+  
+</div>
+
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <img src="../static/logo.svg" alt="" width="28" height="28">
+        <div>
+          <strong>mdship</strong> 1.3.0
+          <p>Documentation that knows when it is stale.</p>
+        </div>
+      </div>
+      <div class="footer-links">
+        <div>
+          <h4>Learn</h4>
+          <a href="../docs/index.html">Overview</a>
+          <a href="../docs/ai.html">AI placeholders</a>
+          <a href="../docs/github-actions.html">CI recipes</a>
+        </div>
+        <div>
+          <h4>Reference</h4>
+          <a href="../docs/commands/index.html">Commands</a>
+          <a href="../docs/reference.html">Full reference</a>
+          <a href="../docs/python.html">Python scripting</a>
+        </div>
+        <div>
+          <h4>Project</h4>
+          <a href="https://github.com/verhas/mdship">GitHub</a>
+          <a href="https://pypi.org/project/mdship/">PyPI</a>
+          <a href="https://github.com/verhas/mdship/issues">Issues</a>
+        </div>
+      </div>
+    </div>
+    <p class="footer-note">MIT or Apache-2.0 · Built from the repository's own Markdown documentation</p>
+  </footer>
+  <script src="../static/site.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,745 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Python Scripting · mdship</title>
+  <meta name="description" content="mdship keeps AI-written and generated Markdown in sync with its sources, and tells you exactly which part is stale and why.">
+  <meta name="theme-color" content="#140b2e">
+  <link rel="icon" href="../static/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../static/style.css">
+  <link rel="stylesheet" href="../static/code.css">
+</head>
+<body class="docs">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../index.html" aria-label="mdship home">
+        <img src="../static/logo.svg" alt="" width="32" height="32">
+        <span>mdship</span>
+      </a>
+      <button class="menu-toggle" type="button" aria-controls="sidebar" aria-expanded="false">☰ <span>Menu</span></button>
+      <nav class="topnav" aria-label="Main">
+        <a href="../docs/index.html#2-quickstart">Quickstart</a>
+        <a href="../docs/ai.html">AI placeholders</a>
+        <a href="../docs/commands/index.html">Commands</a>
+        <a href="../docs/reference.html">Reference</a>
+        <a class="gh" href="https://github.com/verhas/mdship">
+          <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  
+<div class="docs-layout">
+  <aside class="sidebar" id="sidebar" aria-label="Documentation">
+  <div class="sidebar-search">
+    <input type="search" placeholder="Filter pages…" aria-label="Filter pages" data-nav-filter>
+  </div>
+  
+  <div class="nav-section nav-c1">
+    <h3>Get started</h3>
+    <ul>
+      
+      <li><a href="index.html">Overview &amp; quickstart</a></li>
+      
+      <li><a href="ai.html">AI placeholders</a></li>
+      
+      <li><a href="github-actions.html">CI with GitHub Actions</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c2">
+    <h3>Concepts</h3>
+    <ul>
+      
+      <li><a href="placeholder.html">Placeholders in Markdown</a></li>
+      
+      <li><a href="content-integrity.html">Content integrity</a></li>
+      
+      <li><a href="python.html" aria-current="page">Python scripting</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c3">
+    <h3>Placeholders</h3>
+    <ul>
+      
+      <li><a href="include.html">INCLUDE</a></li>
+      
+      <li><a href="toc.html">TOC</a></li>
+      
+      <li><a href="set.html">SET</a></li>
+      
+      <li><a href="import.html">IMPORT</a></li>
+      
+      <li><a href="slurp.html">SLURP</a></li>
+      
+      <li><a href="sip.html">SIP</a></li>
+      
+      <li><a href="sup.html">SUP</a></li>
+      
+      <li><a href="jinja2.html">JINJA2</a></li>
+      
+      <li><a href="mermaid.html">MERMAID</a></li>
+      
+      <li><a href="template.html">TEMPLATE (deprecated)</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c4">
+    <h3>Reference</h3>
+    <ul>
+      
+      <li><a href="reference.html">Full reference</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c5">
+    <h3>Articles</h3>
+    <ul>
+      
+      <li><a href="articles/ai-managed-conten.html">When documentation manages itself</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-commands">
+    <h3><a href="commands/index.html">Commands</a></h3>
+    
+    <h4>AI workflow</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/ai-list.html">ai-list</a></li>
+      
+      <li><a class="mono" href="commands/ai-check.html">ai-check</a></li>
+      
+      <li><a class="mono" href="commands/ai-fix.html">ai-fix</a></li>
+      
+      <li><a class="mono" href="commands/ai-comments.html">ai-comments</a></li>
+      
+      <li><a class="mono" href="commands/ai-context-and-update.html">ai-context-and-update</a></li>
+      
+    </ul>
+    
+    <h4>Content</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/update.html">update</a></li>
+      
+      <li><a class="mono" href="commands/init.html">init</a></li>
+      
+      <li><a class="mono" href="commands/scripts.html">scripts</a></li>
+      
+      <li><a class="mono" href="commands/mcp.html">mcp</a></li>
+      
+    </ul>
+    
+    <h4>Structure</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/fix-headings.html">fix-headings</a></li>
+      
+      <li><a class="mono" href="commands/shift-headings.html">shift-headings</a></li>
+      
+      <li><a class="mono" href="commands/number.html">number</a></li>
+      
+      <li><a class="mono" href="commands/unnumber.html">unnumber</a></li>
+      
+    </ul>
+    
+    <h4>Formatting</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/reflow.html">reflow</a></li>
+      
+      <li><a class="mono" href="commands/semantic-line-breaks.html">semantic-line-breaks</a></li>
+      
+      <li><a class="mono" href="commands/format-tables.html">format-tables</a></li>
+      
+    </ul>
+    
+    <h4>Reading &amp; editing</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/list-headings.html">list-headings</a></li>
+      
+      <li><a class="mono" href="commands/get-section.html">get-section</a></li>
+      
+      <li><a class="mono" href="commands/replace-section.html">replace-section</a></li>
+      
+      <li><a class="mono" href="commands/get-lines.html">get-lines</a></li>
+      
+      <li><a class="mono" href="commands/insert-lines.html">insert-lines</a></li>
+      
+      <li><a class="mono" href="commands/delete-lines.html">delete-lines</a></li>
+      
+      <li><a class="mono" href="commands/get-paragraphs.html">get-paragraphs</a></li>
+      
+      <li><a class="mono" href="commands/find-replace.html">find-replace</a></li>
+      
+      <li><a class="mono" href="commands/extract-table.html">extract-table</a></li>
+      
+      <li><a class="mono" href="commands/update-table.html">update-table</a></li>
+      
+      <li><a class="mono" href="commands/frontmatter-get.html">frontmatter-get</a></li>
+      
+      <li><a class="mono" href="commands/frontmatter-set.html">frontmatter-set</a></li>
+      
+    </ul>
+    
+    <h4>Checking</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/validate.html">validate</a></li>
+      
+      <li><a class="mono" href="commands/sum.html">sum</a></li>
+      
+      <li><a class="mono" href="commands/verify.html">verify</a></li>
+      
+    </ul>
+    
+  </div>
+</aside>
+  <main id="main" class="doc">
+    <p class="crumb"><span class="crumb-section">Concepts</span></p>
+    <article class="prose">
+      <h1 id="python-scripting"><a class="anchor" href="#python-scripting" aria-hidden="true">#</a>Python Scripting</h1>
+<p>mdship can be extended with Python scripts kept in the project's <code>.mdship/scripts/</code>
+directory. Scripts can generate content, define variables, post-process what a
+placeholder produced, and audit collected data.</p>
+<p><strong>No script ever runs unless you explicitly opt in.</strong> Execution is gated by an
+allow-list file in your home directory that mdship never writes and that must be
+read-only. See <a href="#security-model">Security Model</a>.</p>
+<ul>
+<li><a href="#the-python-placeholder">The PYTHON placeholder</a>
+<ul>
+<li><a href="#run-mode-content-generation"><code>run:</code> mode — content generation</a></li>
+<li><a href="#yolo-bypassing-integrity-protection"><code>_yolo_</code> — bypassing integrity protection</a></li>
+<li><a href="#define-mode-variable-source"><code>define:</code> mode — variable source</a></li>
+</ul>
+</li>
+<li><a href="#the-transform-hook">The <code>transform:</code> hook</a></li>
+<li><a href="#the-audit-hook">The <code>audit:</code> hook</a></li>
+<li><a href="#python-api">Python API</a></li>
+<li><a href="#where-scripts-live">Where scripts live</a></li>
+<li><a href="#factory-scripts">Factory scripts</a></li>
+<li><a href="#security-model">Security model</a></li>
+<li><a href="#error-conditions">Error conditions</a></li>
+</ul>
+<h2 id="the-python-placeholder"><a class="anchor" href="#the-python-placeholder" aria-hidden="true">#</a>The PYTHON placeholder</h2>
+<p><code>&lt;!--PYTHON--&gt;</code> works in one of two modes, chosen by which key is present:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Mode</th>
+<th>Closing tag</th>
+<th>Phase</th>
+<th>Produces</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>run:</code></td>
+<td>content-generating</td>
+<td>required</td>
+<td>content phase</td>
+<td>document content</td>
+</tr>
+<tr>
+<td><code>define:</code></td>
+<td>variable source</td>
+<td>none</td>
+<td>variable phase</td>
+<td>variables</td>
+</tr>
+</tbody>
+</table></div>
+<p>A placeholder that has both, or neither, is an error.</p>
+<h3 id="run-mode-content-generation"><a class="anchor" href="#run-mode-content-generation" aria-hidden="true">#</a><code>run:</code> mode — content generation</h3>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--PYTHON
+run: "generate_table.py"
+source: "metrics.json"
+threshold: 0.95
+--&gt;
+&lt;!--/PYTHON--&gt;
+</code></pre></div>
+<p>The script must define <code>run(content, ctx)</code> and return a string, which becomes the
+managed content between the markers:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">python</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="c1"># .mdship/scripts/generate_table.py</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">ctx</span><span class="p">):</span>
+    <span class="n">ctx</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">"Loading data from "</span> <span class="o">+</span> <span class="n">ctx</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="s2">"source"</span><span class="p">])</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="s2">"source"</span><span class="p">])</span>
+    <span class="n">threshold</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="s2">"threshold"</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">render_table</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">threshold</span><span class="p">)</span>
+</code></pre></div>
+<p>The placeholder's whole YAML body is available as <code>ctx.args</code> — no named
+subsection is needed, because a <code>run:</code> placeholder belongs to exactly one script.</p>
+<p><code>content</code> is the text currently between the markers: an empty string on the first
+run, and whatever the script wrote last time on later runs. That allows
+incremental generation, such as appending new rows to an existing table rather
+than rebuilding it:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">python</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">ctx</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">content</span> <span class="o">+</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span> <span class="k">if</span> <span class="n">content</span> <span class="k">else</span> <span class="s2">""</span><span class="p">)</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">"| </span><span class="si">{</span><span class="n">today</span><span class="p">()</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">measure</span><span class="p">()</span><span class="si">}</span><span class="s2"> |"</span>
+</code></pre></div>
+<p>This is intentionally <strong>not idempotent</strong> — running <code>mdship update</code> twice may
+produce different output when the script uses <code>content</code>. Managing that is the
+script author's responsibility.</p>
+<p>The generated region is protected by <code>_content_generated_</code> exactly like TOC,
+INCLUDE, TEMPLATE and MERMAID: if you edit it by hand, the next <code>mdship update</code>
+aborts instead of silently discarding your edit.</p>
+<p><code>run:</code> mode supports neither <code>transform:</code> nor <code>audit:</code>. Post-processing belongs
+inside the <code>run</code> function — needing a second script to fix up the output of your
+own script is a code smell.</p>
+<h3 id="yolo-bypassing-integrity-protection"><a class="anchor" href="#yolo-bypassing-integrity-protection" aria-hidden="true">#</a><code>_yolo_</code> — bypassing integrity protection</h3>
+<p><code>_yolo_: true</code> disables the manual-edit check. The script is called anyway, and
+the hand-edited text arrives as <code>content</code>:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--PYTHON
+run: "changelog.py"
+<span class="ge">_yolo_</span>: true
+--&gt;
+&lt;!--/PYTHON--&gt;
+</code></pre></div>
+<p>The name is deliberately alarming: with <code>_yolo_</code> the script may silently discard
+or overwrite manual edits on every run. It only makes sense for scripts designed
+to consume or incorporate whatever is already there. <code>_yolo_</code> is handled by
+mdship, not by the script.</p>
+<h3 id="define-mode-variable-source"><a class="anchor" href="#define-mode-variable-source" aria-hidden="true">#</a><code>define:</code> mode — variable source</h3>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--PYTHON
+define: "compute_vars.py"
+source: "data.csv"
+--&gt;
+</code></pre></div>
+<p>No closing tag, and no document content. It runs in the variable phase alongside
+SET, IMPORT, SLURP, SIP and SUP. The script defines <code>define(ctx)</code> and introduces
+variables with <code>ctx.define(name, value)</code>:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">python</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="c1"># .mdship/scripts/compute_vars.py</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">define</span><span class="p">(</span><span class="n">ctx</span><span class="p">):</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="s2">"source"</span><span class="p">])</span>
+    <span class="n">ctx</span><span class="o">.</span><span class="n">define</span><span class="p">(</span><span class="s2">"row_count"</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">))</span>
+    <span class="n">ctx</span><span class="o">.</span><span class="n">define</span><span class="p">(</span><span class="s2">"columns"</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="k">if</span> <span class="n">rows</span> <span class="k">else</span> <span class="p">[])</span>
+    <span class="n">ctx</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span><span class="si">}</span><span class="s2"> rows processed"</span><span class="p">)</span>
+</code></pre></div>
+<p><code>ctx.define</code> raises immediately if the name already exists — variables that are
+already declared stay authoritative. Dotted names create nested structures, so
+<code>ctx.define(&quot;app.database.host&quot;, &quot;db.local&quot;)</code> is read back as
+<code>&lt;!--$app.database.host--&gt;</code>.</p>
+<p><code>ctx.vars</code> is deliberately <strong>not</strong> available in <code>define:</code> mode. Variable sources
+are order-independent, so reading other sources here would create a hidden
+ordering dependency that mdship cannot detect or enforce.</p>
+<p><code>define:</code> mode supports <code>audit:</code>, like every other variable source.</p>
+<h2 id="the-transform-hook"><a class="anchor" href="#the-transform-hook" aria-hidden="true">#</a>The <code>transform:</code> hook</h2>
+<p>Any content-manager placeholder — <code>INCLUDE</code>, <code>TOC</code>, <code>MERMAID</code>, <code>JINJA2</code>,
+or the deprecated <code>TEMPLATE</code> — may name one or more scripts that post-process its generated content
+before it is written:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--INCLUDE
+from: "api_reference.md"
+transform: "inject_badges.py"
+--&gt;
+&lt;!--/INCLUDE--&gt;
+</code></pre></div>
+<p>Each script defines <code>transform(content, ctx)</code> and returns the replacement string.
+A list runs the scripts as a pipeline: the first receives the placeholder's own
+output and each later one receives the previous script's result. The last return
+value is what lands in the document.</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--INCLUDE
+from: "api_reference.md"
+transform:
+<span class="w">  </span><span class="k">-</span><span class="w"> </span>"normalize_whitespace.py"
+<span class="w">  </span><span class="k">-</span><span class="w"> </span>"inject_badges.py"
+
+normalize_whitespace:
+  max_blank_lines: 2
+
+inject_badges:
+  badge:
+    style: "flat"
+    color: "#4CAF50"
+--&gt;
+&lt;!--/INCLUDE--&gt;
+</code></pre></div>
+<p>By convention each script reads its own subsection of the YAML, named after the
+script file without <code>.py</code>. That keeps scripts from colliding with each other and
+with mdship's own keys. mdship does not enforce the convention — a script may read
+any key from <code>ctx.args</code>.</p>
+<p>A <code>MERMAID</code> transform must return exactly one line: the placeholder's managed
+content is a single image reference, and mdship errors if the returned text
+contains a newline.</p>
+<p><code>PYTHON</code> placeholders may not use <code>transform:</code>.</p>
+<h2 id="the-audit-hook"><a class="anchor" href="#the-audit-hook" aria-hidden="true">#</a>The <code>audit:</code> hook</h2>
+<p>Any variable-source placeholder — <code>SET</code>, <code>IMPORT</code>, <code>SLURP</code>, <code>SIP</code>, <code>SUP</code>, and
+<code>PYTHON</code> in <code>define:</code> mode — may name scripts that run after its variables have
+been collected:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--IMPORT
+name: "config"
+from: "settings.json"
+audit: "validate_config.py"
+--&gt;
+</code></pre></div>
+<p>Audit scripts define <code>audit(ctx)</code>. They receive no content, their return value is
+ignored, and they exist to validate, cross-check, or produce side effects:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">python</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="c1"># .mdship/scripts/validate_config.py</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">audit</span><span class="p">(</span><span class="n">ctx</span><span class="p">):</span>
+    <span class="n">cfg</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">vars</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"config"</span><span class="p">,</span> <span class="p">{})</span>
+    <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"host"</span><span class="p">,</span> <span class="s2">"port"</span><span class="p">,</span> <span class="s2">"secret"</span><span class="p">)</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Config missing required keys: </span><span class="si">{</span><span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">missing</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">ctx</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">"Config validated OK"</span><span class="p">)</span>
+</code></pre></div>
+<p>Raising aborts the whole run and leaves the document untouched. <code>ctx.vars</code>
+contains everything collected so far in the document — not just this
+placeholder's variables — so an audit script can cross-check several sources.
+<code>audit:</code> also accepts a list, which runs as a pipeline.</p>
+<p>Scripts cannot introduce variables from a <code>transform:</code> or <code>audit:</code> hook: neither
+has <code>ctx.define</code>. A script that needs to expose computed values belongs in a
+<code>&lt;!--PYTHON define: ...--&gt;</code> placeholder instead.</p>
+<h3 id="inter-script-communication"><a class="anchor" href="#inter-script-communication" aria-hidden="true">#</a>Inter-script communication</h3>
+<p>Every script in one chain shares a <code>ctx.pipe</code> dict. It starts empty and scripts
+may read and write it freely:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">python</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="c1"># normalize_whitespace.py</span>
+<span class="n">ctx</span><span class="o">.</span><span class="n">pipe</span><span class="p">[</span><span class="s2">"blank_lines_removed"</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+<span class="c1"># inject_badges.py</span>
+<span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">pipe</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"blank_lines_removed"</span><span class="p">):</span>
+    <span class="o">...</span>
+</code></pre></div>
+<p><code>ctx.pipe</code> is fresh for each placeholder and does not carry over between
+placeholders in the same run.</p>
+<h2 id="python-api"><a class="anchor" href="#python-api" aria-hidden="true">#</a>Python API</h2>
+<p>Every script receives a <code>ctx</code> object. Access its fields as attributes; fields
+marked &quot;no&quot; below are absent, so touching them raises <code>AttributeError</code>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th><code>run</code></th>
+<th><code>define</code></th>
+<th><code>transform</code></th>
+<th><code>audit</code></th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ctx.args</code></td>
+<td>dict</td>
+<td>yes</td>
+<td>yes</td>
+<td>yes</td>
+<td>yes</td>
+<td>The placeholder's full YAML body — treat as read-only</td>
+</tr>
+<tr>
+<td><code>ctx.vars</code></td>
+<td>dict</td>
+<td>yes</td>
+<td><strong>no</strong></td>
+<td>yes</td>
+<td>yes</td>
+<td>All document variables — treat as read-only</td>
+</tr>
+<tr>
+<td><code>ctx.log</code></td>
+<td>callable</td>
+<td>yes</td>
+<td>yes</td>
+<td>yes</td>
+<td>yes</td>
+<td><code>ctx.log(msg)</code> — report a message to the user</td>
+</tr>
+<tr>
+<td><code>ctx.define</code></td>
+<td>callable</td>
+<td>no</td>
+<td>yes</td>
+<td>no</td>
+<td>no</td>
+<td><code>ctx.define(name, value)</code> — raises if already defined</td>
+</tr>
+<tr>
+<td><code>ctx.pipe</code></td>
+<td>dict</td>
+<td>no</td>
+<td>no</td>
+<td>yes</td>
+<td>yes</td>
+<td>Mutable state shared along one script chain</td>
+</tr>
+<tr>
+<td><code>ctx.__FILE__</code></td>
+<td>str</td>
+<td>yes</td>
+<td>yes</td>
+<td>yes</td>
+<td>yes</td>
+<td>Absolute path of the markdown file being processed</td>
+</tr>
+<tr>
+<td><code>ctx.__LINE__</code></td>
+<td>int</td>
+<td>yes</td>
+<td>yes</td>
+<td>yes</td>
+<td>yes</td>
+<td>Line number of the placeholder's opening marker</td>
+</tr>
+</tbody>
+</table></div>
+<p>Function signatures:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">python</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">content</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">ctx</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span> <span class="o">...</span>        <span class="c1"># PYTHON run: mode</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">define</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>                  <span class="c1"># PYTHON define: mode</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">transform</span><span class="p">(</span><span class="n">content</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">ctx</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span> <span class="o">...</span>  <span class="c1"># transform: hook</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">audit</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>                   <span class="c1"># audit: hook</span>
+</code></pre></div>
+<p>Messages passed to <code>ctx.log</code> are shown by the CLI as notices and included in the
+MCP tool response.</p>
+<h2 id="where-scripts-live"><a class="anchor" href="#where-scripts-live" aria-hidden="true">#</a>Where scripts live</h2>
+<div class="code"><div class="code-bar"><span class="code-lang">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>myproject/
+├── .mdship/
+│   └── scripts/
+│       ├── generate_table.py
+│       ├── normalize_whitespace.py
+│       ├── normalize_whitespace.py.meta
+│       └── inject_badges.py
+├── docs/
+│   └── api.md
+└── ...
+</code></pre></div>
+<p>Scripts are ordinary project files: commit them to git and edit them freely. The
+project root is the nearest directory above the markdown file that contains a
+<code>.mdship/</code> directory. A script name is resolved inside <code>.mdship/scripts/</code>, and a
+name that would escape that directory is refused.</p>
+<p>Each script is loaded into its own module namespace and cached by absolute path
+for the duration of the process, so a script referenced by several placeholders is
+imported once and cannot see another script's globals. Python caches the compiled
+bytecode in <code>.mdship/scripts/__pycache__/</code> automatically.</p>
+<p>Scripts run in the same Python environment as mdship. If yours need third-party
+packages, install them yourself — mdship does not. The recommended convention is
+a <code>requirements.txt</code> next to the scripts:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>.mdship/scripts/requirements.txt
+</code></pre></div>
+<h2 id="factory-scripts"><a class="anchor" href="#factory-scripts" aria-hidden="true">#</a>Factory scripts</h2>
+<p>mdship ships a small set of ready-made scripts. Install them into a project with
+<a href="commands/scripts.html"><code>mdship scripts install</code></a>:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Script</th>
+<th>Hook</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>normalize_whitespace.py</code></td>
+<td><code>transform</code></td>
+<td>Collapse blank-line runs, strip trailing spaces</td>
+</tr>
+<tr>
+<td><code>add_line_numbers.py</code></td>
+<td><code>transform</code></td>
+<td>Prefix each line with its line number</td>
+</tr>
+<tr>
+<td><code>wrap_in_details.py</code></td>
+<td><code>transform</code></td>
+<td>Wrap content in a collapsible <code>&lt;details&gt;</code> block</td>
+</tr>
+<tr>
+<td><code>require_vars.py</code></td>
+<td><code>audit</code></td>
+<td>Abort when required variables are missing</td>
+</tr>
+</tbody>
+</table></div>
+<p>Installed scripts get a <code>.meta</code> shadow file recording the mdship version, install
+date, and MD5 of the file as installed. That is what lets <code>mdship scripts list</code>
+and <code>mdship scripts update</code> tell an untouched script from one you have edited.
+Once installed, a script is your project's file — modify it as you like; mdship
+will then refuse to overwrite it unless you ask with <code>install --force</code>.</p>
+<h2 id="security-model"><a class="anchor" href="#security-model" aria-hidden="true">#</a>Security model</h2>
+<p>Script execution is permitted only for projects listed in:</p>
+<ul>
+<li><strong>Unix/macOS</strong>: <code>~/.mdship/trusted_projects</code></li>
+<li><strong>Windows</strong>: <code>%USERPROFILE%\.mdship\trusted_projects</code></li>
+</ul>
+<p>One absolute project path per line; blank lines and <code>#</code> comments are ignored:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>/home/alice/projects/mybook
+/home/alice/projects/company-docs
+</code></pre></div>
+<p>Three conditions must all hold before any script runs:</p>
+<ol>
+<li>The file exists.</li>
+<li>The file is <strong>not writable</strong> — mdship checks with <code>os.access(path, os.W_OK)</code>.</li>
+<li>The project's path is listed in it.</li>
+</ol>
+<p>Otherwise the placeholder aborts with an explanatory message and nothing is
+executed.</p>
+<p><strong>mdship never writes this file, and never changes any file's permissions.</strong>
+There is no command that adds an entry. You edit it in a text editor and lock it
+yourself:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="c1"># Unix/macOS</span>
+chmod<span class="w"> </span><span class="m">444</span><span class="w"> </span>~/.mdship/trusted_projects
+
+<span class="c1"># Windows</span>
+attrib<span class="w"> </span>+R<span class="w"> </span>%USERPROFILE%<span class="se">\.</span>mdship<span class="se">\t</span>rusted_projects
+</code></pre></div>
+<p>Why this works: a cloned or downloaded repository — via git, zip, tar.gz, or
+anything else — cannot add an entry to a file in your home directory. Enabling
+execution is a deliberate two-step act that cannot happen by accident. Because
+mdship contains no code that modifies permissions, a bug in mdship cannot grant
+execution rights either. (User scripts can do whatever your account can do; that
+is exactly why the gate exists.)</p>
+<p>Verify the setup at any time, including in CI:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>scripts<span class="w"> </span>check
+</code></pre></div>
+<h2 id="error-conditions"><a class="anchor" href="#error-conditions" aria-hidden="true">#</a>Error conditions</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Condition</th>
+<th>Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>trusted_projects</code> missing, writable, or lacking this project</td>
+<td>Nothing runs; the placeholder aborts with an explanation</td>
+</tr>
+<tr>
+<td>Script file not found in <code>.mdship/scripts/</code></td>
+<td>Aborts naming the resolved path</td>
+</tr>
+<tr>
+<td>Script name resolves outside <code>.mdship/scripts/</code></td>
+<td>Aborts</td>
+</tr>
+<tr>
+<td>Script does not define <code>run</code> / <code>define</code> / <code>transform</code> / <code>audit</code></td>
+<td>Aborts naming the expected function</td>
+</tr>
+<tr>
+<td>Script raises, at import or call time</td>
+<td>Aborts with script name, exception and traceback; no writes</td>
+</tr>
+<tr>
+<td>Script returns a non-string from <code>run</code> or <code>transform</code></td>
+<td>Aborts</td>
+</tr>
+<tr>
+<td><code>ctx.define</code> called with an already-defined name</td>
+<td>Aborts; file not modified</td>
+</tr>
+<tr>
+<td>Manual edits inside a <code>run:</code> block without <code>_yolo_</code></td>
+<td>Aborts with the integrity error; file not modified</td>
+</tr>
+<tr>
+<td><code>MERMAID</code> transform returns more than one line</td>
+<td>Aborts; file not modified</td>
+</tr>
+</tbody>
+</table></div>
+<p>In every failing case the document is left exactly as it was — mdship computes the
+whole result before writing anything.</p>
+<p>Note that <code>mdship update --dry-run</code> still runs your scripts: that is how it knows
+what the document would become. The document is not written, but any side effect a
+script performs itself — writing a cache, sending a request — does happen.</p>
+<h2 id="see-also"><a class="anchor" href="#see-also" aria-hidden="true">#</a>See Also</h2>
+<ul>
+<li><a href="commands/scripts.html"><code>mdship scripts</code> commands</a></li>
+<li><a href="set.html">SET</a>, <a href="import.html">IMPORT</a>, <a href="slurp.html">SLURP</a>, <a href="sip.html">SIP</a>, <a href="sup.html">SUP</a> — the other variable sources</li>
+<li><a href="include.html">INCLUDE</a>, <a href="toc.html">TOC</a>, <a href="mermaid.html">MERMAID</a>, <a href="jinja2.html">JINJA2</a>, <a href="template.html">TEMPLATE</a> (deprecated) — the placeholders that accept <code>transform:</code></li>
+<li><a href="content-integrity.html">Managed content integrity</a></li>
+</ul>
+
+    </article>
+    <nav class="pager" aria-label="Previous and next page">
+      <a class="pager-prev" href="content-integrity.html"><small>← Previous</small>Content integrity</a>
+      <a class="pager-next" href="include.html"><small>Next →</small>INCLUDE</a>
+    </nav>
+    <p class="edit"><a href="https://github.com/verhas/mdship/edit/master/documentation/PYTHON.md">Edit this page on GitHub</a></p>
+  </main>
+  
+  <nav class="onpage" aria-label="On this page">
+    <h3>On this page</h3>
+    <ul>
+      
+      <li class="lvl2"><a href="#the-python-placeholder">The PYTHON placeholder</a></li>
+      
+      <li class="lvl3"><a href="#run-mode-content-generation">run: mode — content generation</a></li>
+      
+      <li class="lvl3"><a href="#yolo-bypassing-integrity-protection">_yolo_ — bypassing integrity protection</a></li>
+      
+      <li class="lvl3"><a href="#define-mode-variable-source">define: mode — variable source</a></li>
+      
+      <li class="lvl2"><a href="#the-transform-hook">The transform: hook</a></li>
+      
+      <li class="lvl2"><a href="#the-audit-hook">The audit: hook</a></li>
+      
+      <li class="lvl3"><a href="#inter-script-communication">Inter-script communication</a></li>
+      
+      <li class="lvl2"><a href="#python-api">Python API</a></li>
+      
+      <li class="lvl2"><a href="#where-scripts-live">Where scripts live</a></li>
+      
+      <li class="lvl2"><a href="#factory-scripts">Factory scripts</a></li>
+      
+      <li class="lvl2"><a href="#security-model">Security model</a></li>
+      
+      <li class="lvl2"><a href="#error-conditions">Error conditions</a></li>
+      
+      <li class="lvl2"><a href="#see-also">See Also</a></li>
+      
+    </ul>
+  </nav>
+  
+</div>
+
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <img src="../static/logo.svg" alt="" width="28" height="28">
+        <div>
+          <strong>mdship</strong> 1.3.0
+          <p>Documentation that knows when it is stale.</p>
+        </div>
+      </div>
+      <div class="footer-links">
+        <div>
+          <h4>Learn</h4>
+          <a href="../docs/index.html">Overview</a>
+          <a href="../docs/ai.html">AI placeholders</a>
+          <a href="../docs/github-actions.html">CI recipes</a>
+        </div>
+        <div>
+          <h4>Reference</h4>
+          <a href="../docs/commands/index.html">Commands</a>
+          <a href="../docs/reference.html">Full reference</a>
+          <a href="../docs/python.html">Python scripting</a>
+        </div>
+        <div>
+          <h4>Project</h4>
+          <a href="https://github.com/verhas/mdship">GitHub</a>
+          <a href="https://pypi.org/project/mdship/">PyPI</a>
+          <a href="https://github.com/verhas/mdship/issues">Issues</a>
+        </div>
+      </div>
+    </div>
+    <p class="footer-note">MIT or Apache-2.0 · Built from the repository's own Markdown documentation</p>
+  </footer>
+  <script src="../static/site.js" defer></script>
+</body>
+</html>

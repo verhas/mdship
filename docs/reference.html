@@ -1,0 +1,1479 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mdship Reference · mdship</title>
+  <meta name="description" content="mdship keeps AI-written and generated Markdown in sync with its sources, and tells you exactly which part is stale and why.">
+  <meta name="theme-color" content="#140b2e">
+  <link rel="icon" href="../static/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../static/style.css">
+  <link rel="stylesheet" href="../static/code.css">
+</head>
+<body class="docs">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../index.html" aria-label="mdship home">
+        <img src="../static/logo.svg" alt="" width="32" height="32">
+        <span>mdship</span>
+      </a>
+      <button class="menu-toggle" type="button" aria-controls="sidebar" aria-expanded="false">☰ <span>Menu</span></button>
+      <nav class="topnav" aria-label="Main">
+        <a href="../docs/index.html#2-quickstart">Quickstart</a>
+        <a href="../docs/ai.html">AI placeholders</a>
+        <a href="../docs/commands/index.html">Commands</a>
+        <a href="../docs/reference.html">Reference</a>
+        <a class="gh" href="https://github.com/verhas/mdship">
+          <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  
+<div class="docs-layout">
+  <aside class="sidebar" id="sidebar" aria-label="Documentation">
+  <div class="sidebar-search">
+    <input type="search" placeholder="Filter pages…" aria-label="Filter pages" data-nav-filter>
+  </div>
+  
+  <div class="nav-section nav-c1">
+    <h3>Get started</h3>
+    <ul>
+      
+      <li><a href="index.html">Overview &amp; quickstart</a></li>
+      
+      <li><a href="ai.html">AI placeholders</a></li>
+      
+      <li><a href="github-actions.html">CI with GitHub Actions</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c2">
+    <h3>Concepts</h3>
+    <ul>
+      
+      <li><a href="placeholder.html">Placeholders in Markdown</a></li>
+      
+      <li><a href="content-integrity.html">Content integrity</a></li>
+      
+      <li><a href="python.html">Python scripting</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c3">
+    <h3>Placeholders</h3>
+    <ul>
+      
+      <li><a href="include.html">INCLUDE</a></li>
+      
+      <li><a href="toc.html">TOC</a></li>
+      
+      <li><a href="set.html">SET</a></li>
+      
+      <li><a href="import.html">IMPORT</a></li>
+      
+      <li><a href="slurp.html">SLURP</a></li>
+      
+      <li><a href="sip.html">SIP</a></li>
+      
+      <li><a href="sup.html">SUP</a></li>
+      
+      <li><a href="jinja2.html">JINJA2</a></li>
+      
+      <li><a href="mermaid.html">MERMAID</a></li>
+      
+      <li><a href="template.html">TEMPLATE (deprecated)</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c4">
+    <h3>Reference</h3>
+    <ul>
+      
+      <li><a href="reference.html" aria-current="page">Full reference</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c5">
+    <h3>Articles</h3>
+    <ul>
+      
+      <li><a href="articles/ai-managed-conten.html">When documentation manages itself</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-commands">
+    <h3><a href="commands/index.html">Commands</a></h3>
+    
+    <h4>AI workflow</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/ai-list.html">ai-list</a></li>
+      
+      <li><a class="mono" href="commands/ai-check.html">ai-check</a></li>
+      
+      <li><a class="mono" href="commands/ai-fix.html">ai-fix</a></li>
+      
+      <li><a class="mono" href="commands/ai-comments.html">ai-comments</a></li>
+      
+      <li><a class="mono" href="commands/ai-context-and-update.html">ai-context-and-update</a></li>
+      
+    </ul>
+    
+    <h4>Content</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/update.html">update</a></li>
+      
+      <li><a class="mono" href="commands/init.html">init</a></li>
+      
+      <li><a class="mono" href="commands/scripts.html">scripts</a></li>
+      
+      <li><a class="mono" href="commands/mcp.html">mcp</a></li>
+      
+    </ul>
+    
+    <h4>Structure</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/fix-headings.html">fix-headings</a></li>
+      
+      <li><a class="mono" href="commands/shift-headings.html">shift-headings</a></li>
+      
+      <li><a class="mono" href="commands/number.html">number</a></li>
+      
+      <li><a class="mono" href="commands/unnumber.html">unnumber</a></li>
+      
+    </ul>
+    
+    <h4>Formatting</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/reflow.html">reflow</a></li>
+      
+      <li><a class="mono" href="commands/semantic-line-breaks.html">semantic-line-breaks</a></li>
+      
+      <li><a class="mono" href="commands/format-tables.html">format-tables</a></li>
+      
+    </ul>
+    
+    <h4>Reading &amp; editing</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/list-headings.html">list-headings</a></li>
+      
+      <li><a class="mono" href="commands/get-section.html">get-section</a></li>
+      
+      <li><a class="mono" href="commands/replace-section.html">replace-section</a></li>
+      
+      <li><a class="mono" href="commands/get-lines.html">get-lines</a></li>
+      
+      <li><a class="mono" href="commands/insert-lines.html">insert-lines</a></li>
+      
+      <li><a class="mono" href="commands/delete-lines.html">delete-lines</a></li>
+      
+      <li><a class="mono" href="commands/get-paragraphs.html">get-paragraphs</a></li>
+      
+      <li><a class="mono" href="commands/find-replace.html">find-replace</a></li>
+      
+      <li><a class="mono" href="commands/extract-table.html">extract-table</a></li>
+      
+      <li><a class="mono" href="commands/update-table.html">update-table</a></li>
+      
+      <li><a class="mono" href="commands/frontmatter-get.html">frontmatter-get</a></li>
+      
+      <li><a class="mono" href="commands/frontmatter-set.html">frontmatter-set</a></li>
+      
+    </ul>
+    
+    <h4>Checking</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/validate.html">validate</a></li>
+      
+      <li><a class="mono" href="commands/sum.html">sum</a></li>
+      
+      <li><a class="mono" href="commands/verify.html">verify</a></li>
+      
+    </ul>
+    
+  </div>
+</aside>
+  <main id="main" class="doc">
+    <p class="crumb"><span class="crumb-section">Reference</span></p>
+    <article class="prose">
+      <h1 id="mdship-reference"><a class="anchor" href="#mdship-reference" aria-hidden="true">#</a>mdship Reference</h1>
+<p>The complete reference for mdship's commands and placeholders. For what mdship is for and a quickstart, see the <a href="index.html">README</a>; each command also has its own page under <a href="commands/index.html">commands/</a>.</p>
+<h2 id="1-markdown-commands"><a class="anchor" href="#1-markdown-commands" aria-hidden="true">#</a><span class="num">1</span>Markdown Commands</h2>
+<h3 id="11-command-line"><a class="anchor" href="#11-command-line" aria-hidden="true">#</a><span class="num">1.1</span>Command Line</h3>
+<p>Most commands modify the file in place. Before writing, they save the previous content to a <code>.md.bak</code> file, unless git already holds it (see <a href="#17-skipping-backups">Skipping Backups</a>):</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>fix-headings<span class="w"> </span>file.md<span class="w">              </span><span class="c1"># Fix heading hierarchy</span>
+mdship<span class="w"> </span>shift-headings<span class="w"> </span>file.md<span class="w"> </span>--levels<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="c1"># Shift all headings down 1 level</span>
+mdship<span class="w"> </span>sum<span class="w"> </span>file.md<span class="w"> </span>--algorithm<span class="w"> </span>sha256<span class="w">    </span><span class="c1"># Add or update checksum</span>
+mdship<span class="w"> </span>verify<span class="w"> </span>file.md<span class="w">                    </span><span class="c1"># Verify checksum</span>
+mdship<span class="w"> </span>validate<span class="w"> </span>file.md<span class="w">                  </span><span class="c1"># Validate links and anchors</span>
+mdship<span class="w"> </span>reflow<span class="w"> </span>file.md<span class="w"> </span>--width<span class="w"> </span><span class="m">80</span><span class="w">         </span><span class="c1"># Reflow paragraphs to 80 characters</span>
+mdship<span class="w"> </span>semantic-line-breaks<span class="w"> </span>file.md<span class="w">      </span><span class="c1"># Break lines at sentence boundaries</span>
+mdship<span class="w"> </span>number<span class="w"> </span>file.md<span class="w">                    </span><span class="c1"># Add hierarchical numbering to headings</span>
+mdship<span class="w"> </span>unnumber<span class="w"> </span>file.md<span class="w">                  </span><span class="c1"># Remove numbering from headings</span>
+mdship<span class="w"> </span>update<span class="w"> </span>file.md<span class="w">                    </span><span class="c1"># Update all placeholders (variables, includes, TOC, diagrams)</span>
+mdship<span class="w"> </span>update<span class="w"> </span>--force<span class="w"> </span>file.md<span class="w">            </span><span class="c1"># Update and skip managed-content hash checks (-f for short)</span>
+</code></pre></div>
+<h3 id="12-shift-validation"><a class="anchor" href="#12-shift-validation" aria-hidden="true">#</a><span class="num">1.2</span>Shift Validation</h3>
+<p>The <code>shift-headings</code> command validates that the shift won't create invalid heading levels:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>shift-headings<span class="w"> </span>file.md<span class="w"> </span>--levels<span class="w"> </span><span class="m">1</span><span class="w">    </span><span class="c1"># OK: h1→h2, h2→h3, etc.</span>
+mdship<span class="w"> </span>shift-headings<span class="w"> </span>file.md<span class="w"> </span>--levels<span class="w"> </span>-1<span class="w">   </span><span class="c1"># ERROR if any h1 (can't promote above h1)</span>
+mdship<span class="w"> </span>shift-headings<span class="w"> </span>file.md<span class="w"> </span>--levels<span class="w"> </span><span class="m">10</span><span class="w">   </span><span class="c1"># ERROR if any h6 (can't demote below h6)</span>
+</code></pre></div>
+<p>If validation fails, the file is not modified and an error is printed.</p>
+<h3 id="13-shift-line-range"><a class="anchor" href="#13-shift-line-range" aria-hidden="true">#</a><span class="num">1.3</span>Shift Line Range</h3>
+<p>Use <code>--lines START:END</code> to only shift headings within a specific line range (1-based, inclusive):</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>shift-headings<span class="w"> </span>file.md<span class="w"> </span>--levels<span class="w"> </span><span class="m">1</span><span class="w"> </span>--lines<span class="w"> </span><span class="m">10</span>:50<span class="w">    </span><span class="c1"># Only lines 10-50</span>
+mdship<span class="w"> </span>shift-headings<span class="w"> </span>file.md<span class="w"> </span>--levels<span class="w"> </span><span class="m">1</span><span class="w"> </span>--lines<span class="w"> </span><span class="m">10</span>:<span class="w">      </span><span class="c1"># From line 10 to end</span>
+mdship<span class="w"> </span>shift-headings<span class="w"> </span>file.md<span class="w"> </span>--levels<span class="w"> </span><span class="m">1</span><span class="w"> </span>--lines<span class="w"> </span>:50<span class="w">      </span><span class="c1"># From start to line 50</span>
+</code></pre></div>
+<p>Headings outside the specified range are not modified.</p>
+<h3 id="14-semantic-line-breaks"><a class="anchor" href="#14-semantic-line-breaks" aria-hidden="true">#</a><span class="num">1.4</span>Semantic Line Breaks</h3>
+<p>Split lines at sentence and clause boundaries for better readability and cleaner diffs:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>semantic-line-breaks<span class="w"> </span>file.md<span class="w">                  </span><span class="c1"># Split entire document</span>
+mdship<span class="w"> </span>semantic-line-breaks<span class="w"> </span>file.md<span class="w"> </span>--lines<span class="w"> </span><span class="m">10</span>:50<span class="w">   </span><span class="c1"># Only lines 10-50</span>
+mdship<span class="w"> </span>semantic-line-breaks<span class="w"> </span>file.md<span class="w"> </span>--lines<span class="w"> </span><span class="m">10</span>:<span class="w">     </span><span class="c1"># From line 10 to end</span>
+</code></pre></div>
+<p><strong>Before:</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>This is a long paragraph with multiple sentences. Each sentence contains important information. 
+The text flows together making diffs harder to read.
+</code></pre></div>
+<p><strong>After:</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>This is a long paragraph with multiple sentences.
+Each sentence contains important information.
+The text flows together making diffs harder to read.
+</code></pre></div>
+<h3 id="15-number-headings"><a class="anchor" href="#15-number-headings" aria-hidden="true">#</a><span class="num">1.5</span>Number Headings</h3>
+<p>Add hierarchical numbering to your headings for automatic outline creation:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>number<span class="w"> </span>file.md<span class="w">                           </span><span class="c1"># Default: 1. 1.1. 1.1.1.</span>
+mdship<span class="w"> </span>number<span class="w"> </span>file.md<span class="w"> </span>--style<span class="w"> </span>period<span class="w">            </span><span class="c1"># 1. 1.1. 1.1.1.</span>
+mdship<span class="w"> </span>number<span class="w"> </span>file.md<span class="w"> </span>--style<span class="w"> </span>space<span class="w">             </span><span class="c1"># 1 1.1 1.1.1</span>
+mdship<span class="w"> </span>number<span class="w"> </span>file.md<span class="w"> </span>--style<span class="w"> </span>parenthesis<span class="w">       </span><span class="c1"># 1) 1.1) 1.1.1)</span>
+mdship<span class="w"> </span>number<span class="w"> </span>file.md<span class="w"> </span>--lines<span class="w"> </span><span class="m">10</span>:50<span class="w">             </span><span class="c1"># Only lines 10-50</span>
+</code></pre></div>
+<p>Remove numbering with <code>unnumber</code>:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>unnumber<span class="w"> </span>file.md<span class="w">                </span><span class="c1"># Remove all numbering</span>
+mdship<span class="w"> </span>unnumber<span class="w"> </span>file.md<span class="w"> </span>--lines<span class="w"> </span><span class="m">10</span>:50<span class="w">  </span><span class="c1"># Only lines 10-50</span>
+</code></pre></div>
+<h3 id="16-checksums"><a class="anchor" href="#16-checksums" aria-hidden="true">#</a><span class="num">1.6</span>Checksums</h3>
+<p>Use <code>sum</code> to add or update checksums, and <code>verify</code> to check them:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>sum<span class="w"> </span>file.md<span class="w"> </span>--algorithm<span class="w"> </span>sha256<span class="w">     </span><span class="c1"># Add or update checksum</span>
+mdship<span class="w"> </span>verify<span class="w"> </span>file.md<span class="w">                     </span><span class="c1"># Verify checksum</span>
+</code></pre></div>
+<p>The <code>verify</code> command is useful in shell scripts:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>verify<span class="w"> </span>document.md
+<span class="c1"># Prints "OK" and exits with 0 if valid</span>
+<span class="c1"># Prints error message and exits with 1 if invalid</span>
+</code></pre></div>
+<p>Example in a script:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="k">if</span><span class="w"> </span>mdship<span class="w"> </span>verify<span class="w"> </span>document.md<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">  </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"Checksum is valid"</span>
+<span class="k">else</span>
+<span class="w">  </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"Checksum is invalid"</span>
+<span class="k">fi</span>
+</code></pre></div>
+<h3 id="17-skipping-backups"><a class="anchor" href="#17-skipping-backups" aria-hidden="true">#</a><span class="num">1.7</span>Skipping Backups</h3>
+<p>By default, a modifying command writes a <code>.md.bak</code> copy of the previous content only when git could not restore it. The backup is skipped when the file is tracked by git and has no uncommitted changes (nothing modified or staged), because <code>git diff</code> and <code>git restore</code> already cover that case. In every other case the backup is written:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>File state</th>
+<th>Backup by default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Not in a git repository</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>Untracked or ignored in a git repository</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>Tracked, with uncommitted or staged changes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>Tracked and unchanged</td>
+<td>no</td>
+</tr>
+</tbody>
+</table></div>
+<p>Symlinks, files marked <code>assume-unchanged</code> or <code>skip-worktree</code>, and any case where <code>git</code> is not available are also backed up.</p>
+<p>Override the default with a global option on any modifying command:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>--no-bak<span class="w"> </span>fix-headings<span class="w"> </span>file.md<span class="w">   </span><span class="c1"># never create a backup</span>
+mdship<span class="w"> </span>--bak<span class="w"> </span>fix-headings<span class="w"> </span>file.md<span class="w">      </span><span class="c1"># always create a backup</span>
+</code></pre></div>
+<p>The MCP tools follow the same rule: their <code>backup</code> parameter is <code>true</code> to always back up, <code>false</code> to never, and omitted for the default.</p>
+<p><strong>Safety with backups:</strong></p>
+<p>You can always see exactly what changed: in a git repository with a committed file use <code>git diff</code>, otherwise compare with the <code>.md.bak</code> backup:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>update<span class="w"> </span>myfile.md
+git<span class="w"> </span>diff<span class="w"> </span>myfile.md<span class="w">            </span><span class="c1"># tracked file: git holds the previous content</span>
+diff<span class="w"> </span>myfile.md.bak<span class="w"> </span>myfile.md<span class="w">  </span><span class="c1"># otherwise, the backup does</span>
+</code></pre></div>
+<h3 id="18-tracking-changes"><a class="anchor" href="#18-tracking-changes" aria-hidden="true">#</a><span class="num">1.8</span>Tracking Changes</h3>
+<p>Use the <code>--track</code> (or <code>-t</code>) option to automatically track changes in the document's front-matter:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>--track<span class="w"> </span>update<span class="w"> </span>file.md
+mdship<span class="w"> </span>-t<span class="w"> </span>fix-headings<span class="w"> </span>file.md
+mdship<span class="w"> </span>--track<span class="w"> </span>shift-headings<span class="w"> </span>file.md<span class="w"> </span>--levels<span class="w"> </span><span class="m">1</span>
+</code></pre></div>
+<p><strong>What tracking does:</strong></p>
+<ol>
+<li><strong>Creates front-matter if missing</strong> - Ensures the document has YAML front-matter</li>
+<li><strong>Adds <code>last-updated</code> timestamp</strong> - Records when the document was last modified (ISO format)</li>
+<li><strong>Appends to <code>mdship-log</code></strong> - Maintains a log of all operations with timestamps</li>
+</ol>
+<p><strong>Example output:</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">yaml</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="nn">---</span>
+<span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">My Document</span>
+<span class="nt">author</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Jane Doe</span>
+<span class="nt">last-updated</span><span class="p">:</span><span class="w"> </span><span class="s">'2026-06-10T14:32:45.123456'</span>
+<span class="nt">mdship-log</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">  </span><span class="no">2026-06-10 14:30:22 - fix-headings: fixed heading hierarchy</span>
+<span class="w">  </span><span class="no">2026-06-10 14:31:15 - number: added heading numbers with period style</span>
+<span class="w">  </span><span class="no">2026-06-10 14:32:45 - update: processed all placeholders</span>
+<span class="nn">---</span>
+</code></pre></div>
+<p><strong>Features:</strong></p>
+<ul>
+<li>✅ Works with all modifying commands</li>
+<li>✅ Preserves existing front-matter fields</li>
+<li>✅ Uses YAML literal block style (<code>|</code>) for clean formatting</li>
+<li>✅ No empty lines between log entries</li>
+<li>✅ Short form <code>-t</code> available as alternative to <code>--track</code></li>
+</ul>
+<p><strong>Use cases:</strong></p>
+<ul>
+<li>Document version control and audit trails</li>
+<li>Tracking when sections were last reviewed</li>
+<li>Automation and workflow documentation</li>
+<li>Compliance and record-keeping requirements</li>
+</ul>
+<p>The <code>--track</code> option can be combined with <code>--no-bak</code>:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>--track<span class="w"> </span>--no-bak<span class="w"> </span>update<span class="w"> </span>file.md
+mdship<span class="w"> </span>-t<span class="w"> </span>--no-bak<span class="w"> </span>number<span class="w"> </span>file.md<span class="w"> </span>--style<span class="w"> </span>period
+</code></pre></div>
+<h3 id="19-validating-links"><a class="anchor" href="#19-validating-links" aria-hidden="true">#</a><span class="num">1.9</span>Validating Links</h3>
+<p>Use the <code>validate</code> command to check for broken links and unused anchors in your markdown document:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>validate<span class="w"> </span>file.md
+</code></pre></div>
+<p><strong>What it checks:</strong></p>
+<ol>
+<li><strong>Broken anchor references</strong> - Links like <code>[text](#anchor)</code> where the anchor doesn't exist</li>
+<li><strong>Missing file references</strong> - Links like <code>[text](file.md)</code> where the file doesn't exist (only local files, no HTTP/HTTPS checks)</li>
+<li><strong>Missing image files</strong> - Images like <code>![alt](image.png)</code> where the image file doesn't exist (external URLs like https:// are ignored)</li>
+<li><strong>Unused anchors</strong> - Headings that are not referenced by any internal links (warning only, they may be referenced from other documents)</li>
+</ol>
+<p><strong>Example output:</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>✓ All links and anchors are valid
+</code></pre></div>
+<p>Or with issues:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>✗ Broken anchor references (2):
+  Line 15: [learn more](#details) - anchor not found
+  Line 42: [FAQ](#faq) - anchor not found
+
+✗ Missing file references (1):
+  Line 28: [guide](../docs/setup.md) - file not found
+
+✗ Missing image files (1):
+  Line 35: ![hero banner](images/hero.png) - image not found
+
+⚠ Unused anchors (3) (may be referenced from other files):
+  #introduction
+  #legacy-section
+  #api-reference
+</code></pre></div>
+<p><strong>How anchors are generated:</strong></p>
+<p>Headings are automatically converted to anchor IDs using the same algorithm as GitHub:</p>
+<ul>
+<li><code># Getting Started!</code> → <code>#getting-started</code></li>
+<li><code>## API Reference</code> → <code>#api-reference</code></li>
+<li>Special characters are removed, spaces become hyphens, everything is lowercase</li>
+</ul>
+<p><strong>Use cases:</strong></p>
+<ul>
+<li>Validate documentation before publishing</li>
+<li>Check for broken internal links in README files</li>
+<li>Ensure heading references in tables of contents are correct</li>
+<li>Quality assurance checks in documentation workflows</li>
+</ul>
+<h2 id="2-placeholders"><a class="anchor" href="#2-placeholders" aria-hidden="true">#</a><span class="num">2</span>Placeholders</h2>
+<h3 id="21-placeholder-processing-order"><a class="anchor" href="#21-placeholder-processing-order" aria-hidden="true">#</a><span class="num">2.1</span>Placeholder Processing Order</h3>
+<p>The <code>update</code> command processes placeholders in a specific order to enable powerful workflows:</p>
+<ol>
+<li>
+<p><strong>Variable source placeholders</strong> (collected in order they appear)</p>
+<ul>
+<li><strong></strong>: Define variables with scalar or YAML values (including custom patterns)</li>
+<li><strong></strong>: Load data from JSON, YAML, TOML, or XML files</li>
+<li><strong></strong>: Extract variable names and values from files using regex (2 capturing groups)</li>
+<li><strong></strong>: Extract predefined variables from files using regex (1 capturing group)</li>
+<li><strong></strong>: Extract a single value from the next line in the document (can use pattern references like <code>@heading</code>)</li>
+<li><strong></strong>: Define variables from a project-local Python script</li>
+<li>Any of them may carry an <code>audit:</code> script hook that validates the collected variables</li>
+<li>All variables become available to subsequent placeholders</li>
+<li>Built-in patterns (<code>@heading</code>, <code>@version</code>) are automatically available</li>
+<li>Front-matter YAML is automatically available as <code>$fm</code></li>
+</ul>
+</li>
+<li>
+<p><strong></strong> placeholders</p>
+<ul>
+<li>Embeds content from other files</li>
+<li>Done before variable replacement so variables can be substituted in included content too</li>
+</ul>
+</li>
+<li>
+<p><strong>Variable references</strong></p>
+<ul>
+<li>Replaces <code>&lt;!--$variable--&gt;value</code> and <code>&lt;!--$variable&lt;MARKER&gt;--&gt;value&lt;!--MARKER--&gt;</code> in the document</li>
+<li>Variables are substituted in both original and included content</li>
+<li>Variables are NOT replaced inside code blocks (between ``` markers) — they are safe for code that uses <code>$var</code> notation</li>
+<li>Front-matter YAML is automatically available as <code>$fm</code></li>
+</ul>
+</li>
+<li>
+<p><strong>&lt;!​--JINJA2--&gt;</strong> and the deprecated <strong>&lt;!​--TEMPLATE--&gt;</strong> placeholders</p>
+<ul>
+<li>Substitute or render template content and insert between opening and closing markers</li>
+<li>Useful for dynamic code blocks and formatted content with variables</li>
+</ul>
+</li>
+<li>
+<p><strong>&lt;!​--PYTHON run:--&gt;</strong> placeholders</p>
+<ul>
+<li>Generates content with a project-local Python script</li>
+<li>Runs before the TOC so generated headings are indexed</li>
+</ul>
+</li>
+<li>
+<p><strong>&lt;!​--TOC--&gt;</strong> placeholders</p>
+<ul>
+<li>Generates table of contents from headings</li>
+<li>Can include headings from both original document and included content</li>
+</ul>
+</li>
+<li>
+<p><strong>Other placeholders (top-to-bottom)</strong></p>
+<ul>
+<li><code>&lt;!--MERMAID--&gt;</code> diagrams with variable substitution</li>
+<li>Processed in document order</li>
+</ul>
+</li>
+</ol>
+<p>Content-manager placeholders (INCLUDE, TOC, MERMAID, TEMPLATE, JINJA2) may carry a
+<code>transform:</code> script hook that post-processes their output before it is written.</p>
+<p>This order allows:</p>
+<ul>
+<li>Variables to be defined early and used everywhere in the document</li>
+<li>INCLUDE content to be embedded before variables are replaced (so included content benefits from variable substitution)</li>
+<li>JINJA2 (and the deprecated TEMPLATE) to use any variables including those in included content</li>
+<li>TOC to include headings from included files</li>
+<li>Subsequent placeholders to use variables defined anywhere in the document</li>
+<li>Safe inclusion of code with <code>$var</code> notation since code blocks are skipped</li>
+<li>Pattern references (@heading, @version) to work in SUP placeholders</li>
+</ul>
+<h3 id="22-variables"><a class="anchor" href="#22-variables" aria-hidden="true">#</a><span class="num">2.2</span>Variables</h3>
+<p>Define and use variables throughout your document. Variables can come from multiple sources: SET placeholders (inline definitions), IMPORT (load from files), SLURP (extract names and values from files), SIP (extract predefined variable names), and SUP (extract from document lines). All variables support hierarchical names using dot notation.</p>
+<p><strong>Define variables with SET placeholder:</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--SET
+appName: "MyApplication"
+version: "1.0.0"
+config:
+  language: "Python"
+  framework: "mdship"
+  authors:
+<span class="w">    </span><span class="k">-</span><span class="w"> </span>"Alice"
+<span class="w">    </span><span class="k">-</span><span class="w"> </span>"Bob"
+--&gt;
+</code></pre></div>
+<p><strong>Simple variable references (no spaces in value):</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>Application: &lt;!--$appName--&gt;placeholder
+Version: &lt;!--$version--&gt;placeholder
+Language: &lt;!--$config.language--&gt;placeholder
+</code></pre></div>
+<p>After <code>mdship update</code>:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>Application: &lt;!--$appName--&gt;MyApplication
+Version: &lt;!--$version--&gt;1.0.0
+Language: &lt;!--$config.language--&gt;Python
+</code></pre></div>
+<p><strong>Variable references with spaces (using markers):</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>Framework: &lt;!--$config.framework&lt;&gt;--&gt;old framework&lt;!----&gt;
+Author: &lt;!--$config.authors[0]&lt;&gt;--&gt;Unknown&lt;!----&gt;
+</code></pre></div>
+<p>After <code>mdship update</code>:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>Framework: &lt;!--$config.framework&lt;&gt;--&gt;mdship&lt;!----&gt;
+Author: &lt;!--$config.authors[0]&lt;&gt;--&gt;Alice&lt;!----&gt;
+</code></pre></div>
+<p><strong>Features:</strong></p>
+<ul>
+<li>Variables support nested access: <code>$config.language</code>, <code>$config.nested.field</code></li>
+<li>Array indexing: <code>$items[0]</code>, <code>$authors[2]</code></li>
+<li>Both <code>$variable</code> and <code>${variable}</code> syntax are supported</li>
+<li>Front-matter YAML is automatically available as <code>$fm</code></li>
+<li>Code blocks and MERMAID diagrams are preserved (variables in code blocks are not replaced)</li>
+<li>Backtick-wrapped values are preserved: <code>`value`</code> becomes <code>`newValue`</code></li>
+<li>Error messages include file path and line number for easy debugging</li>
+</ul>
+<p><strong>Hierarchical variable names:</strong></p>
+<p>Variables support hierarchical naming using dot notation. Intermediate dictionaries are created automatically:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--IMPORT
+name: "app.database.config"
+from: "settings.json"
+--&gt;
+
+Host: &lt;!--$app.database.config.host--&gt;localhost&lt;!----&gt;
+Port: &lt;!--$app.database.config.port--&gt;5432&lt;!----&gt;
+</code></pre></div>
+<p><strong>Variable sources:</strong></p>
+<p>Variables can come from multiple sources, all processed together:</p>
+<ul>
+<li><strong>SET</strong>: Define inline with YAML values</li>
+<li><strong>IMPORT</strong>: Load complete data structures from JSON/YAML/TOML/XML files</li>
+<li><strong>SLURP</strong>: Extract variable names and values from files using regex patterns</li>
+<li><strong>SIP</strong>: Extract values using predefined variable names and regex patterns</li>
+<li><strong>SUP</strong>: Extract a single value from the next line in the document</li>
+</ul>
+<h4 id="221-import-load-from-external-files"><a class="anchor" href="#221-import-load-from-external-files" aria-hidden="true">#</a><span class="num">2.2.1</span>IMPORT: Load from External Files</h4>
+<p>Import complete data structures from JSON, YAML, TOML, or XML files:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--IMPORT
+name: "config"
+from: "settings.json"
+--&gt;
+
+Database: &lt;!--$config.database.host--&gt;unknown&lt;!----&gt;
+Port: &lt;!--$config.database.port--&gt;0&lt;!----&gt;
+</code></pre></div>
+<p><strong>Configuration:</strong></p>
+<ul>
+<li><code>name</code>: Variable name to store data under (required, supports hierarchical names like <code>app.db</code>)</li>
+<li><code>from</code>: File path relative to the markdown file (required)</li>
+<li><code>format</code>: File format (<code>json</code>, <code>yaml</code>, <code>toml</code>, <code>xml</code>). Auto-detected from extension if omitted</li>
+<li><code>xmlns</code>: XML only. A mapping of names to namespace URLs whose namespaces are kept in the imported names (see below)</li>
+</ul>
+<p><strong>Supported formats:</strong></p>
+<ul>
+<li><code>.json</code>: JSON objects and arrays</li>
+<li><code>.yaml</code> / <code>.yml</code>: YAML structures</li>
+<li><code>.toml</code>: TOML configuration</li>
+<li><code>.xml</code>: XML with attribute support (use <code>@attribute</code> for attributes)</li>
+</ul>
+<p><strong>XML structure and namespaces:</strong></p>
+<p>The imported data is wrapped in the root element's name, so <code>&lt;project&gt;&lt;version&gt;</code> is <code>name.project.version</code>. An element that has both text and attributes or children keeps its text under <code>_text</code>, and repeated elements with the same name become a list.</p>
+<p>Namespaces are stripped from element and attribute names by default. A Maven POM declares <code>xmlns=&quot;http://maven.apache.org/POM/4.0.0&quot;</code>, and its values are still reachable by their plain names:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--IMPORT
+name: "pom"
+from: "pom.xml"
+--&gt;
+
+Revision: &lt;!--$pom.project.properties.revision--&gt;2.0.0
+</code></pre></div>
+<p>When the same name appears in different namespaces at the same level, stripping would make them indistinguishable, and the import fails with an error that names both namespaces. Give a namespace a name with <code>xmlns</code>, and its elements and attributes are imported as <code>name_local</code> instead of being stripped. All other namespaces are still stripped:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--IMPORT
+name: "feed"
+from: "feed.xml"
+xmlns:
+  media: "http://search.yahoo.com/mrss/"
+--&gt;
+</code></pre></div>
+<p>Here <code>&lt;media:title&gt;</code> is imported as <code>media_title</code> and a plain <code>&lt;title&gt;</code> as <code>title</code>, and a <code>media:url</code> attribute as <code>@media_url</code>. An <code>xmlns</code> name must start with a letter or <code>_</code> and contain only letters, digits, and <code>_</code>, and each namespace URL may be mapped only once. Mapping a namespace that the file does not use is harmless.</p>
+<p>Variable references (<code>&lt;!--$...--&gt;</code>) can only use names made of letters, digits, and <code>_</code>, joined by dots. Attributes (<code>@name</code>) and elements whose names contain <code>-</code> or <code>.</code>, such as <code>&lt;maven.compiler.release&gt;</code>, are imported but cannot be used in a variable reference; reach them from a <code>JINJA2</code> template with brackets instead, for example <code>{{ feed.rss.channel.item[&quot;@media_url&quot;] }}</code>.</p>
+<h4 id="222-slurp-extract-names-and-values-from-files"><a class="anchor" href="#222-slurp-extract-names-and-values-from-files" aria-hidden="true">#</a><span class="num">2.2.2</span>SLURP: Extract Names and Values from Files</h4>
+<p>Extract both variable names and values from files using regex patterns with 2 capturing groups:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--SLURP
+name: "config"
+from: "settings.txt"
+strategy: "first"
+rules:
+<span class="w">  </span><span class="k">-</span><span class="w"> </span>'(\w+)=(.+)'
+--&gt;
+
+Host: &lt;!--$config.host--&gt;unknown&lt;!----&gt;
+Port: &lt;!--$config.port--&gt;0&lt;!----&gt;
+</code></pre></div>
+<p><strong>Configuration:</strong></p>
+<ul>
+<li><code>from</code>: File or directory path (required)</li>
+<li><code>rules</code>: List of regex patterns with exactly 2 capturing groups (required)
+<ul>
+<li>First group = variable name</li>
+<li>Second group = variable value</li>
+<li>Supports named groups: <code>(?P&lt;var&gt;...)</code> and <code>(?P&lt;val&gt;...)</code> for value-name ordering</li>
+</ul>
+</li>
+<li><code>name</code>: Optional namespace for variables (supports hierarchical names)</li>
+<li><code>include</code> / <code>exclude</code>: Glob patterns (directory only)</li>
+<li><code>recurse</code>: Recurse subdirectories (default: false)</li>
+<li><code>strategy</code>: Handle multiple matches: <code>fail</code>, <code>first</code>, <code>last</code>, <code>concatenate</code> (default: <code>fail</code>)</li>
+<li><code>separator</code>: String separator for concatenate strategy (default: empty)</li>
+</ul>
+<h4 id="223-sip-extract-predefined-variables-from-files"><a class="anchor" href="#223-sip-extract-predefined-variables-from-files" aria-hidden="true">#</a><span class="num">2.2.3</span>SIP: Extract Predefined Variables from Files</h4>
+<p>Extract values for predefined variables using regex patterns with 1 capturing group:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--SIP
+name: "app"
+from: "config.txt"
+vars:
+  version: 'version:\s+([0-9.]+)'
+  author: 'author:\s+(\w+)'
+--&gt;
+
+Version: &lt;!--$app.version--&gt;0.0.0&lt;!----&gt;
+Author: &lt;!--$app.author--&gt;unknown&lt;!----&gt;
+</code></pre></div>
+<p><strong>Configuration:</strong></p>
+<ul>
+<li><code>from</code>: File or directory path (required)</li>
+<li><code>vars</code>: Dictionary of variable names and regex patterns (required)
+<ul>
+<li>Patterns must have exactly 1 capturing group (the value)</li>
+</ul>
+</li>
+<li><code>name</code>: Optional namespace for variables (supports hierarchical names)</li>
+<li><code>include</code> / <code>exclude</code>: Glob patterns (directory only)</li>
+<li><code>recurse</code>: Recurse subdirectories (default: false)</li>
+<li><code>strategy</code>: Handle multiple matches: <code>fail</code>, <code>first</code>, <code>last</code>, <code>concatenate</code> (default: <code>fail</code>)</li>
+<li><code>separator</code>: String separator for concatenate strategy (default: empty)</li>
+</ul>
+<h4 id="224-sup-extract-from-document-lines"><a class="anchor" href="#224-sup-extract-from-document-lines" aria-hidden="true">#</a><span class="num">2.2.4</span>SUP: Extract from Document Lines</h4>
+<p>Extract a single value from the next non-empty line in the document:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--SUP
+name: "doc.title"
+pattern: '^#+\s+(.*?)\s*$'
+--&gt;
+<span class="gh"># My Document Title</span>
+
+Title: &lt;!--$doc.title--&gt;placeholder&lt;!----&gt;
+</code></pre></div>
+<p><strong>Configuration:</strong></p>
+<ul>
+<li><code>name</code>: Variable name (required, supports hierarchical names)</li>
+<li><code>pattern</code>: Regex pattern with exactly 1 capturing group (required)</li>
+</ul>
+<p>The pattern is matched against the first non-empty line following the placeholder, and the captured value is stored.</p>
+<h4 id="225-pattern-dictionary"><a class="anchor" href="#225-pattern-dictionary" aria-hidden="true">#</a><span class="num">2.2.5</span>Pattern Dictionary</h4>
+<p>SUP and SIP support a built-in pattern dictionary for common extraction tasks. Pre-defined patterns are available:</p>
+<ul>
+<li><code>@heading</code>: Extract heading numbers (e.g., <code>1.5.8</code>)</li>
+<li><code>@version</code>: Extract semantic versions (e.g., <code>1.2.3</code>)</li>
+</ul>
+<p><strong>Using built-in patterns:</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--SUP
+name: "chapter_number"
+pattern: "@heading"
+--&gt;
+<span class="gh"># 1.5.8. Advanced Topics</span>
+
+Chapter: &lt;!--$chapter_number--&gt;placeholder&lt;!----&gt;
+</code></pre></div>
+<p><strong>Defining custom patterns:</strong></p>
+<p>You can define custom patterns using SET with a <code>pattern</code> dictionary:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--SET
+pattern:
+  snapshot: '(\d+\.\d+\.\d+)-SNAPSHOT'
+  buildnum: 'build-(\d+)'
+--&gt;
+
+&lt;!--SUP
+name: "release"
+pattern: "@snapshot"
+--&gt;
+v1.2.3-SNAPSHOT
+
+Build: &lt;!--$buildnum--&gt;placeholder&lt;!----&gt;
+</code></pre></div>
+<p><strong>Accessing patterns:</strong></p>
+<p>All patterns (built-in and custom) are stored in the <code>$pattern</code> variable and can be referenced elsewhere:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>Available patterns: &lt;!--$pattern&lt;&gt;--&gt;
+{heading: ..., version: ..., custom: ...}
+&lt;!----&gt;
+</code></pre></div>
+<p><strong>Configuration:</strong></p>
+<ul>
+<li><code>pattern</code>: Dictionary of pattern name → regex pairs (inside SET)
+<ul>
+<li>Patterns must have exactly 1 capturing group for the value</li>
+<li>Built-in patterns are automatically available</li>
+<li>Custom patterns extend the built-in set (they don't replace it)</li>
+</ul>
+</li>
+</ul>
+<h3 id="23-template-placeholders"><a class="anchor" href="#23-template-placeholders" aria-hidden="true">#</a><span class="num">2.3</span>Template Placeholders</h3>
+<blockquote class="callout callout-warn">
+<p><strong>Deprecated:</strong> <code>TEMPLATE</code> is deprecated and will be removed in a future release; existing <code>TEMPLATE</code> placeholders keep working until then. Use <a href="#231-jinja2-template-placeholders"><code>JINJA2</code></a> instead: rename the markers to <code>&lt;!--JINJA2--&gt;</code> / <code>&lt;!--/JINJA2--&gt;</code> and replace each <code>$variable</code> or <code>${variable}</code> with <code>{{ variable }}</code> (<code>$config.port</code> becomes <code>{{ config.port }}</code>, <code>$authors[0]</code> becomes <code>{{ authors[0] }}</code>). Two differences to check when migrating: an undefined variable is left as literal <code>$name</code> text by <code>TEMPLATE</code> but rendered as an empty string by <code>JINJA2</code>, and <code>TEMPLATE</code> adds a blank line after the generated content where <code>JINJA2</code> does not.</p>
+</blockquote>
+<p>Insert dynamic content between opening and closing markers. TEMPLATE is useful for:</p>
+<ul>
+<li>Code blocks with dynamic values</li>
+<li>Multi-line formatted content with variables</li>
+<li>Content that cannot contain HTML comments</li>
+</ul>
+<p><strong>Basic usage:</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--TEMPLATE
+content: |
+  ```python
+  # Generated code with $variable
+  app = "$appName"
+  version = "$appVersion"
+</code></pre></div>
+<p>--&gt;
+(old content gets replaced)
+&lt;​!--/TEMPLATE--&gt;</p>
+<div class="code"><div class="code-bar"><span class="code-lang">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>**Configuration:**
+
+- `content`: The template content (multi-line YAML literal block, required)
+  - Variables are substituted in the content
+  - Supports all variable features: `$var`, `$nested.field`, `${var}`
+
+**Example:**
+
+```markdown
+&lt;!--SET
+appName: "MyApp"
+config:
+  debug: true
+  port: 8000
+--&gt;
+
+&lt;!--TEMPLATE
+content: |
+  Application Configuration
+  =======================
+  
+  - Name: $appName
+  - Debug: $config.debug
+  - Port: $config.port
+--&gt;
+old documentation
+&lt;!--/TEMPLATE--&gt;
+</code></pre></div>
+<p>After running <code>mdship update</code>:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>  Application Configuration
+  =======================
+<span class="w">  </span>
+<span class="w">  </span><span class="k">-</span><span class="w"> </span>Name: MyApp
+<span class="w">  </span><span class="k">-</span><span class="w"> </span>Debug: true
+<span class="w">  </span><span class="k">-</span><span class="w"> </span>Port: 8000
+</code></pre></div>
+<p><strong>Key features:</strong></p>
+<ul>
+<li>Content is inserted between the opening <code>--&gt;</code> and closing <code>&lt;!--/TEMPLATE--&gt;</code></li>
+<li>All variables are substituted before insertion</li>
+<li>Idempotent: running update multiple times produces the same result</li>
+<li>Perfect for code examples with dynamic values</li>
+</ul>
+<h4 id="231-jinja2-template-placeholders"><a class="anchor" href="#231-jinja2-template-placeholders" aria-hidden="true">#</a><span class="num">2.3.1</span>Jinja2 Template Placeholders</h4>
+<p>Use <code>JINJA2</code> when the generated content needs real template logic such as loops, conditionals, filters, or nested object access. The rendered result is inserted between the opening and closing markers and protected as managed content. <code>JINJA2</code> replaces the deprecated <code>TEMPLATE</code> placeholder.</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--SET
+appName: "MyApp"
+authors:
+<span class="w">  </span><span class="k">-</span><span class="w"> </span>"Alice"
+<span class="w">  </span><span class="k">-</span><span class="w"> </span>"Bob"
+--&gt;
+
+&lt;!--JINJA2
+content: |
+  # {{ appName }} Authors
+
+  {% for author in authors %}
+<span class="w">  </span><span class="k">-</span><span class="w"> </span>{{ author }}
+  {% endfor %}
+--&gt;
+old documentation
+&lt;!--/JINJA2--&gt;
+</code></pre></div>
+<p>After running <code>mdship update</code>:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="gh"># MyApp Authors</span>
+
+<span class="k">-</span><span class="w"> </span>Alice
+<span class="k">-</span><span class="w"> </span>Bob
+</code></pre></div>
+<p><strong>Configuration:</strong></p>
+<ul>
+<li><code>content</code>: The Jinja2 template content (multi-line YAML literal block, required)
+<ul>
+<li>All mdship variables are available as Jinja2 template variables</li>
+<li>Nested dictionaries can be accessed using Jinja2 dot syntax, such as <code>{{ config.database.host }}</code></li>
+<li>Lists can be iterated using normal Jinja2 syntax</li>
+</ul>
+</li>
+</ul>
+<p>Use <code>JINJA2</code> for all new templates, including simple variable substitution: <code>{{ name }}</code>.</p>
+<h3 id="24-table-of-contents"><a class="anchor" href="#24-table-of-contents" aria-hidden="true">#</a><span class="num">2.4</span>Table of Contents</h3>
+<p>Generate and insert a table of contents between <code>&lt;!--TOC--&gt;</code> markers. Configuration is specified inside the marker using YAML. Also adds anchor links to headings:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>update<span class="w"> </span>file.md<span class="w">                  </span><span class="c1"># Update all placeholders</span>
+</code></pre></div>
+<p><strong>Configuration inside markers:</strong></p>
+<p>You can specify TOC options directly in the marker using YAML format:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--TOC min-level: 2
+max-level: 3
+<span class="ge">_terminate_</span>: "CONTENTS"
+--&gt;
+</code></pre></div>
+<ul>
+<li><code>min-level</code>: Minimum heading level to include (1-6, default: 1)</li>
+<li><code>max-level</code>: Maximum heading level to include (1-6, default: 6)</li>
+<li><code>_terminate_</code>: Custom closing marker (default: <code>/TOC</code>). When specified, marker closes with <code>&lt;!--/CUSTOM--&gt;</code> instead of <code>&lt;!--/TOC--&gt;</code></li>
+</ul>
+<p><strong>How it works:</strong></p>
+<ol>
+<li>Finds <code>&lt;!--TOC--&gt;</code> and <code>&lt;!--/TOC--&gt;</code> markers (or custom termination marker)</li>
+<li>Parses YAML configuration from the opening marker</li>
+<li>Generates a nested table of contents with anchor links</li>
+<li>Automatically adds anchors to headings if they don't have them</li>
+<li>Preserves existing anchors</li>
+</ol>
+<p><strong>Example with defaults:</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="gh"># My Document</span>
+
+&lt;!--TOC--&gt;
+&lt;!--/TOC--&gt;
+
+<span class="gu">## Introduction</span>
+<span class="gu">## Getting Started</span>
+<span class="gu">### Installation</span>
+<span class="gu">### Configuration</span>
+</code></pre></div>
+<p><strong>Example with custom config:</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="gh"># My Document</span>
+
+&lt;!--TOC min-level: 2
+max-level: 3
+--&gt;
+&lt;!--/TOC--&gt;
+
+<span class="gu">## Introduction</span>
+<span class="gu">## Getting Started</span>
+<span class="gu">### Installation</span>
+<span class="gu">### Configuration</span>
+</code></pre></div>
+<p>After running <code>mdship update file.md</code>:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="gh"># My Document</span>
+
+&lt;!--TOC min-level: 2
+max-level: 3
+--&gt;
+<span class="k">-</span><span class="w"> </span>[<span class="nt">Introduction</span>](<span class="na">#introduction</span>)
+<span class="k">-</span><span class="w"> </span>[<span class="nt">Getting Started</span>](<span class="na">#getting-started</span>)
+<span class="w">  </span><span class="k">-</span><span class="w"> </span>[<span class="nt">Installation</span>](<span class="na">#installation</span>)
+<span class="w">  </span><span class="k">-</span><span class="w"> </span>[<span class="nt">Configuration</span>](<span class="na">#configuration</span>)
+&lt;!--/TOC--&gt;
+
+<span class="gu">## Introduction</span>
+<span class="gu">## Getting Started</span>
+<span class="gu">### Installation</span>
+<span class="gu">### Configuration</span>
+</code></pre></div>
+<h3 id="25-including-files"><a class="anchor" href="#25-including-files" aria-hidden="true">#</a><span class="num">2.5</span>Including Files</h3>
+<p>Include content from other files between <code>&lt;!--INCLUDE--&gt;</code> markers. Useful for embedding code examples, documentation snippets, or keeping content synchronized:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>update<span class="w"> </span>file.md<span class="w">                  </span><span class="c1"># Update all placeholders</span>
+</code></pre></div>
+<p><strong>Configuration inside markers:</strong></p>
+<p>You can include content from other files with flexible line selection:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--INCLUDE
+from: "path/to/file.ext"
+prefix: "```python"
+postfix: "```"
+range: "10..20"
+--&gt;
+&lt;!--/INCLUDE--&gt;
+</code></pre></div>
+<p><strong>Configuration parameters:</strong></p>
+<ul>
+<li><code>from</code>: File path relative to the markdown file (required)</li>
+<li><code>prefix</code>: String to insert before included content (e.g., <code>&quot;```python&quot;</code> for code fences)</li>
+<li><code>postfix</code>: String to insert after included content (e.g., <code>&quot;```&quot;</code>)</li>
+<li><code>range: &quot;x..y&quot;</code>: Include lines x through y (1-based, inclusive). Mutually exclusive with <code>start</code>/<code>end</code>/<code>section</code>.</li>
+<li><code>start: &quot;regex&quot;</code>: Start including from line after first regex match. Mutually exclusive with <code>range</code>/<code>section</code>.</li>
+<li><code>end: &quot;regex&quot;</code>: Stop including before first regex match (after start)</li>
+<li><code>section: &quot;Title&quot;</code>: Include a markdown section by heading title (without numbering). Includes from the matching heading through the end of that section. Case-insensitive. Mutually exclusive with <code>range</code>/<code>start</code>/<code>end</code>.</li>
+<li><code>margin: N</code>: Indent all lines so the leftmost line has exactly N spaces (preserves relative indentation)</li>
+<li><code>_terminate_</code>: Custom closing marker (default: <code>/INCLUDE</code>). When specified, use <code>&lt;!--/CUSTOM--&gt;</code> instead of <code>&lt;!--/INCLUDE--&gt;</code></li>
+</ul>
+<p><strong>Selection methods:</strong></p>
+<p><strong>Range-based selection:</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--INCLUDE
+from: "script.py"
+prefix: "```python"
+postfix: "```"
+range: "1..20"
+--&gt;
+&lt;!--/INCLUDE--&gt;
+</code></pre></div>
+<p><strong>Regex-based selection (string format):</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--INCLUDE
+from: "example.java"
+prefix: "```java"
+postfix: "```"
+start: "// START_EXAMPLE"
+end: "// END_EXAMPLE"
+--&gt;
+&lt;!--/INCLUDE--&gt;
+</code></pre></div>
+<p>By default, start/end marker lines are excluded. Use structure format to control inclusion:</p>
+<p><strong>Regex-based selection (structure format with include control):</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--INCLUDE
+from: "test_markdown.py"
+prefix: "```python"
+postfix: "```"
+start:
+  pattern: 'class\s+MyClass'
+  include: true
+end:
+  pattern: '^class '
+  include: false
+--&gt;
+&lt;!--/INCLUDE--&gt;
+</code></pre></div>
+<p>In this format:</p>
+<ul>
+<li><code>pattern</code>: Required. The regex pattern to match</li>
+<li><code>include</code>: Optional (default: false). If true, the line matching the pattern is included in the output</li>
+</ul>
+<p>This is useful for including method definitions where you want to start from the <code>def</code> or <code>class</code> line itself rather than the line after it.</p>
+<p><strong>Section-based selection:</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--INCLUDE
+from: "reference.md"
+section: "Configuration"
+--&gt;
+&lt;!--/INCLUDE--&gt;
+</code></pre></div>
+<p>This selects the heading whose bare title matches <code>&quot;Configuration&quot;</code> (case-insensitive, numbering prefixes like <code>2.3.</code> are ignored) and all lines following it until the next heading at the same or higher level, or end of file. Useful for pulling a named section from another markdown document without needing to track line numbers.</p>
+<p><strong>Example:</strong></p>
+<p>Source file <code>hello.py</code>:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">python</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="k">def</span><span class="w"> </span><span class="nf">greet</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Hello, </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">!"</span><span class="p">)</span>
+
+<span class="c1"># START_ADVANCED</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">greet_advanced</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">greeting</span><span class="o">=</span><span class="s2">"Hello"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Advanced greeting function."""</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">greeting</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">!"</span>
+<span class="c1"># END_ADVANCED</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">farewell</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Goodbye, </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">!"</span><span class="p">)</span>
+</code></pre></div>
+<p>Markdown with INCLUDE:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="gh"># Functions</span>
+
+<span class="gu">## Basic Function</span>
+
+&lt;!--INCLUDE
+from: "hello.py"
+prefix: "```python"
+postfix: "```"
+range: "1..2"
+--&gt;
+&lt;!--/INCLUDE--&gt;
+
+<span class="gu">## Advanced Function</span>
+
+&lt;!--INCLUDE
+from: "hello.py"
+prefix: "```python"
+postfix: "```"
+start: "START_ADVANCED"
+end: "END_ADVANCED"
+--&gt;
+&lt;!--/INCLUDE--&gt;
+</code></pre></div>
+<p>After running <code>mdship update</code>, the file contains:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code># Functions
+
+## Basic Function
+
+[included code from lines 1-2 of hello.py]
+
+## Advanced Function
+
+[included code from lines 5-7 of hello.py]
+</code></pre></div>
+<h3 id="26-rendering-mermaid-diagrams"><a class="anchor" href="#26-rendering-mermaid-diagrams" aria-hidden="true">#</a><span class="num">2.6</span>Rendering Mermaid Diagrams</h3>
+<p>Generate Mermaid diagrams and embed them as images using <code>&lt;!--MERMAID--&gt;</code> markers. Diagrams are rendered to SVG or PNG files. Rendering needs the optional extra: <code>pip install &#x27;mdship[mermaid]&#x27;</code>.</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>update<span class="w"> </span>file.md<span class="w">                  </span><span class="c1"># Update all placeholders</span>
+</code></pre></div>
+<p><strong>Configuration inside the marker:</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--MERMAID
+file: "_diagrams/architecture.svg"
+diagram: |
+  flowchart LR
+    A[Client] --\&gt; B[API Server]
+    B --\&gt; C[(Database)]
+--&gt;
+</code></pre></div>
+<p>No closing tag is needed. The single line immediately after <code>--&gt;</code> is managed automatically by <code>mdship update</code> and holds the generated image reference.</p>
+<p><strong>Important:</strong> Use <code>--\&gt;</code> instead of <code>--&gt;</code> in your diagram source to prevent the HTML comment from closing prematurely. The <code>--\&gt;</code> is automatically converted to <code>--&gt;</code> during rendering.</p>
+<p><strong>Configuration parameters:</strong></p>
+<ul>
+<li><code>file</code>: Output file path (required). Relative to the markdown file. Supports <code>.svg</code> or <code>.png</code> extensions</li>
+<li><code>diagram</code>: Mermaid diagram source code (required). Can be multiline YAML literal block</li>
+<li><code>theme</code>: Mermaid theme to use (optional). Supported themes: <code>default</code>, <code>forest</code>, <code>dark</code>, <code>neutral</code></li>
+</ul>
+<p><strong>File creation:</strong></p>
+<ul>
+<li>Files are created relative to the markdown file's directory</li>
+<li>Intermediate directories are created automatically (e.g., <code>_diagrams/nested/diagram.svg</code>)</li>
+<li>Running <code>update</code> again with the same configuration is idempotent (produces identical results)</li>
+</ul>
+<p><strong>After running <code>mdship update</code>:</strong></p>
+<p>The line after the marker is replaced with the image reference:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--MERMAID
+file: "architecture.svg"
+diagram: |
+  flowchart LR
+    A[Client] --\&gt; B[API]
+<span class="ge">_content_</span>generated_: 28:md5:abc123
+<span class="gh"># danger zone: Do not edit the line below.</span>
+<span class="gh"># danger zone: Delete _content_generated_ to override.</span>
+--&gt;
+![<span class="nt">diagram</span>](<span class="na">architecture.svg</span>)
+</code></pre></div>
+<p>The diagram file <code>architecture.svg</code> is created in the same directory as the markdown file.</p>
+<p><strong>Backward compatibility:</strong> If a document still contains a <code>&lt;!--/MERMAID--&gt;</code> closing tag on the line <em>after</em> the managed image reference, <code>mdship update</code> leaves it in place — it is treated as ordinary documentation content beyond the managed line.</p>
+<p><strong>Arrow Syntax Escaping:</strong></p>
+<p>When your Mermaid diagram includes arrow syntax, you must escape the <code>--&gt;</code> part:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Mermaid Arrow</th>
+<th>In HTML Comment</th>
+<th>Auto-converted to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>A --&gt; B</code></td>
+<td><code>A --\&gt; B</code></td>
+<td><code>A --&gt; B</code> (rendered)</td>
+</tr>
+<tr>
+<td><code>A --&gt;&gt; B</code></td>
+<td><code>A --\&gt;&gt; B</code></td>
+<td><code>A --&gt;&gt; B</code> (rendered)</td>
+</tr>
+<tr>
+<td><code>A &lt;-- B</code></td>
+<td><code>A &lt;-- B</code></td>
+<td><code>A &lt;-- B</code> (rendered, no escape needed)</td>
+</tr>
+<tr>
+<td><code>A |--&gt; B</code> (classDiagram)</td>
+<td><code>A |--\&gt; B</code></td>
+<td><code>A |--&gt; B</code> (rendered)</td>
+</tr>
+</tbody>
+</table></div>
+<p>The escape sequence <code>--\&gt;</code> tells the MERMAID processor to replace it with <code>--&gt;</code> before rendering, preventing premature closure of the outer HTML comment.</p>
+<p><strong>Supported diagram types:</strong></p>
+<ul>
+<li><strong>Flowchart</strong>: <code>flowchart TD</code>, <code>flowchart LR</code></li>
+<li><strong>Sequence diagram</strong>: <code>sequenceDiagram</code></li>
+<li><strong>Entity Relationship</strong>: <code>erDiagram</code></li>
+<li><strong>Class diagram</strong>: <code>classDiagram</code></li>
+<li><strong>State diagram</strong>: <code>stateDiagram-v2</code></li>
+<li><strong>Timeline</strong>: <code>timeline</code></li>
+<li><strong>Pie chart</strong>: <code>pie title</code></li>
+<li>And all other Mermaid diagram types</li>
+</ul>
+<p><strong>Example with nested paths:</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--MERMAID
+file: "_diagrams/architecture/system.svg"
+diagram: |
+  flowchart LR
+    A[Client] --\&gt; B[Server]
+--&gt;
+</code></pre></div>
+<p>This creates <code>_diagrams/architecture/</code> automatically if it doesn't exist.</p>
+<p><strong>Example with theme:</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--MERMAID
+file: "dark-diagram.svg"
+theme: "dark"
+diagram: |
+  flowchart TD
+    A[Start] --\&gt; B{Decision}
+    B --\&gt;|Yes| C[Success]
+    B --\&gt;|No| D[Retry]
+--&gt;
+</code></pre></div>
+<p>Supported themes are <code>default</code>, <code>forest</code>, <code>dark</code>, and <code>neutral</code>. The theme affects colors, fonts, and styling in the rendered diagram.</p>
+<p><strong>Note:</strong> PNG rendering requires the <code>cairosvg</code> library. SVG rendering works out of the box.</p>
+<h3 id="27-placeholder-validation"><a class="anchor" href="#27-placeholder-validation" aria-hidden="true">#</a><span class="num">2.7</span>Placeholder Validation</h3>
+<p>mdship automatically validates placeholder syntax before processing to prevent silent data corruption. All opening placeholders must have matching closing tags (where required).</p>
+<p><strong>Placeholders that require closing tags:</strong></p>
+<ul>
+<li><code>&lt;!--JINJA2 ... --&gt;...&lt;!--/JINJA2--&gt;</code></li>
+<li><code>&lt;!--TEMPLATE ... --&gt;...&lt;!--/TEMPLATE--&gt;</code> (deprecated)</li>
+<li><code>&lt;!--INCLUDE ... --&gt;...&lt;!--/INCLUDE--&gt;</code></li>
+<li><code>&lt;!--TOC ... --&gt;...&lt;!--/TOC--&gt;</code></li>
+</ul>
+<p><strong>Placeholders with a single managed line (no closing tag):</strong></p>
+<ul>
+<li><code>&lt;!--MERMAID ... --&gt;</code> — the next line is the generated image reference</li>
+</ul>
+<p><strong>Placeholders without closing tags:</strong></p>
+<ul>
+<li><code>&lt;!--SET ... --&gt;</code></li>
+<li><code>&lt;!--IMPORT ... --&gt;</code></li>
+<li><code>&lt;!--SLURP ... --&gt;</code></li>
+<li><code>&lt;!--SIP ... --&gt;</code></li>
+<li><code>&lt;!--SUP ... --&gt;</code></li>
+</ul>
+<p><strong>Error Detection:</strong></p>
+<p>mdship catches common mistakes before any processing:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="gh"># ❌ Typo in closing tag</span>
+&lt;!--JINJA2
+content: |
+  Test
+--&gt;
+content
+&lt;!--/JINJA2X--&gt;  ← Error: Should be &lt;!--/JINJA2--&gt;
+</code></pre></div>
+<p>Error message:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>Line 6: Closing &lt;!--/JINJA2X--&gt; does not match opening &lt;!--JINJA2--&gt; at line 1. Is there a typo in the closing tag? Expected &lt;!--/JINJA2--&gt;
+</code></pre></div>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="gh"># ❌ Unclosed JINJA2 placeholder</span>
+&lt;!--JINJA2
+content: |
+  Test
+--&gt;
+content
+(missing closing tag)
+</code></pre></div>
+<p>Error message:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>Line 1: Unclosed &lt;!--JINJA2--&gt; placeholder. Expected closing tag &lt;!--/JINJA2--&gt;
+</code></pre></div>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="gh"># ❌ Mismatched nested placeholders</span>
+&lt;!--JINJA2
+content: x
+--&gt;
+&lt;!--INCLUDE
+from: a
+--&gt;
+&lt;!--/JINJA2--&gt;  ← Should be &lt;!--/INCLUDE--&gt;
+&lt;!--/INCLUDE--&gt;
+</code></pre></div>
+<p>Error message:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>Line 7: Closing &lt;!--/JINJA2--&gt; does not match opening &lt;!--INCLUDE--&gt; at line 4. Is there a typo in the closing tag? Expected &lt;!--/INCLUDE--&gt;
+</code></pre></div>
+<h3 id="28-managed-content-integrity"><a class="anchor" href="#28-managed-content-integrity" aria-hidden="true">#</a><span class="num">2.8</span>Managed Content Integrity</h3>
+<p>When <code>mdship update</code> writes content between placeholder markers (TOC, INCLUDE, MERMAID), it automatically records a hash of that content inside the opening marker. On every subsequent run it verifies the hash before overwriting the block. If the hash does not match — meaning the content was edited manually — mdship refuses to continue and prints an error.</p>
+<p>This prevents accidentally losing hand-written edits that were made inside a managed block.</p>
+<p><strong>Applies to:</strong> <code>&lt;!--TOC--&gt;</code>, <code>&lt;!--INCLUDE--&gt;</code>, <code>&lt;!--MERMAID--&gt;</code>, <code>&lt;!--JINJA2--&gt;</code>, the deprecated <code>&lt;!--TEMPLATE--&gt;</code>, and PYTHON <code>run:</code> — all built-in placeholders that generate managed content. Each placeholder processor must explicitly wire in the hash check; it is not applied automatically to new placeholders.</p>
+<p><strong>What it looks like after the first run:</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--TOC
+<span class="ge">_content_</span>generated_: 312:md5:a3f1c8b2e94d7056...
+<span class="gh"># ⚠️ MANAGED CONTENT: Edits will be lost.</span>
+<span class="gh"># danger zone: Delete _content_generated_ to override.</span>
+--&gt;
+<span class="k">-</span><span class="w"> </span>[<span class="nt">Introduction</span>](<span class="na">#introduction</span>)
+<span class="k">-</span><span class="w"> </span>[<span class="nt">Getting Started</span>](<span class="na">#getting-started</span>)
+&lt;!--/TOC--&gt;
+</code></pre></div>
+<p>The <code>_content_generated_</code> line stores the character count and MD5 hash of the managed block. The two comment lines below it are a human-readable warning — they are plain YAML comments and are ignored by the parser.</p>
+<p><strong>Three scenarios:</strong></p>
+<ol>
+<li>
+<p><strong>First run</strong> — <code>_content_generated_</code> is absent. mdship generates the content, computes the hash, and inserts the <code>_content_generated_</code> line plus the warning comments into the opening marker.</p>
+</li>
+<li>
+<p><strong>Subsequent runs</strong> — <code>_content_generated_</code> is present. mdship first checks that the closing tag is at exactly the stored character offset (catching insertions or deletions that shift the closing tag), then verifies the MD5 hash of the current content. If both checks pass, it regenerates the content and updates the hash.</p>
+</li>
+<li>
+<p><strong>User override (manual)</strong> — delete the <code>_content_generated_</code> line from the opening marker. The next run treats the placeholder as new (first-run behaviour) and overwrites whatever is between the markers without complaint.</p>
+</li>
+<li>
+<p><strong>User override (command-line)</strong> — pass <code>--force</code> / <code>-f</code> to <code>mdship update</code>:</p>
+</li>
+</ol>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>update<span class="w"> </span>--force<span class="w"> </span>file.md
+mdship<span class="w"> </span>update<span class="w"> </span>-f<span class="w"> </span>file.md
+</code></pre></div>
+<p>With <code>--force</code>, all hash checks are skipped. If the stored length is present and the closing tag is at the expected position, length-based positioning is still used (so resilience against closing-tag strings in generated content is preserved). If the closing tag is not at the expected position, mdship falls back to a regex scan to find it, just as if there were no <code>_content_generated_</code> at all. Either way, the hash is recomputed and written back after the update.</p>
+<blockquote class="callout callout-info">
+<p><strong>Note:</strong> When the content length has changed, <code>--force</code> falls back to a regex scan to locate the closing tag. If the managed content itself contains a string that looks like a closing placeholder tag (e.g. <code>&lt;!--/INCLUDE--&gt;</code>), the regex scan will stop at that false match rather than the real closing tag, and the update will produce incorrect output. In that case, <code>--force</code> cannot help. The safe recovery is to delete the managed content (everything between the opening <code>--&gt;</code> and the &quot;real&quot; closing tag) manually, leaving the markers in place, and then run <code>mdship update</code> with or without <code>--force</code>. With no content and no <code>_content_generated_</code> key, mdship treats the placeholder as new and regenerates it cleanly.</p>
+</blockquote>
+<p><strong>Error messages:</strong></p>
+<p>If the closing tag is not at the expected position (content length changed):</p>
+<div class="code"><div class="code-bar"><span class="code-lang">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>ERROR: Placeholder TOC document integrity compromised.
+Closing tag not found at expected position.
+Delete _content_generated_ line to override and accept data loss.
+</code></pre></div>
+<p>If the closing tag is in the right place but the content hash differs (same-length edit):</p>
+<div class="code"><div class="code-bar"><span class="code-lang">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>ERROR: Placeholder TOC content was manually edited.
+Hash mismatch detected.
+Delete _content_generated_ line to override and accept data loss.
+</code></pre></div>
+<p><strong>Notes:</strong></p>
+<ul>
+<li>The hash is computed on the exact bytes between the opening <code>--&gt;</code> and the closing tag, including surrounding newlines.</li>
+<li>The length-based check makes the parser resilient to generated content that itself contains a closing-tag-like string (e.g. an INCLUDE that pulls in a file mentioning <code>&lt;!--/INCLUDE--&gt;</code>).</li>
+<li>You can freely edit the YAML configuration keys inside the opening marker (e.g. <code>min-level</code>, <code>from</code>, <code>file</code>) — those are outside the managed block and are never overwritten.</li>
+</ul>
+<h3 id="29-ai-placeholders"><a class="anchor" href="#29-ai-placeholders" aria-hidden="true">#</a><span class="num">2.9</span>AI Placeholders</h3>
+<p>The <code>&lt;!--AI--&gt;</code> placeholder embeds a generation prompt directly in a markdown document. Claude reads the prompt, generates the content, and writes it between the markers. Unlike all other placeholders, <strong>AI placeholders are not processed by <code>mdship update</code></strong> — they are handled by Claude through the <code>/ai-placeholder</code> skill.</p>
+<p><strong>Basic example:</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--AI
+name: "intro"
+prompt: |
+    Write a two-paragraph introduction explaining what this tool does.
+    Keep it concise and aimed at developers.
+--&gt;
+
+Content Claude generates goes here.
+
+&lt;!--/AI--&gt;
+</code></pre></div>
+<p><strong>Declaring file dependencies with <code>deps:</code>:</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--AI
+name: "api-summary"
+prompt: |
+    Summarise the public API from the source files below.
+deps:
+<span class="w">  </span><span class="k">-</span><span class="w"> </span>path: src/api.py
+<span class="w">  </span><span class="k">-</span><span class="w"> </span>path: src/models.py
+    range: "1..80"
+--&gt;
+
+&lt;!--/AI--&gt;
+</code></pre></div>
+<p>mdship extracts the file content and checksums each dep. Claude receives the content without reading the files itself. If a dep changes, the next <code>ai_context</code> check detects it automatically.</p>
+<p><strong>Shared writing instructions with <code>brief:</code>:</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--AI
+name: "overview"
+brief: docs/brief.md
+prompt: |
+    Write a high-level overview of this module.
+--&gt;
+
+&lt;!--/AI--&gt;
+</code></pre></div>
+<p>The brief file is read once per generation run and provides standing style/tone/audience instructions that apply to every AI placeholder referencing it.</p>
+<p><strong>Protecting generated content:</strong></p>
+<p>After Claude writes content, run <code>ai-fix</code> to record checksums of the content, prompt, brief, and all deps:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>ai-fix<span class="w"> </span>file.md<span class="w">               </span><span class="c1"># Record checksums for all AI placeholders</span>
+mdship<span class="w"> </span>ai-fix<span class="w"> </span>file.md<span class="w"> </span>--name<span class="w"> </span>intro<span class="w">  </span><span class="c1"># Record for a specific placeholder</span>
+</code></pre></div>
+<p>Verify that nothing was accidentally edited since the last generation:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>ai-check<span class="w"> </span>file.md<span class="w">             </span><span class="c1"># Verify all AI placeholder checksums</span>
+mdship<span class="w"> </span>ai-check<span class="w"> </span>file.md<span class="w"> </span>--name<span class="w"> </span>api-summary
+</code></pre></div>
+<p><code>ai-check</code> exits with code 0 on success and code 1 with error messages if any content, prompt, brief, or dep has changed.</p>
+<p><code>ai-check</code> compares against checksums recorded by <code>ai-fix</code> or <code>ai_update</code>. A placeholder that has never been generated has nothing recorded, so <code>ai-check</code> passes it; use <code>mdship ai-list</code> to find entries with status <code>never_generated</code>. Nothing is enforced unless a check runs, so run <code>ai-check</code> in CI (see <a href="#32-github-action">GitHub Action</a>).</p>
+<p><strong>Validate AI placeholder names:</strong></p>
+<p>The <code>validate</code> command also checks AI placeholder name uniqueness:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>validate<span class="w"> </span>file.md
+</code></pre></div>
+<p>For full details on deps, brief, the MCP tools (<code>ai_context</code>, <code>ai_update</code>), and the Claude workflow see <a href="ai.html">documentation/AI.md</a>.</p>
+<h2 id="3-integrations"><a class="anchor" href="#3-integrations" aria-hidden="true">#</a><span class="num">3</span>Integrations</h2>
+<h3 id="31-mcp-server"><a class="anchor" href="#31-mcp-server" aria-hidden="true">#</a><span class="num">3.1</span>MCP Server</h3>
+<p>Configure in your Claude settings:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">json</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"mcpServers"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"mdship"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mdship"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"mcp"</span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Available tools include all CLI operations plus four AI-specific tools:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ai_fix</code></td>
+<td>Record content, prompt, brief, and dep checksums after generation</td>
+</tr>
+<tr>
+<td><code>ai_check</code></td>
+<td>Verify all stored checksums still match</td>
+</tr>
+<tr>
+<td><code>ai_context</code></td>
+<td>Gate call: returns <code>up_to_date</code>, <code>needs_update</code> (with prompt, deps, brief, previous content), or <code>error</code></td>
+</tr>
+<tr>
+<td><code>ai_update</code></td>
+<td>Write new content and record all checksums atomically — agent never reads or writes the file directly</td>
+</tr>
+</tbody>
+</table></div>
+<p>The <code>/ai-placeholder</code> skill uses <code>ai_context</code> → generate → <code>ai_update</code> so the full source document never enters the agent's context window.</p>
+<h3 id="32-github-action"><a class="anchor" href="#32-github-action" aria-hidden="true">#</a><span class="num">3.2</span>GitHub Action</h3>
+<p>Use mdship as a GitHub Action to check markdown documents in CI. The action installs mdship from PyPI and runs one of the check commands on the given files, failing the job when a check reports a problem:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">yaml</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="nt">jobs</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">markdown</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v4</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Validate links and anchors</span>
+<span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verhas/mdship@v1</span>
+<span class="w">        </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">validate</span>
+<span class="w">          </span><span class="nt">files</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">README.md docs/**/*.md</span>
+</code></pre></div>
+<p><strong>Inputs:</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Input</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>command</code></td>
+<td><code>validate</code></td>
+<td>Check to run: <code>validate</code> (broken links, anchors, missing files and images), <code>verify</code> (front-matter content checksum), or <code>ai-check</code> (AI placeholder checksums)</td>
+</tr>
+<tr>
+<td><code>files</code></td>
+<td><code>README.md</code></td>
+<td>Space-separated files or glob patterns (<code>**</code> is supported)</td>
+</tr>
+<tr>
+<td><code>version</code></td>
+<td>latest</td>
+<td>mdship version to install from PyPI; a value starting with <code>.</code> or <code>/</code> installs from a local path instead</td>
+</tr>
+<tr>
+<td><code>python-version</code></td>
+<td><code>3.12</code></td>
+<td>Python version to set up (mdship requires 3.11+)</td>
+</tr>
+</tbody>
+</table></div>
+<p>The modifying commands (<code>update</code>, <code>number</code>, <code>reflow</code>, …) are intentionally not exposed: a CI check should report problems, not rewrite files.</p>
+<p>For a step-by-step cookbook with copy-paste workflow recipes see <a href="github-actions.html">documentation/GITHUB_ACTIONS.md</a>.</p>
+<h2 id="4-design"><a class="anchor" href="#4-design" aria-hidden="true">#</a><span class="num">4</span>Design</h2>
+<p><strong>mdship</strong> uses <code>markdown-it-py</code> to parse markdown into an AST (Abstract Syntax Tree). This ensures:</p>
+<ul>
+<li>Robust handling of complex markdown documents</li>
+<li>Preservation of document structure (headings, lists, code blocks, etc.)</li>
+<li>Proper handling of inline formatting (bold, italic, links, etc.)</li>
+<li>Reliable reflow operations that respect markdown semantics</li>
+</ul>
+
+    </article>
+    <nav class="pager" aria-label="Previous and next page">
+      <a class="pager-prev" href="template.html"><small>← Previous</small>TEMPLATE (deprecated)</a>
+      <a class="pager-next" href="articles/ai-managed-conten.html"><small>Next →</small>When documentation manages itself</a>
+    </nav>
+    <p class="edit"><a href="https://github.com/verhas/mdship/edit/master/documentation/REFERENCE.md">Edit this page on GitHub</a></p>
+  </main>
+  
+  <nav class="onpage" aria-label="On this page">
+    <h3>On this page</h3>
+    <ul>
+      
+      <li class="lvl2"><a href="#1-markdown-commands">Markdown Commands</a></li>
+      
+      <li class="lvl3"><a href="#11-command-line">Command Line</a></li>
+      
+      <li class="lvl3"><a href="#12-shift-validation">Shift Validation</a></li>
+      
+      <li class="lvl3"><a href="#13-shift-line-range">Shift Line Range</a></li>
+      
+      <li class="lvl3"><a href="#14-semantic-line-breaks">Semantic Line Breaks</a></li>
+      
+      <li class="lvl3"><a href="#15-number-headings">Number Headings</a></li>
+      
+      <li class="lvl3"><a href="#16-checksums">Checksums</a></li>
+      
+      <li class="lvl3"><a href="#17-skipping-backups">Skipping Backups</a></li>
+      
+      <li class="lvl3"><a href="#18-tracking-changes">Tracking Changes</a></li>
+      
+      <li class="lvl3"><a href="#19-validating-links">Validating Links</a></li>
+      
+      <li class="lvl2"><a href="#2-placeholders">Placeholders</a></li>
+      
+      <li class="lvl3"><a href="#21-placeholder-processing-order">Placeholder Processing Order</a></li>
+      
+      <li class="lvl3"><a href="#22-variables">Variables</a></li>
+      
+      <li class="lvl3"><a href="#23-template-placeholders">Template Placeholders</a></li>
+      
+      <li class="lvl3"><a href="#24-table-of-contents">Table of Contents</a></li>
+      
+      <li class="lvl3"><a href="#25-including-files">Including Files</a></li>
+      
+      <li class="lvl3"><a href="#26-rendering-mermaid-diagrams">Rendering Mermaid Diagrams</a></li>
+      
+      <li class="lvl3"><a href="#27-placeholder-validation">Placeholder Validation</a></li>
+      
+      <li class="lvl3"><a href="#28-managed-content-integrity">Managed Content Integrity</a></li>
+      
+      <li class="lvl3"><a href="#29-ai-placeholders">AI Placeholders</a></li>
+      
+      <li class="lvl2"><a href="#3-integrations">Integrations</a></li>
+      
+      <li class="lvl3"><a href="#31-mcp-server">MCP Server</a></li>
+      
+      <li class="lvl3"><a href="#32-github-action">GitHub Action</a></li>
+      
+      <li class="lvl2"><a href="#4-design">Design</a></li>
+      
+    </ul>
+  </nav>
+  
+</div>
+
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <img src="../static/logo.svg" alt="" width="28" height="28">
+        <div>
+          <strong>mdship</strong> 1.3.0
+          <p>Documentation that knows when it is stale.</p>
+        </div>
+      </div>
+      <div class="footer-links">
+        <div>
+          <h4>Learn</h4>
+          <a href="../docs/index.html">Overview</a>
+          <a href="../docs/ai.html">AI placeholders</a>
+          <a href="../docs/github-actions.html">CI recipes</a>
+        </div>
+        <div>
+          <h4>Reference</h4>
+          <a href="../docs/commands/index.html">Commands</a>
+          <a href="../docs/reference.html">Full reference</a>
+          <a href="../docs/python.html">Python scripting</a>
+        </div>
+        <div>
+          <h4>Project</h4>
+          <a href="https://github.com/verhas/mdship">GitHub</a>
+          <a href="https://pypi.org/project/mdship/">PyPI</a>
+          <a href="https://github.com/verhas/mdship/issues">Issues</a>
+        </div>
+      </div>
+    </div>
+    <p class="footer-note">MIT or Apache-2.0 · Built from the repository's own Markdown documentation</p>
+  </footer>
+  <script src="../static/site.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Placeholders in Markdown · mdship</title>
+  <meta name="description" content="mdship keeps AI-written and generated Markdown in sync with its sources, and tells you exactly which part is stale and why.">
+  <meta name="theme-color" content="#140b2e">
+  <link rel="icon" href="../static/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../static/style.css">
+  <link rel="stylesheet" href="../static/code.css">
+</head>
+<body class="docs">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../index.html" aria-label="mdship home">
+        <img src="../static/logo.svg" alt="" width="32" height="32">
+        <span>mdship</span>
+      </a>
+      <button class="menu-toggle" type="button" aria-controls="sidebar" aria-expanded="false">☰ <span>Menu</span></button>
+      <nav class="topnav" aria-label="Main">
+        <a href="../docs/index.html#2-quickstart">Quickstart</a>
+        <a href="../docs/ai.html">AI placeholders</a>
+        <a href="../docs/commands/index.html">Commands</a>
+        <a href="../docs/reference.html">Reference</a>
+        <a class="gh" href="https://github.com/verhas/mdship">
+          <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  
+<div class="docs-layout">
+  <aside class="sidebar" id="sidebar" aria-label="Documentation">
+  <div class="sidebar-search">
+    <input type="search" placeholder="Filter pages…" aria-label="Filter pages" data-nav-filter>
+  </div>
+  
+  <div class="nav-section nav-c1">
+    <h3>Get started</h3>
+    <ul>
+      
+      <li><a href="index.html">Overview &amp; quickstart</a></li>
+      
+      <li><a href="ai.html">AI placeholders</a></li>
+      
+      <li><a href="github-actions.html">CI with GitHub Actions</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c2">
+    <h3>Concepts</h3>
+    <ul>
+      
+      <li><a href="placeholder.html" aria-current="page">Placeholders in Markdown</a></li>
+      
+      <li><a href="content-integrity.html">Content integrity</a></li>
+      
+      <li><a href="python.html">Python scripting</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c3">
+    <h3>Placeholders</h3>
+    <ul>
+      
+      <li><a href="include.html">INCLUDE</a></li>
+      
+      <li><a href="toc.html">TOC</a></li>
+      
+      <li><a href="set.html">SET</a></li>
+      
+      <li><a href="import.html">IMPORT</a></li>
+      
+      <li><a href="slurp.html">SLURP</a></li>
+      
+      <li><a href="sip.html">SIP</a></li>
+      
+      <li><a href="sup.html">SUP</a></li>
+      
+      <li><a href="jinja2.html">JINJA2</a></li>
+      
+      <li><a href="mermaid.html">MERMAID</a></li>
+      
+      <li><a href="template.html">TEMPLATE (deprecated)</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c4">
+    <h3>Reference</h3>
+    <ul>
+      
+      <li><a href="reference.html">Full reference</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c5">
+    <h3>Articles</h3>
+    <ul>
+      
+      <li><a href="articles/ai-managed-conten.html">When documentation manages itself</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-commands">
+    <h3><a href="commands/index.html">Commands</a></h3>
+    
+    <h4>AI workflow</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/ai-list.html">ai-list</a></li>
+      
+      <li><a class="mono" href="commands/ai-check.html">ai-check</a></li>
+      
+      <li><a class="mono" href="commands/ai-fix.html">ai-fix</a></li>
+      
+      <li><a class="mono" href="commands/ai-comments.html">ai-comments</a></li>
+      
+      <li><a class="mono" href="commands/ai-context-and-update.html">ai-context-and-update</a></li>
+      
+    </ul>
+    
+    <h4>Content</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/update.html">update</a></li>
+      
+      <li><a class="mono" href="commands/init.html">init</a></li>
+      
+      <li><a class="mono" href="commands/scripts.html">scripts</a></li>
+      
+      <li><a class="mono" href="commands/mcp.html">mcp</a></li>
+      
+    </ul>
+    
+    <h4>Structure</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/fix-headings.html">fix-headings</a></li>
+      
+      <li><a class="mono" href="commands/shift-headings.html">shift-headings</a></li>
+      
+      <li><a class="mono" href="commands/number.html">number</a></li>
+      
+      <li><a class="mono" href="commands/unnumber.html">unnumber</a></li>
+      
+    </ul>
+    
+    <h4>Formatting</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/reflow.html">reflow</a></li>
+      
+      <li><a class="mono" href="commands/semantic-line-breaks.html">semantic-line-breaks</a></li>
+      
+      <li><a class="mono" href="commands/format-tables.html">format-tables</a></li>
+      
+    </ul>
+    
+    <h4>Reading &amp; editing</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/list-headings.html">list-headings</a></li>
+      
+      <li><a class="mono" href="commands/get-section.html">get-section</a></li>
+      
+      <li><a class="mono" href="commands/replace-section.html">replace-section</a></li>
+      
+      <li><a class="mono" href="commands/get-lines.html">get-lines</a></li>
+      
+      <li><a class="mono" href="commands/insert-lines.html">insert-lines</a></li>
+      
+      <li><a class="mono" href="commands/delete-lines.html">delete-lines</a></li>
+      
+      <li><a class="mono" href="commands/get-paragraphs.html">get-paragraphs</a></li>
+      
+      <li><a class="mono" href="commands/find-replace.html">find-replace</a></li>
+      
+      <li><a class="mono" href="commands/extract-table.html">extract-table</a></li>
+      
+      <li><a class="mono" href="commands/update-table.html">update-table</a></li>
+      
+      <li><a class="mono" href="commands/frontmatter-get.html">frontmatter-get</a></li>
+      
+      <li><a class="mono" href="commands/frontmatter-set.html">frontmatter-set</a></li>
+      
+    </ul>
+    
+    <h4>Checking</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/validate.html">validate</a></li>
+      
+      <li><a class="mono" href="commands/sum.html">sum</a></li>
+      
+      <li><a class="mono" href="commands/verify.html">verify</a></li>
+      
+    </ul>
+    
+  </div>
+</aside>
+  <main id="main" class="doc">
+    <p class="crumb"><span class="crumb-section">Concepts</span></p>
+    <article class="prose">
+      <h1 id="placeholders-in-markdown"><a class="anchor" href="#placeholders-in-markdown" aria-hidden="true">#</a>Placeholders in Markdown</h1>
+<h2 id="what-are-placeholders"><a class="anchor" href="#what-are-placeholders" aria-hidden="true">#</a>What are Placeholders?</h2>
+<p>Placeholders in mdship are special HTML comments that mark regions in your markdown document for processing. They allow you to embed metadata, instructions, and parameters directly in your markdown without affecting the rendered output — because HTML comments are invisible to readers. Placeholders are recognized and processed by the <code>mdship update</code> command, which handles them in a specific order to transform your document.</p>
+<h3 id="why-use-placeholders"><a class="anchor" href="#why-use-placeholders" aria-hidden="true">#</a>Why Use Placeholders?</h3>
+<p>Placeholders enable you to:</p>
+<ul>
+<li><strong>Define variables</strong> that can be reused throughout your document</li>
+<li><strong>Include external content</strong> from other files dynamically</li>
+<li><strong>Generate dynamic content</strong> like tables of contents or rendered diagrams</li>
+<li><strong>Keep data and metadata separate</strong> from your visible markdown content</li>
+<li><strong>Automate document updates</strong> with fresh data from source files</li>
+</ul>
+<p>Since placeholders are HTML comments (<code>&lt;!-- ... --&gt;</code>), they don't appear in any rendered markdown output — they are completely invisible to readers while remaining powerful tools for document generation and maintenance.</p>
+<h3 id="placeholder-structure"><a class="anchor" href="#placeholder-structure" aria-hidden="true">#</a>Placeholder Structure</h3>
+<p>All placeholders follow a consistent structure. The opening placeholder contains the type name and optional YAML parameters:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">html</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="cm">&lt;!--PLACEHOLDER_TYPE</span>
+<span class="cm">param1: value1</span>
+<span class="cm">param2: value2</span>
+<span class="cm">--&gt;</span>
+</code></pre></div>
+<p>An optional closing marker delimits a region that the placeholder manages:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">html</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="cm">&lt;!--/PLACEHOLDER_TYPE--&gt;</span>
+</code></pre></div>
+<h3 id="three-types-of-placeholders"><a class="anchor" href="#three-types-of-placeholders" aria-hidden="true">#</a>Three Types of Placeholders</h3>
+<h4 id="1-placeholders-with-opening-and-closing-markers"><a class="anchor" href="#1-placeholders-with-opening-and-closing-markers" aria-hidden="true">#</a><span class="num">1</span>Placeholders with opening and closing markers</h4>
+<p>These placeholders generate or manage content between their opening and closing markers. Each time <code>mdship update</code> runs, the content between the markers is replaced or updated.</p>
+<div class="code"><div class="code-bar"><span class="code-lang">html</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="cm">&lt;!--INCLUDE</span>
+<span class="cm">from: "snippet.py"</span>
+<span class="cm">prefix: "```python"</span>
+<span class="cm">postfix: "```"</span>
+<span class="cm">--&gt;</span>
+[generated content here]
+<span class="cm">&lt;!--/INCLUDE--&gt;</span>
+</code></pre></div>
+<p>Placeholders in this category: <a href="include.html">INCLUDE</a>, <a href="toc.html">TOC</a>, <a href="mermaid.html">MERMAID</a>, <a href="ai.html">AI</a>.</p>
+<h4 id="2-placeholders-that-define-data-no-closing-marker-needed"><a class="anchor" href="#2-placeholders-that-define-data-no-closing-marker-needed" aria-hidden="true">#</a><span class="num">2</span>Placeholders that define data — no closing marker needed</h4>
+<p>These placeholders collect or define variables for use elsewhere in the document. They produce no visible output and require no closing marker.</p>
+<div class="code"><div class="code-bar"><span class="code-lang">html</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="cm">&lt;!--SET</span>
+<span class="cm">appName: "MyApp"</span>
+<span class="cm">version: "2.0"</span>
+<span class="cm">--&gt;</span>
+</code></pre></div>
+<p>Placeholders in this category: <a href="set.html">SET</a>, <a href="import.html">IMPORT</a>, <a href="slurp.html">SLURP</a>, <a href="sip.html">SIP</a>, <a href="template.html">TEMPLATE</a>.</p>
+<h4 id="3-placeholders-that-act-on-the-next-line"><a class="anchor" href="#3-placeholders-that-act-on-the-next-line" aria-hidden="true">#</a><span class="num">3</span>Placeholders that act on the next line</h4>
+<p>These placeholders extract a value from the document line that immediately follows them, using a regex pattern. They require no closing marker and the following line remains in the document unchanged.</p>
+<div class="code"><div class="code-bar"><span class="code-lang">html</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="cm">&lt;!--SUP</span>
+<span class="cm">name: "title"</span>
+<span class="cm">pattern: '^#+\s+(.*?)\s*$'</span>
+<span class="cm">--&gt;</span>
+# My Document Title
+</code></pre></div>
+<p>Placeholders in this category: <a href="sup.html">SUP</a>.</p>
+<h3 id="available-placeholders"><a class="anchor" href="#available-placeholders" aria-hidden="true">#</a>Available Placeholders</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Placeholder</th>
+<th>Purpose</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="set.html">SET</a></td>
+<td>Define variables inline with YAML values</td>
+<td>Data source</td>
+</tr>
+<tr>
+<td><a href="import.html">IMPORT</a></td>
+<td>Load variables from JSON, YAML, TOML, or XML files</td>
+<td>Data source</td>
+</tr>
+<tr>
+<td><a href="slurp.html">SLURP</a></td>
+<td>Extract variable names and values from files using regex</td>
+<td>Data source</td>
+</tr>
+<tr>
+<td><a href="sip.html">SIP</a></td>
+<td>Extract specific predefined variables from files using named patterns</td>
+<td>Data source</td>
+</tr>
+<tr>
+<td><a href="sup.html">SUP</a></td>
+<td>Extract a single value from the next document line</td>
+<td>Next-line</td>
+</tr>
+<tr>
+<td><a href="template.html">TEMPLATE</a></td>
+<td>Render an inline template with variable substitution (for variables inside code blocks)</td>
+<td>Data source</td>
+</tr>
+<tr>
+<td><a href="include.html">INCLUDE</a></td>
+<td>Insert content from external files</td>
+<td>Content manager</td>
+</tr>
+<tr>
+<td><a href="toc.html">TOC</a></td>
+<td>Generate and manage a table of contents from headings</td>
+<td>Content manager</td>
+</tr>
+<tr>
+<td><a href="mermaid.html">MERMAID</a></td>
+<td>Render Mermaid diagrams with variable substitution</td>
+<td>Content manager</td>
+</tr>
+<tr>
+<td><a href="ai.html">AI</a></td>
+<td>Mark a section for Claude to generate or maintain</td>
+<td>Content manager</td>
+</tr>
+</tbody>
+</table></div>
+<p>Variables defined by any data source placeholder (<code>SET</code>, <code>IMPORT</code>, <code>SLURP</code>, <code>SIP</code>, <code>SUP</code>) are available throughout the entire document, regardless of where those placeholders appear — even from placeholders defined after the variable reference.</p>
+
+    </article>
+    <nav class="pager" aria-label="Previous and next page">
+      <a class="pager-prev" href="github-actions.html"><small>← Previous</small>CI with GitHub Actions</a>
+      <a class="pager-next" href="content-integrity.html"><small>Next →</small>Content integrity</a>
+    </nav>
+    <p class="edit"><a href="https://github.com/verhas/mdship/edit/master/documentation/placeholder.md">Edit this page on GitHub</a></p>
+  </main>
+  
+  <nav class="onpage" aria-label="On this page">
+    <h3>On this page</h3>
+    <ul>
+      
+      <li class="lvl2"><a href="#what-are-placeholders">What are Placeholders?</a></li>
+      
+      <li class="lvl3"><a href="#why-use-placeholders">Why Use Placeholders?</a></li>
+      
+      <li class="lvl3"><a href="#placeholder-structure">Placeholder Structure</a></li>
+      
+      <li class="lvl3"><a href="#three-types-of-placeholders">Three Types of Placeholders</a></li>
+      
+      <li class="lvl3"><a href="#available-placeholders">Available Placeholders</a></li>
+      
+    </ul>
+  </nav>
+  
+</div>
+
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <img src="../static/logo.svg" alt="" width="28" height="28">
+        <div>
+          <strong>mdship</strong> 1.3.0
+          <p>Documentation that knows when it is stale.</p>
+        </div>
+      </div>
+      <div class="footer-links">
+        <div>
+          <h4>Learn</h4>
+          <a href="../docs/index.html">Overview</a>
+          <a href="../docs/ai.html">AI placeholders</a>
+          <a href="../docs/github-actions.html">CI recipes</a>
+        </div>
+        <div>
+          <h4>Reference</h4>
+          <a href="../docs/commands/index.html">Commands</a>
+          <a href="../docs/reference.html">Full reference</a>
+          <a href="../docs/python.html">Python scripting</a>
+        </div>
+        <div>
+          <h4>Project</h4>
+          <a href="https://github.com/verhas/mdship">GitHub</a>
+          <a href="https://pypi.org/project/mdship/">PyPI</a>
+          <a href="https://github.com/verhas/mdship/issues">Issues</a>
+        </div>
+      </div>
+    </div>
+    <p class="footer-note">MIT or Apache-2.0 · Built from the repository's own Markdown documentation</p>
+  </footer>
+  <script src="../static/site.js" defer></script>
+</body>
+</html>

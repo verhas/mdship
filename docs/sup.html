@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SUP Placeholder · mdship</title>
+  <meta name="description" content="mdship keeps AI-written and generated Markdown in sync with its sources, and tells you exactly which part is stale and why.">
+  <meta name="theme-color" content="#140b2e">
+  <link rel="icon" href="../static/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../static/style.css">
+  <link rel="stylesheet" href="../static/code.css">
+</head>
+<body class="docs">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../index.html" aria-label="mdship home">
+        <img src="../static/logo.svg" alt="" width="32" height="32">
+        <span>mdship</span>
+      </a>
+      <button class="menu-toggle" type="button" aria-controls="sidebar" aria-expanded="false">☰ <span>Menu</span></button>
+      <nav class="topnav" aria-label="Main">
+        <a href="../docs/index.html#2-quickstart">Quickstart</a>
+        <a href="../docs/ai.html">AI placeholders</a>
+        <a href="../docs/commands/index.html">Commands</a>
+        <a href="../docs/reference.html">Reference</a>
+        <a class="gh" href="https://github.com/verhas/mdship">
+          <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  
+<div class="docs-layout">
+  <aside class="sidebar" id="sidebar" aria-label="Documentation">
+  <div class="sidebar-search">
+    <input type="search" placeholder="Filter pages…" aria-label="Filter pages" data-nav-filter>
+  </div>
+  
+  <div class="nav-section nav-c1">
+    <h3>Get started</h3>
+    <ul>
+      
+      <li><a href="index.html">Overview &amp; quickstart</a></li>
+      
+      <li><a href="ai.html">AI placeholders</a></li>
+      
+      <li><a href="github-actions.html">CI with GitHub Actions</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c2">
+    <h3>Concepts</h3>
+    <ul>
+      
+      <li><a href="placeholder.html">Placeholders in Markdown</a></li>
+      
+      <li><a href="content-integrity.html">Content integrity</a></li>
+      
+      <li><a href="python.html">Python scripting</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c3">
+    <h3>Placeholders</h3>
+    <ul>
+      
+      <li><a href="include.html">INCLUDE</a></li>
+      
+      <li><a href="toc.html">TOC</a></li>
+      
+      <li><a href="set.html">SET</a></li>
+      
+      <li><a href="import.html">IMPORT</a></li>
+      
+      <li><a href="slurp.html">SLURP</a></li>
+      
+      <li><a href="sip.html">SIP</a></li>
+      
+      <li><a href="sup.html" aria-current="page">SUP</a></li>
+      
+      <li><a href="jinja2.html">JINJA2</a></li>
+      
+      <li><a href="mermaid.html">MERMAID</a></li>
+      
+      <li><a href="template.html">TEMPLATE (deprecated)</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c4">
+    <h3>Reference</h3>
+    <ul>
+      
+      <li><a href="reference.html">Full reference</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c5">
+    <h3>Articles</h3>
+    <ul>
+      
+      <li><a href="articles/ai-managed-conten.html">When documentation manages itself</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-commands">
+    <h3><a href="commands/index.html">Commands</a></h3>
+    
+    <h4>AI workflow</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/ai-list.html">ai-list</a></li>
+      
+      <li><a class="mono" href="commands/ai-check.html">ai-check</a></li>
+      
+      <li><a class="mono" href="commands/ai-fix.html">ai-fix</a></li>
+      
+      <li><a class="mono" href="commands/ai-comments.html">ai-comments</a></li>
+      
+      <li><a class="mono" href="commands/ai-context-and-update.html">ai-context-and-update</a></li>
+      
+    </ul>
+    
+    <h4>Content</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/update.html">update</a></li>
+      
+      <li><a class="mono" href="commands/init.html">init</a></li>
+      
+      <li><a class="mono" href="commands/scripts.html">scripts</a></li>
+      
+      <li><a class="mono" href="commands/mcp.html">mcp</a></li>
+      
+    </ul>
+    
+    <h4>Structure</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/fix-headings.html">fix-headings</a></li>
+      
+      <li><a class="mono" href="commands/shift-headings.html">shift-headings</a></li>
+      
+      <li><a class="mono" href="commands/number.html">number</a></li>
+      
+      <li><a class="mono" href="commands/unnumber.html">unnumber</a></li>
+      
+    </ul>
+    
+    <h4>Formatting</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/reflow.html">reflow</a></li>
+      
+      <li><a class="mono" href="commands/semantic-line-breaks.html">semantic-line-breaks</a></li>
+      
+      <li><a class="mono" href="commands/format-tables.html">format-tables</a></li>
+      
+    </ul>
+    
+    <h4>Reading &amp; editing</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/list-headings.html">list-headings</a></li>
+      
+      <li><a class="mono" href="commands/get-section.html">get-section</a></li>
+      
+      <li><a class="mono" href="commands/replace-section.html">replace-section</a></li>
+      
+      <li><a class="mono" href="commands/get-lines.html">get-lines</a></li>
+      
+      <li><a class="mono" href="commands/insert-lines.html">insert-lines</a></li>
+      
+      <li><a class="mono" href="commands/delete-lines.html">delete-lines</a></li>
+      
+      <li><a class="mono" href="commands/get-paragraphs.html">get-paragraphs</a></li>
+      
+      <li><a class="mono" href="commands/find-replace.html">find-replace</a></li>
+      
+      <li><a class="mono" href="commands/extract-table.html">extract-table</a></li>
+      
+      <li><a class="mono" href="commands/update-table.html">update-table</a></li>
+      
+      <li><a class="mono" href="commands/frontmatter-get.html">frontmatter-get</a></li>
+      
+      <li><a class="mono" href="commands/frontmatter-set.html">frontmatter-set</a></li>
+      
+    </ul>
+    
+    <h4>Checking</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/validate.html">validate</a></li>
+      
+      <li><a class="mono" href="commands/sum.html">sum</a></li>
+      
+      <li><a class="mono" href="commands/verify.html">verify</a></li>
+      
+    </ul>
+    
+  </div>
+</aside>
+  <main id="main" class="doc">
+    <p class="crumb"><span class="crumb-section">Placeholders</span></p>
+    <article class="prose">
+      <h1 id="sup-placeholder"><a class="anchor" href="#sup-placeholder" aria-hidden="true">#</a>SUP Placeholder</h1>
+<h2 id="what-sup-does"><a class="anchor" href="#what-sup-does" aria-hidden="true">#</a>What SUP Does</h2>
+<p>The <code>SUP</code> placeholder extracts a single value from the <strong>next non-empty line</strong> in the document using a regex pattern with one capturing group. The value is stored under the given variable name.</p>
+<p>SUP is unique among variable sources because it reads from the document itself rather than an external file. This is useful for capturing values that are already present as document content — such as a heading title — without having to duplicate them in a <a href="set.html">SET</a> placeholder.</p>
+<p>SUP requires no closing tag.</p>
+<h2 id="syntax"><a class="anchor" href="#syntax" aria-hidden="true">#</a>Syntax</h2>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--SUP
+name: "doc.title"
+pattern: '^#+\s+(.*?)\s*$'
+--&gt;
+<span class="gh"># My Document Title</span>
+</code></pre></div>
+<h2 id="configuration-parameters"><a class="anchor" href="#configuration-parameters" aria-hidden="true">#</a>Configuration Parameters</h2>
+<ul>
+<li><code>name</code> <em>(required)</em>: Variable name to assign the captured value to. Supports hierarchical dot-notation.</li>
+<li><code>pattern</code> <em>(required)</em>: Regex with exactly <strong>1 capturing group</strong> matched against the next non-empty line. Can also be a reference to a built-in or custom pattern using <code>@patternName</code>.</li>
+</ul>
+<h2 id="built-in-patterns"><a class="anchor" href="#built-in-patterns" aria-hidden="true">#</a>Built-in Patterns</h2>
+<p>SUP (and <a href="sip.html">SIP</a>) support a built-in pattern dictionary so common patterns don't need to be written manually:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Captures</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>@heading</code></td>
+<td>Heading number (e.g. <code>1.5.8</code>)</td>
+</tr>
+<tr>
+<td><code>@version</code></td>
+<td>Semantic version (e.g. <code>1.2.3</code>)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Custom patterns can be added via <a href="set.html">SET</a>:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--SET
+pattern:
+  snapshot: '(\d+\.\d+\.\d+)-SNAPSHOT'
+--&gt;
+</code></pre></div>
+<p>Then referenced as <code>@snapshot</code>.</p>
+<h2 id="example"><a class="anchor" href="#example" aria-hidden="true">#</a>Example</h2>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--SUP
+name: "doc.title"
+pattern: '^#+\s+(.*?)\s*$'
+--&gt;
+<span class="gh"># Introduction to mdship</span>
+
+Title is: &lt;!--$doc.title--&gt;placeholder&lt;!----&gt;
+</code></pre></div>
+<p>After <code>mdship update</code>:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>Title is: &lt;!--$doc.title--&gt;Introduction to mdship&lt;!----&gt;
+</code></pre></div>
+<p>Capturing a heading number with a built-in pattern:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--SUP
+name: "chapter"
+pattern: "@heading"
+--&gt;
+<span class="gh"># 2.3. Advanced Topics</span>
+
+Chapter ref: &lt;!--$chapter--&gt;placeholder&lt;!----&gt;
+</code></pre></div>
+<h2 id="see-also"><a class="anchor" href="#see-also" aria-hidden="true">#</a>See Also</h2>
+<p><strong>When to choose SUP:</strong> use SUP when the value you need is already written in the document on the very next line. It avoids duplication — for example, you can capture a document title from a heading rather than re-typing it in a SET. For values in external files, use <a href="import.html">IMPORT</a>, <a href="slurp.html">SLURP</a>, or <a href="sip.html">SIP</a> instead.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Placeholder</th>
+<th>Use when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="set.html">SET</a></td>
+<td>Values are defined inline in the document (not captured from content)</td>
+</tr>
+<tr>
+<td><a href="import.html">IMPORT</a></td>
+<td>Data lives in a structured external file</td>
+</tr>
+<tr>
+<td><a href="slurp.html">SLURP</a></td>
+<td>Variable names and values are extracted from an external file by regex</td>
+</tr>
+<tr>
+<td><a href="sip.html">SIP</a></td>
+<td>Fixed variable names, values extracted from an external file by regex</td>
+</tr>
+<tr>
+<td><a href="include.html">INCLUDE</a></td>
+<td>You want to embed file content as text, not extract variables</td>
+</tr>
+<tr>
+<td><a href="template.html">TEMPLATE</a></td>
+<td>You want to render variables inside a code block</td>
+</tr>
+<tr>
+<td><a href="toc.html">TOC</a></td>
+<td>You want to generate a table of contents</td>
+</tr>
+<tr>
+<td><a href="mermaid.html">MERMAID</a></td>
+<td>You want to render a diagram</td>
+</tr>
+</tbody>
+</table></div>
+
+    </article>
+    <nav class="pager" aria-label="Previous and next page">
+      <a class="pager-prev" href="sip.html"><small>← Previous</small>SIP</a>
+      <a class="pager-next" href="jinja2.html"><small>Next →</small>JINJA2</a>
+    </nav>
+    <p class="edit"><a href="https://github.com/verhas/mdship/edit/master/documentation/SUP.md">Edit this page on GitHub</a></p>
+  </main>
+  
+  <nav class="onpage" aria-label="On this page">
+    <h3>On this page</h3>
+    <ul>
+      
+      <li class="lvl2"><a href="#what-sup-does">What SUP Does</a></li>
+      
+      <li class="lvl2"><a href="#syntax">Syntax</a></li>
+      
+      <li class="lvl2"><a href="#configuration-parameters">Configuration Parameters</a></li>
+      
+      <li class="lvl2"><a href="#built-in-patterns">Built-in Patterns</a></li>
+      
+      <li class="lvl2"><a href="#example">Example</a></li>
+      
+      <li class="lvl2"><a href="#see-also">See Also</a></li>
+      
+    </ul>
+  </nav>
+  
+</div>
+
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <img src="../static/logo.svg" alt="" width="28" height="28">
+        <div>
+          <strong>mdship</strong> 1.3.0
+          <p>Documentation that knows when it is stale.</p>
+        </div>
+      </div>
+      <div class="footer-links">
+        <div>
+          <h4>Learn</h4>
+          <a href="../docs/index.html">Overview</a>
+          <a href="../docs/ai.html">AI placeholders</a>
+          <a href="../docs/github-actions.html">CI recipes</a>
+        </div>
+        <div>
+          <h4>Reference</h4>
+          <a href="../docs/commands/index.html">Commands</a>
+          <a href="../docs/reference.html">Full reference</a>
+          <a href="../docs/python.html">Python scripting</a>
+        </div>
+        <div>
+          <h4>Project</h4>
+          <a href="https://github.com/verhas/mdship">GitHub</a>
+          <a href="https://pypi.org/project/mdship/">PyPI</a>
+          <a href="https://github.com/verhas/mdship/issues">Issues</a>
+        </div>
+      </div>
+    </div>
+    <p class="footer-note">MIT or Apache-2.0 · Built from the repository's own Markdown documentation</p>
+  </footer>
+  <script src="../static/site.js" defer></script>
+</body>
+</html>

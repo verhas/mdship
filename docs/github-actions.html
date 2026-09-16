@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Using mdship in GitHub CI/CD — a Cookbook · mdship</title>
+  <meta name="description" content="mdship keeps AI-written and generated Markdown in sync with its sources, and tells you exactly which part is stale and why.">
+  <meta name="theme-color" content="#140b2e">
+  <link rel="icon" href="../static/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../static/style.css">
+  <link rel="stylesheet" href="../static/code.css">
+</head>
+<body class="docs">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../index.html" aria-label="mdship home">
+        <img src="../static/logo.svg" alt="" width="32" height="32">
+        <span>mdship</span>
+      </a>
+      <button class="menu-toggle" type="button" aria-controls="sidebar" aria-expanded="false">☰ <span>Menu</span></button>
+      <nav class="topnav" aria-label="Main">
+        <a href="../docs/index.html#2-quickstart">Quickstart</a>
+        <a href="../docs/ai.html">AI placeholders</a>
+        <a href="../docs/commands/index.html">Commands</a>
+        <a href="../docs/reference.html">Reference</a>
+        <a class="gh" href="https://github.com/verhas/mdship">
+          <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  
+<div class="docs-layout">
+  <aside class="sidebar" id="sidebar" aria-label="Documentation">
+  <div class="sidebar-search">
+    <input type="search" placeholder="Filter pages…" aria-label="Filter pages" data-nav-filter>
+  </div>
+  
+  <div class="nav-section nav-c1">
+    <h3>Get started</h3>
+    <ul>
+      
+      <li><a href="index.html">Overview &amp; quickstart</a></li>
+      
+      <li><a href="ai.html">AI placeholders</a></li>
+      
+      <li><a href="github-actions.html" aria-current="page">CI with GitHub Actions</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c2">
+    <h3>Concepts</h3>
+    <ul>
+      
+      <li><a href="placeholder.html">Placeholders in Markdown</a></li>
+      
+      <li><a href="content-integrity.html">Content integrity</a></li>
+      
+      <li><a href="python.html">Python scripting</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c3">
+    <h3>Placeholders</h3>
+    <ul>
+      
+      <li><a href="include.html">INCLUDE</a></li>
+      
+      <li><a href="toc.html">TOC</a></li>
+      
+      <li><a href="set.html">SET</a></li>
+      
+      <li><a href="import.html">IMPORT</a></li>
+      
+      <li><a href="slurp.html">SLURP</a></li>
+      
+      <li><a href="sip.html">SIP</a></li>
+      
+      <li><a href="sup.html">SUP</a></li>
+      
+      <li><a href="jinja2.html">JINJA2</a></li>
+      
+      <li><a href="mermaid.html">MERMAID</a></li>
+      
+      <li><a href="template.html">TEMPLATE (deprecated)</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c4">
+    <h3>Reference</h3>
+    <ul>
+      
+      <li><a href="reference.html">Full reference</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c5">
+    <h3>Articles</h3>
+    <ul>
+      
+      <li><a href="articles/ai-managed-conten.html">When documentation manages itself</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-commands">
+    <h3><a href="commands/index.html">Commands</a></h3>
+    
+    <h4>AI workflow</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/ai-list.html">ai-list</a></li>
+      
+      <li><a class="mono" href="commands/ai-check.html">ai-check</a></li>
+      
+      <li><a class="mono" href="commands/ai-fix.html">ai-fix</a></li>
+      
+      <li><a class="mono" href="commands/ai-comments.html">ai-comments</a></li>
+      
+      <li><a class="mono" href="commands/ai-context-and-update.html">ai-context-and-update</a></li>
+      
+    </ul>
+    
+    <h4>Content</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/update.html">update</a></li>
+      
+      <li><a class="mono" href="commands/init.html">init</a></li>
+      
+      <li><a class="mono" href="commands/scripts.html">scripts</a></li>
+      
+      <li><a class="mono" href="commands/mcp.html">mcp</a></li>
+      
+    </ul>
+    
+    <h4>Structure</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/fix-headings.html">fix-headings</a></li>
+      
+      <li><a class="mono" href="commands/shift-headings.html">shift-headings</a></li>
+      
+      <li><a class="mono" href="commands/number.html">number</a></li>
+      
+      <li><a class="mono" href="commands/unnumber.html">unnumber</a></li>
+      
+    </ul>
+    
+    <h4>Formatting</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/reflow.html">reflow</a></li>
+      
+      <li><a class="mono" href="commands/semantic-line-breaks.html">semantic-line-breaks</a></li>
+      
+      <li><a class="mono" href="commands/format-tables.html">format-tables</a></li>
+      
+    </ul>
+    
+    <h4>Reading &amp; editing</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/list-headings.html">list-headings</a></li>
+      
+      <li><a class="mono" href="commands/get-section.html">get-section</a></li>
+      
+      <li><a class="mono" href="commands/replace-section.html">replace-section</a></li>
+      
+      <li><a class="mono" href="commands/get-lines.html">get-lines</a></li>
+      
+      <li><a class="mono" href="commands/insert-lines.html">insert-lines</a></li>
+      
+      <li><a class="mono" href="commands/delete-lines.html">delete-lines</a></li>
+      
+      <li><a class="mono" href="commands/get-paragraphs.html">get-paragraphs</a></li>
+      
+      <li><a class="mono" href="commands/find-replace.html">find-replace</a></li>
+      
+      <li><a class="mono" href="commands/extract-table.html">extract-table</a></li>
+      
+      <li><a class="mono" href="commands/update-table.html">update-table</a></li>
+      
+      <li><a class="mono" href="commands/frontmatter-get.html">frontmatter-get</a></li>
+      
+      <li><a class="mono" href="commands/frontmatter-set.html">frontmatter-set</a></li>
+      
+    </ul>
+    
+    <h4>Checking</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/validate.html">validate</a></li>
+      
+      <li><a class="mono" href="commands/sum.html">sum</a></li>
+      
+      <li><a class="mono" href="commands/verify.html">verify</a></li>
+      
+    </ul>
+    
+  </div>
+</aside>
+  <main id="main" class="doc">
+    <p class="crumb"><span class="crumb-section">Get started</span></p>
+    <article class="prose">
+      <h1 id="using-mdship-in-github-cicd-a-cookbook"><a class="anchor" href="#using-mdship-in-github-cicd-a-cookbook" aria-hidden="true">#</a>Using mdship in GitHub CI/CD — a Cookbook</h1>
+<p>This is a collection of copy-paste recipes for checking your markdown documents automatically with mdship in GitHub.
+You do not need deep GitHub Actions knowledge; each recipe is a complete, working file with notes on what to change.</p>
+<p><strong>The one thing you need to know:</strong> GitHub runs any YAML file you put in the <code>.github/workflows/</code> folder of your
+repository. Each file describes <em>when</em> to run (on every push, on pull requests, on a schedule) and <em>what</em> to run
+(the mdship check). When a check fails, the commit or pull request gets a red ✗ and the log tells you why.</p>
+<p>mdship offers three checks that are made for CI. They read your files, report problems, and never modify anything:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Check</th>
+<th>What it catches</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>validate</code></td>
+<td>Broken links, wrong anchors, references to files or images that do not exist</td>
+</tr>
+<tr>
+<td><code>verify</code></td>
+<td>Documents whose content no longer matches the checksum stored in their front-matter</td>
+</tr>
+<tr>
+<td><code>ai-check</code></td>
+<td>AI-generated sections that were edited by hand after generation</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="recipe-1-check-your-readme-on-every-push"><a class="anchor" href="#recipe-1-check-your-readme-on-every-push" aria-hidden="true">#</a>Recipe 1: Check Your README on Every Push</h2>
+<p>The minimal setup. Create the file <code>.github/workflows/markdown.yml</code> in your repository with this content:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">yaml</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Markdown checks</span>
+
+<span class="nt">on</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">push</span><span class="p p-Indicator">]</span>
+
+<span class="nt">jobs</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">markdown</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v4</span><span class="w">        </span><span class="c1"># get your repository files</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verhas/mdship@v1</span><span class="w">           </span><span class="c1"># run the mdship check</span>
+</code></pre></div>
+<p>That is the whole recipe. Commit the file, push it, and open the <strong>Actions</strong> tab of your repository on GitHub —
+you will see the check running. By default the action runs <code>validate</code> on <code>README.md</code>.</p>
+<ul>
+<li><code>actions/checkout</code> is a standard step you will see in almost every workflow; without it the runner has no files to check.</li>
+<li><code>verhas/mdship@v1</code> installs mdship and runs the check. You configure it with <code>with:</code> parameters, shown in the next recipes.</li>
+</ul>
+<h2 id="recipe-2-check-all-markdown-files-not-just-the-readme"><a class="anchor" href="#recipe-2-check-all-markdown-files-not-just-the-readme" aria-hidden="true">#</a>Recipe 2: Check All Markdown Files, Not Just the README</h2>
+<p>Add a <code>with:</code> block and list files or glob patterns, separated by spaces. <code>**</code> matches any folder depth:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">yaml</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Markdown checks</span>
+
+<span class="nt">on</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">push</span><span class="p p-Indicator">]</span>
+
+<span class="nt">jobs</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">markdown</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v4</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verhas/mdship@v1</span>
+<span class="w">        </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">files</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">README.md docs/**/*.md</span>
+</code></pre></div>
+<ul>
+<li>Patterns are resolved on the runner, so <code>docs/**/*.md</code> finds every markdown file under <code>docs/</code> at any depth.</li>
+<li>If a pattern matches nothing at all, the job fails with &quot;No files matched&quot; — that usually means a typo in the path.</li>
+</ul>
+<h2 id="recipe-3-check-pull-requests-before-they-are-merged"><a class="anchor" href="#recipe-3-check-pull-requests-before-they-are-merged" aria-hidden="true">#</a>Recipe 3: Check Pull Requests Before They Are Merged</h2>
+<p>Running on pull requests puts the red ✗ / green ✓ directly on the pull request page, so broken documentation
+cannot be merged unnoticed:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">yaml</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Markdown checks</span>
+
+<span class="nt">on</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">push</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">branches</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">main</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">pull_request</span><span class="p">:</span>
+
+<span class="nt">jobs</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">markdown</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v4</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verhas/mdship@v1</span>
+<span class="w">        </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">files</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">README.md docs/**/*.md</span>
+</code></pre></div>
+<ul>
+<li><code>push: branches: [main]</code> runs the check on your main branch (change the name if yours is <code>master</code>).</li>
+<li><code>pull_request:</code> with nothing after it means &quot;every pull request&quot;.</li>
+<li>Optional: in your repository settings under <strong>Branches → Branch protection rules</strong> you can make this check
+<em>required</em>, so pull requests cannot be merged while it is red.</li>
+</ul>
+<h2 id="recipe-4-run-only-when-markdown-actually-changes"><a class="anchor" href="#recipe-4-run-only-when-markdown-actually-changes" aria-hidden="true">#</a>Recipe 4: Run Only When Markdown Actually Changes</h2>
+<p>If your repository is mostly code, there is no point running the markdown check for every code change.
+The <code>paths:</code> filter skips the workflow unless a matching file changed:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">yaml</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Markdown checks</span>
+
+<span class="nt">on</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">pull_request</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">paths</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">'**.md'</span>
+
+<span class="nt">jobs</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">markdown</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v4</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verhas/mdship@v1</span>
+<span class="w">        </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">files</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">README.md docs/**/*.md</span>
+</code></pre></div>
+<h2 id="recipe-5-verify-content-checksums"><a class="anchor" href="#recipe-5-verify-content-checksums" aria-hidden="true">#</a>Recipe 5: Verify Content Checksums</h2>
+<p>If your documents carry a checksum in their front-matter (added with <code>mdship sum</code>), the <code>verify</code> check makes CI
+fail whenever a document was changed without updating its checksum. This catches accidental edits and reminds
+authors to go through the proper update flow.</p>
+<div class="code"><div class="code-bar"><span class="code-lang">yaml</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Markdown checks</span>
+
+<span class="nt">on</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">push</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">pull_request</span><span class="p p-Indicator">]</span>
+
+<span class="nt">jobs</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">checksums</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v4</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verhas/mdship@v1</span>
+<span class="w">        </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verify</span>
+<span class="w">          </span><span class="nt">files</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">README.md docs/**/*.md</span>
+</code></pre></div>
+<p>The working cycle for authors becomes:</p>
+<ol>
+<li>Edit the document.</li>
+<li>Run <code>mdship sum file.md</code> locally — this recomputes and stores the checksum.</li>
+<li>Commit both the content change and the updated front-matter together.</li>
+</ol>
+<p>If step 2 is forgotten, CI turns red with a message like
+<code>Checksum mismatch (expected 0665df…, got 193741…)</code> — the fix is simply to run <code>mdship sum</code> and push again.</p>
+<h2 id="recipe-6-guard-ai-generated-content"><a class="anchor" href="#recipe-6-guard-ai-generated-content" aria-hidden="true">#</a>Recipe 6: Guard AI-Generated Content</h2>
+<p>If your documents contain AI placeholders (see <a href="ai.html">AI.md</a>), <code>ai-check</code> verifies that nobody edited the
+generated sections, the prompts, or the dependency files by hand since the last generation:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">yaml</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">AI content check</span>
+
+<span class="nt">on</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">pull_request</span><span class="p p-Indicator">]</span>
+
+<span class="nt">jobs</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">ai-check</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v4</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verhas/mdship@v1</span>
+<span class="w">        </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ai-check</span>
+<span class="w">          </span><span class="nt">files</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">docs/**/*.md</span>
+</code></pre></div>
+<p>When it fails, either regenerate the section with Claude and run <code>mdship ai-fix</code>, or — if the manual edit was
+intentional — run <code>mdship ai-fix file.md</code> to accept the current state and record fresh checksums.</p>
+<h2 id="recipe-7-run-several-checks-in-one-workflow"><a class="anchor" href="#recipe-7-run-several-checks-in-one-workflow" aria-hidden="true">#</a>Recipe 7: Run Several Checks in One Workflow</h2>
+<p>Jobs run in parallel and each gets its own ✓/✗ on the pull request. One workflow file can hold all your checks:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">yaml</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Markdown checks</span>
+
+<span class="nt">on</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">push</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">branches</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">main</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">pull_request</span><span class="p">:</span>
+
+<span class="nt">jobs</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">links</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v4</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verhas/mdship@v1</span>
+<span class="w">        </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">validate</span>
+<span class="w">          </span><span class="nt">files</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">README.md docs/**/*.md</span>
+
+<span class="w">  </span><span class="nt">checksums</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v4</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verhas/mdship@v1</span>
+<span class="w">        </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verify</span>
+<span class="w">          </span><span class="nt">files</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">README.md</span>
+</code></pre></div>
+<p>This is exactly the setup the mdship repository itself uses — see its
+<a href="https://github.com/verhas/mdship/blob/master/.github/workflows/markdown.yml" class="external">markdown.yml</a>.</p>
+<h2 id="recipe-8-pin-the-mdship-version"><a class="anchor" href="#recipe-8-pin-the-mdship-version" aria-hidden="true">#</a>Recipe 8: Pin the mdship Version</h2>
+<p>By default the action installs the latest mdship release from PyPI. If you want CI to be fully reproducible,
+pin the version and upgrade deliberately:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">yaml</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verhas/mdship@v1</span>
+<span class="w">        </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">"1.1.6"</span>
+<span class="w">          </span><span class="nt">files</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">README.md</span>
+</code></pre></div>
+<h2 id="recipe-9-a-weekly-link-check"><a class="anchor" href="#recipe-9-a-weekly-link-check" aria-hidden="true">#</a>Recipe 9: A Weekly Link Check</h2>
+<p>Documentation rots even when nobody touches it — files get renamed, sections get deleted. A scheduled run
+catches this drift. The <code>cron</code> line below means &quot;every Monday at 06:00 UTC&quot;:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">yaml</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Weekly docs check</span>
+
+<span class="nt">on</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">schedule</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">cron</span><span class="p">:</span><span class="w"> </span><span class="s">'0</span><span class="nv"> </span><span class="s">6</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">1'</span>
+<span class="w">  </span><span class="nt">workflow_dispatch</span><span class="p">:</span><span class="w">      </span><span class="c1"># adds a "Run workflow" button for manual runs</span>
+
+<span class="nt">jobs</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">links</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v4</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verhas/mdship@v1</span>
+<span class="w">        </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">files</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">README.md docs/**/*.md</span>
+</code></pre></div>
+<p>A failed scheduled run sends the repository owner a notification email.</p>
+<h2 id="recipe-10-without-the-action-plain-steps"><a class="anchor" href="#recipe-10-without-the-action-plain-steps" aria-hidden="true">#</a>Recipe 10: Without the Action (Plain Steps)</h2>
+<p>If you prefer explicit steps, or you want to run mdship commands the action does not expose, install it from
+PyPI yourself. This is also the pattern to port to CI systems other than GitHub:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">yaml</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Markdown checks</span>
+
+<span class="nt">on</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">push</span><span class="p p-Indicator">]</span>
+
+<span class="nt">jobs</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">markdown</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v4</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/setup-python@v5</span>
+<span class="w">        </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">python-version</span><span class="p">:</span><span class="w"> </span><span class="s">'3.12'</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pip install mdship</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mdship validate README.md docs/*.md</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mdship verify README.md</span>
+</code></pre></div>
+<p>Every mdship check command exits with code 0 on success and 1 on failure, which is what makes the job pass or fail.</p>
+<h2 id="when-a-check-turns-red"><a class="anchor" href="#when-a-check-turns-red" aria-hidden="true">#</a>When a Check Turns Red</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Symptom in the log</th>
+<th>Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Broken anchor references</code></td>
+<td>A link like <code>[x](#section)</code> points to a heading that changed or disappeared</td>
+<td>Fix the link, or run <code>mdship update</code> if the link lives in a generated TOC</td>
+</tr>
+<tr>
+<td><code>Missing file references</code></td>
+<td>A link points to a file that was moved or deleted</td>
+<td>Fix the path or restore the file</td>
+</tr>
+<tr>
+<td><code>Checksum mismatch</code></td>
+<td>The document was edited without refreshing its checksum</td>
+<td>Run <code>mdship sum file.md</code> locally and commit the result</td>
+</tr>
+<tr>
+<td><code>ai-check</code> errors</td>
+<td>An AI-generated section, its prompt, or a dependency changed</td>
+<td>Regenerate with Claude, or run <code>mdship ai-fix file.md</code> to accept the current state</td>
+</tr>
+<tr>
+<td><code>No files matched</code></td>
+<td>The glob pattern in <code>files:</code> matches nothing</td>
+<td>Check the path for typos; remember patterns are relative to the repository root</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="action-inputs-reference"><a class="anchor" href="#action-inputs-reference" aria-hidden="true">#</a>Action Inputs Reference</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Input</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>command</code></td>
+<td><code>validate</code></td>
+<td>Check to run: <code>validate</code>, <code>verify</code>, or <code>ai-check</code></td>
+</tr>
+<tr>
+<td><code>files</code></td>
+<td><code>README.md</code></td>
+<td>Space-separated files or glob patterns (<code>**</code> is supported)</td>
+</tr>
+<tr>
+<td><code>version</code></td>
+<td>latest</td>
+<td>mdship version to install from PyPI; a value starting with <code>.</code> or <code>/</code> installs from a local path instead</td>
+</tr>
+<tr>
+<td><code>python-version</code></td>
+<td><code>3.12</code></td>
+<td>Python version to set up (mdship requires 3.11+)</td>
+</tr>
+</tbody>
+</table></div>
+<p>For the full description of the individual commands see the <a href="index.html">README</a>.</p>
+
+    </article>
+    <nav class="pager" aria-label="Previous and next page">
+      <a class="pager-prev" href="ai.html"><small>← Previous</small>AI placeholders</a>
+      <a class="pager-next" href="placeholder.html"><small>Next →</small>Placeholders in Markdown</a>
+    </nav>
+    <p class="edit"><a href="https://github.com/verhas/mdship/edit/master/documentation/GITHUB_ACTIONS.md">Edit this page on GitHub</a></p>
+  </main>
+  
+  <nav class="onpage" aria-label="On this page">
+    <h3>On this page</h3>
+    <ul>
+      
+      <li class="lvl2"><a href="#recipe-1-check-your-readme-on-every-push">Recipe 1: Check Your README on Every Push</a></li>
+      
+      <li class="lvl2"><a href="#recipe-2-check-all-markdown-files-not-just-the-readme">Recipe 2: Check All Markdown Files, Not Just the README</a></li>
+      
+      <li class="lvl2"><a href="#recipe-3-check-pull-requests-before-they-are-merged">Recipe 3: Check Pull Requests Before They Are Merged</a></li>
+      
+      <li class="lvl2"><a href="#recipe-4-run-only-when-markdown-actually-changes">Recipe 4: Run Only When Markdown Actually Changes</a></li>
+      
+      <li class="lvl2"><a href="#recipe-5-verify-content-checksums">Recipe 5: Verify Content Checksums</a></li>
+      
+      <li class="lvl2"><a href="#recipe-6-guard-ai-generated-content">Recipe 6: Guard AI-Generated Content</a></li>
+      
+      <li class="lvl2"><a href="#recipe-7-run-several-checks-in-one-workflow">Recipe 7: Run Several Checks in One Workflow</a></li>
+      
+      <li class="lvl2"><a href="#recipe-8-pin-the-mdship-version">Recipe 8: Pin the mdship Version</a></li>
+      
+      <li class="lvl2"><a href="#recipe-9-a-weekly-link-check">Recipe 9: A Weekly Link Check</a></li>
+      
+      <li class="lvl2"><a href="#recipe-10-without-the-action-plain-steps">Recipe 10: Without the Action (Plain Steps)</a></li>
+      
+      <li class="lvl2"><a href="#when-a-check-turns-red">When a Check Turns Red</a></li>
+      
+      <li class="lvl2"><a href="#action-inputs-reference">Action Inputs Reference</a></li>
+      
+    </ul>
+  </nav>
+  
+</div>
+
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <img src="../static/logo.svg" alt="" width="28" height="28">
+        <div>
+          <strong>mdship</strong> 1.3.0
+          <p>Documentation that knows when it is stale.</p>
+        </div>
+      </div>
+      <div class="footer-links">
+        <div>
+          <h4>Learn</h4>
+          <a href="../docs/index.html">Overview</a>
+          <a href="../docs/ai.html">AI placeholders</a>
+          <a href="../docs/github-actions.html">CI recipes</a>
+        </div>
+        <div>
+          <h4>Reference</h4>
+          <a href="../docs/commands/index.html">Commands</a>
+          <a href="../docs/reference.html">Full reference</a>
+          <a href="../docs/python.html">Python scripting</a>
+        </div>
+        <div>
+          <h4>Project</h4>
+          <a href="https://github.com/verhas/mdship">GitHub</a>
+          <a href="https://pypi.org/project/mdship/">PyPI</a>
+          <a href="https://github.com/verhas/mdship/issues">Issues</a>
+        </div>
+      </div>
+    </div>
+    <p class="footer-note">MIT or Apache-2.0 · Built from the repository's own Markdown documentation</p>
+  </footer>
+  <script src="../static/site.js" defer></script>
+</body>
+</html>

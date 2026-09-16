@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mdship · mdship</title>
+  <meta name="description" content="mdship keeps AI-written and generated Markdown in sync with its sources, and tells you exactly which part is stale and why.">
+  <meta name="theme-color" content="#140b2e">
+  <link rel="icon" href="../static/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../static/style.css">
+  <link rel="stylesheet" href="../static/code.css">
+</head>
+<body class="docs">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../index.html" aria-label="mdship home">
+        <img src="../static/logo.svg" alt="" width="32" height="32">
+        <span>mdship</span>
+      </a>
+      <button class="menu-toggle" type="button" aria-controls="sidebar" aria-expanded="false">☰ <span>Menu</span></button>
+      <nav class="topnav" aria-label="Main">
+        <a href="../docs/index.html#2-quickstart">Quickstart</a>
+        <a href="../docs/ai.html">AI placeholders</a>
+        <a href="../docs/commands/index.html">Commands</a>
+        <a href="../docs/reference.html">Reference</a>
+        <a class="gh" href="https://github.com/verhas/mdship">
+          <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  
+<div class="docs-layout">
+  <aside class="sidebar" id="sidebar" aria-label="Documentation">
+  <div class="sidebar-search">
+    <input type="search" placeholder="Filter pages…" aria-label="Filter pages" data-nav-filter>
+  </div>
+  
+  <div class="nav-section nav-c1">
+    <h3>Get started</h3>
+    <ul>
+      
+      <li><a href="index.html" aria-current="page">Overview &amp; quickstart</a></li>
+      
+      <li><a href="ai.html">AI placeholders</a></li>
+      
+      <li><a href="github-actions.html">CI with GitHub Actions</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c2">
+    <h3>Concepts</h3>
+    <ul>
+      
+      <li><a href="placeholder.html">Placeholders in Markdown</a></li>
+      
+      <li><a href="content-integrity.html">Content integrity</a></li>
+      
+      <li><a href="python.html">Python scripting</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c3">
+    <h3>Placeholders</h3>
+    <ul>
+      
+      <li><a href="include.html">INCLUDE</a></li>
+      
+      <li><a href="toc.html">TOC</a></li>
+      
+      <li><a href="set.html">SET</a></li>
+      
+      <li><a href="import.html">IMPORT</a></li>
+      
+      <li><a href="slurp.html">SLURP</a></li>
+      
+      <li><a href="sip.html">SIP</a></li>
+      
+      <li><a href="sup.html">SUP</a></li>
+      
+      <li><a href="jinja2.html">JINJA2</a></li>
+      
+      <li><a href="mermaid.html">MERMAID</a></li>
+      
+      <li><a href="template.html">TEMPLATE (deprecated)</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c4">
+    <h3>Reference</h3>
+    <ul>
+      
+      <li><a href="reference.html">Full reference</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c5">
+    <h3>Articles</h3>
+    <ul>
+      
+      <li><a href="articles/ai-managed-conten.html">When documentation manages itself</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-commands">
+    <h3><a href="commands/index.html">Commands</a></h3>
+    
+    <h4>AI workflow</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/ai-list.html">ai-list</a></li>
+      
+      <li><a class="mono" href="commands/ai-check.html">ai-check</a></li>
+      
+      <li><a class="mono" href="commands/ai-fix.html">ai-fix</a></li>
+      
+      <li><a class="mono" href="commands/ai-comments.html">ai-comments</a></li>
+      
+      <li><a class="mono" href="commands/ai-context-and-update.html">ai-context-and-update</a></li>
+      
+    </ul>
+    
+    <h4>Content</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/update.html">update</a></li>
+      
+      <li><a class="mono" href="commands/init.html">init</a></li>
+      
+      <li><a class="mono" href="commands/scripts.html">scripts</a></li>
+      
+      <li><a class="mono" href="commands/mcp.html">mcp</a></li>
+      
+    </ul>
+    
+    <h4>Structure</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/fix-headings.html">fix-headings</a></li>
+      
+      <li><a class="mono" href="commands/shift-headings.html">shift-headings</a></li>
+      
+      <li><a class="mono" href="commands/number.html">number</a></li>
+      
+      <li><a class="mono" href="commands/unnumber.html">unnumber</a></li>
+      
+    </ul>
+    
+    <h4>Formatting</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/reflow.html">reflow</a></li>
+      
+      <li><a class="mono" href="commands/semantic-line-breaks.html">semantic-line-breaks</a></li>
+      
+      <li><a class="mono" href="commands/format-tables.html">format-tables</a></li>
+      
+    </ul>
+    
+    <h4>Reading &amp; editing</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/list-headings.html">list-headings</a></li>
+      
+      <li><a class="mono" href="commands/get-section.html">get-section</a></li>
+      
+      <li><a class="mono" href="commands/replace-section.html">replace-section</a></li>
+      
+      <li><a class="mono" href="commands/get-lines.html">get-lines</a></li>
+      
+      <li><a class="mono" href="commands/insert-lines.html">insert-lines</a></li>
+      
+      <li><a class="mono" href="commands/delete-lines.html">delete-lines</a></li>
+      
+      <li><a class="mono" href="commands/get-paragraphs.html">get-paragraphs</a></li>
+      
+      <li><a class="mono" href="commands/find-replace.html">find-replace</a></li>
+      
+      <li><a class="mono" href="commands/extract-table.html">extract-table</a></li>
+      
+      <li><a class="mono" href="commands/update-table.html">update-table</a></li>
+      
+      <li><a class="mono" href="commands/frontmatter-get.html">frontmatter-get</a></li>
+      
+      <li><a class="mono" href="commands/frontmatter-set.html">frontmatter-set</a></li>
+      
+    </ul>
+    
+    <h4>Checking</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/validate.html">validate</a></li>
+      
+      <li><a class="mono" href="commands/sum.html">sum</a></li>
+      
+      <li><a class="mono" href="commands/verify.html">verify</a></li>
+      
+    </ul>
+    
+  </div>
+</aside>
+  <main id="main" class="doc">
+    <p class="crumb"><span class="crumb-section">Get started</span></p>
+    <article class="prose">
+      <h1 id="mdship"><a class="anchor" href="#mdship" aria-hidden="true">#</a>mdship</h1>
+<p>mdship keeps AI-written and generated parts of your Markdown in sync with the sources they come from, and tells you exactly which part is stale and why.</p>
+<h2 id="1-why-mdship"><a class="anchor" href="#1-why-mdship" aria-hidden="true">#</a><span class="num">1</span>Why mdship</h2>
+<p>Documentation generated by an LLM goes stale silently. The code changes, the paragraph that describes it does not, and nothing tells you which paragraph is now wrong. Regenerating everything is expensive, and it rewrites text that was still correct.</p>
+<p>mdship treats a generated paragraph the way a build system treats a build artifact. An <code>AI</code> placeholder declares its inputs: the prompt, the source files (or slices of them) it depends on, and an optional shared writing brief. mdship records a checksum of every input and of the generated text itself. From then on it can answer, for every placeholder:</p>
+<ul>
+<li><strong>Is it up to date?</strong> Nothing it depends on has changed, so there is nothing to regenerate.</li>
+<li><strong>Why is it stale?</strong> <em>This</em> dependency changed, or the prompt changed, or the brief changed.</li>
+<li><strong>Was it edited by hand?</strong> The generated text no longer matches what was generated.</li>
+</ul>
+<p>An agent works through two MCP tools. <code>ai_context</code> is the gate: it says whether anything relevant changed and, only if something did, returns exactly the inputs needed to regenerate: the source slices, the previous text, and the brief. <code>ai_update</code> writes the new text and records all checksums at once. The agent never reads the whole repository or the whole document, which keeps both the token cost and the room for unrelated edits small.</p>
+<p>All control information lives in HTML comments, so GitHub and every other Markdown renderer show plain, readable Markdown.</p>
+<h2 id="2-quickstart"><a class="anchor" href="#2-quickstart" aria-hidden="true">#</a><span class="num">2</span>Quickstart</h2>
+<p>This makes one section of <code>docs/api.md</code> an AI-maintained summary of <code>src/api.py</code>, using Claude Code.</p>
+<p><strong>1. Install and set up the project.</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>pip<span class="w"> </span>install<span class="w"> </span>mdship
+<span class="nb">cd</span><span class="w"> </span>your-project
+mdship<span class="w"> </span>init
+</code></pre></div>
+<p><code>mdship init</code> registers the mdship MCP server for Claude Code and installs the <code>/ai-placeholder</code> skill (see <a href="commands/init.html">init</a>).</p>
+<p><strong>2. Add a placeholder</strong> where the generated text should go:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="gh"># API</span>
+
+&lt;!--AI
+name: "api-summary"
+prompt: |
+    Summarize the public functions in one short paragraph.
+deps:
+<span class="w">  </span><span class="k">-</span><span class="w"> </span>path: ../src/api.py
+--&gt;
+&lt;!--/AI--&gt;
+</code></pre></div>
+<p>Dependency paths are relative to the Markdown file. A dependency can be a whole file or a slice of it, selected by line range, regex markers, or heading.</p>
+<p><strong>3. Generate the text.</strong> In Claude Code, run:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>/ai-placeholder docs/api.md
+</code></pre></div>
+<p>The skill calls <code>ai_context</code>, writes the paragraph, and installs it with <code>ai_update</code>, which also records the checksums in the placeholder's opening comment.</p>
+<p><strong>4. Check the status.</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">console</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="gp">$ </span>mdship<span class="w"> </span>ai-list<span class="w"> </span>docs/api.md
+<span class="go">[{"name": "api-summary", "line": 3, "status": "up_to_date"}]</span>
+</code></pre></div>
+<p><strong>5. Change the source and check again.</strong> After editing <code>src/api.py</code>:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">console</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="gp">$ </span>mdship<span class="w"> </span>ai-check<span class="w"> </span>docs/api.md
+<span class="go">Error: docs/api.md: AI placeholder 'api-summary': dep ../src/api.py has changed since last generation</span>
+<span class="gp">$ </span>mdship<span class="w"> </span>ai-list<span class="w"> </span>docs/api.md
+<span class="go">[{"name": "api-summary", "line": 3, "status": "needs_update"}]</span>
+</code></pre></div>
+<p>Run <code>/ai-placeholder docs/api.md</code> again, and only the stale placeholder is regenerated.</p>
+<p>No agent at hand? Write the text between the markers yourself and run <code>mdship ai-fix docs/api.md</code> to record the checksums. The full workflow, including the <code>brief:</code> file and every dependency selector, is in <a href="ai.html">documentation/AI.md</a>.</p>
+<h2 id="3-enforce-it-in-ci"><a class="anchor" href="#3-enforce-it-in-ci" aria-hidden="true">#</a><span class="num">3</span>Enforce It in CI</h2>
+<p>mdship <strong>detects</strong> problems; it does not prevent them. The checksums are recorded only when text is generated through <code>ai_update</code> or accepted with <code>ai-fix</code>, and they are compared only when someone runs a check. <code>mdship update</code> does not process AI placeholders at all. Without a check in CI, nothing stops a hand edit or a stale paragraph from being merged.</p>
+<p>What <code>mdship ai-check</code> catches, and what it does not:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Situation</th>
+<th><code>ai-check</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A dependency changed since the text was generated</td>
+<td>fails</td>
+</tr>
+<tr>
+<td>The prompt or the brief changed</td>
+<td>fails</td>
+</tr>
+<tr>
+<td>The generated text was edited by hand</td>
+<td>fails</td>
+</tr>
+<tr>
+<td>The placeholder has never been generated</td>
+<td><strong>passes</strong>: nothing recorded</td>
+</tr>
+</tbody>
+</table></div>
+<p>To catch placeholders that were never generated, look for <code>never_generated</code> in <code>mdship ai-list</code>.</p>
+<p>With the mdship GitHub Action:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">yaml</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="nt">jobs</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">docs</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v4</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Check AI-maintained documentation</span>
+<span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verhas/mdship@v1</span>
+<span class="w">        </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ai-check</span>
+<span class="w">          </span><span class="nt">files</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">README.md docs/**/*.md</span>
+</code></pre></div>
+<p>The same action runs <code>validate</code> (broken links, anchors, missing files and images) and <code>verify</code> (whole-document checksum). In any other CI system, run <code>mdship ai-check &lt;files&gt;</code>: it exits with status 1 when a check fails. More recipes are in <a href="github-actions.html">documentation/GITHUB_ACTIONS.md</a>.</p>
+<h2 id="4-generated-content-without-ai"><a class="anchor" href="#4-generated-content-without-ai" aria-hidden="true">#</a><span class="num">4</span>Generated Content Without AI</h2>
+<p>The same checksum model covers deterministic generated content, refreshed with <code>mdship update</code>:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--INCLUDE
+from: "../src/api.py"
+prefix: "```python"
+postfix: "```"
+start:
+  pattern: "def greet"
+  include: true
+--&gt;
+&lt;!--/INCLUDE--&gt;
+</code></pre></div>
+<p>After <code>mdship update docs/api.md</code>, the block holds <code>src/api.py</code> from the <code>def greet</code> line to the end of the file. mdship records a checksum of the block; if someone edits the included text by hand, the next <code>update</code> stops with an error instead of silently overwriting the edit.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Placeholder</th>
+<th>What it does</th>
+<th>Documentation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>INCLUDE</code></td>
+<td>Embed a file, or a slice of it by line range, regex markers, or heading</td>
+<td><a href="include.html">INCLUDE</a></td>
+</tr>
+<tr>
+<td><code>TOC</code></td>
+<td>Generate a table of contents</td>
+<td><a href="toc.html">TOC</a></td>
+</tr>
+<tr>
+<td><code>SET</code>, <code>IMPORT</code>, <code>SLURP</code>, <code>SIP</code>, <code>SUP</code></td>
+<td>Define variables inline, load JSON/YAML/TOML/XML, or extract them with regexes</td>
+<td><a href="set.html">SET</a>, <a href="import.html">IMPORT</a>, <a href="slurp.html">SLURP</a>, <a href="sip.html">SIP</a>, <a href="sup.html">SUP</a></td>
+</tr>
+<tr>
+<td><code>JINJA2</code></td>
+<td>Render a Jinja2 template with the document's variables</td>
+<td><a href="jinja2.html">JINJA2</a></td>
+</tr>
+<tr>
+<td><code>MERMAID</code></td>
+<td>Render a Mermaid diagram to SVG or PNG (needs <code>mdship[mermaid]</code>)</td>
+<td><a href="mermaid.html">MERMAID</a></td>
+</tr>
+<tr>
+<td><code>PYTHON</code></td>
+<td>Generate content or define variables with a project-local script</td>
+<td><a href="python.html">PYTHON</a></td>
+</tr>
+<tr>
+<td><code>TEMPLATE</code></td>
+<td><strong>Deprecated</strong>: use <code>JINJA2</code></td>
+<td><a href="template.html">TEMPLATE</a></td>
+</tr>
+</tbody>
+</table></div>
+<p>Variables are inserted into the text with references such as <code>&lt;!--$version--&gt;1.2.0</code>. How placeholders are processed and in what order, and how integrity checks work, is in the <a href="reference.html#2-placeholders">reference</a>.</p>
+<h2 id="5-markdown-and-editing-tools"><a class="anchor" href="#5-markdown-and-editing-tools" aria-hidden="true">#</a><span class="num">5</span>Markdown and Editing Tools</h2>
+<p>mdship also has a set of ordinary Markdown commands. They are useful on their own, and they give agents a way to read and change exactly the part of a document they need instead of rewriting the whole file:</p>
+<ul>
+<li><strong>Structure:</strong> <code>fix-headings</code>, <code>shift-headings</code>, <code>number</code> / <code>unnumber</code></li>
+<li><strong>Formatting:</strong> <code>reflow</code>, <code>semantic-line-breaks</code>, <code>format-tables</code></li>
+<li><strong>Reading and editing:</strong> <code>list-headings</code>, <code>get-section</code> / <code>replace-section</code>, <code>get-lines</code> / <code>insert-lines</code> / <code>delete-lines</code>, <code>get-paragraphs</code>, <code>find-replace</code>, <code>extract-table</code> / <code>update-table</code>, <code>frontmatter-get</code> / <code>frontmatter-set</code></li>
+<li><strong>Checking:</strong> <code>validate</code> (links, anchors, files, images), <code>sum</code> / <code>verify</code> (whole-document checksum)</li>
+</ul>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>get-section<span class="w"> </span>docs/guide.md<span class="w"> </span>--heading<span class="w"> </span><span class="s2">"Setup &gt; Prerequisites"</span>
+mdship<span class="w"> </span>fix-headings<span class="w"> </span>docs/guide.md
+mdship<span class="w"> </span>validate<span class="w"> </span>README.md
+</code></pre></div>
+<p>Every command has a page in <a href="commands/index.html">documentation/commands/</a>. Modifying commands write a <code>.md.bak</code> backup unless git already holds the file's current content; <code>--bak</code> and <code>--no-bak</code> override that.</p>
+<h2 id="6-mcp-server"><a class="anchor" href="#6-mcp-server" aria-hidden="true">#</a><span class="num">6</span>MCP Server</h2>
+<p><code>mdship init</code> configures the server for Claude Code. For other MCP clients, run <code>mdship mcp</code> over stdio:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">json</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"mcpServers"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"mdship"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mdship"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"mcp"</span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>The server exposes most of the commands above as tools, such as <code>get_section</code>, <code>replace_section</code>, and <code>fix_headings</code>, plus the AI workflow tools <code>list_ai_placeholders</code>, <code>ai_context</code>, <code>ai_update</code>, <code>ai_fix</code>, and <code>ai_check</code>. See the <a href="reference.html#31-mcp-server">MCP section of the reference</a>.</p>
+<h2 id="7-installation"><a class="anchor" href="#7-installation" aria-hidden="true">#</a><span class="num">7</span>Installation</h2>
+<p>mdship needs Python 3.11 or newer.</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>pip<span class="w"> </span>install<span class="w"> </span>mdship
+</code></pre></div>
+<p>Rendering <code>MERMAID</code> diagrams needs the optional <code>mermaid</code> extra:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'mdship[mermaid]'</span>
+</code></pre></div>
+<h2 id="8-documentation"><a class="anchor" href="#8-documentation" aria-hidden="true">#</a><span class="num">8</span>Documentation</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Document</th>
+<th>Contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="reference.html">Reference</a></td>
+<td>Every command option and placeholder setting, with examples</td>
+</tr>
+<tr>
+<td><a href="ai.html">AI placeholders</a></td>
+<td>Dependencies, briefs, and the agent workflow</td>
+</tr>
+<tr>
+<td><a href="commands/index.html">Commands</a></td>
+<td>One page per CLI command, and its MCP tool where there is one</td>
+</tr>
+<tr>
+<td><a href="content-integrity.html">Managed content integrity</a></td>
+<td>How generated regions are protected against hand edits</td>
+</tr>
+<tr>
+<td><a href="python.html">Python scripting</a></td>
+<td>Project-local scripts and the trust model</td>
+</tr>
+<tr>
+<td><a href="github-actions.html">GitHub Actions</a></td>
+<td>CI recipes</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="9-dependencies-and-licensing"><a class="anchor" href="#9-dependencies-and-licensing" aria-hidden="true">#</a><span class="num">9</span>Dependencies and Licensing</h2>
+<p>mdship is dual-licensed under MIT or Apache-2.0, at your option. Its dependencies:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Version</th>
+<th>License</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>typer</td>
+<td>&gt;=0.12</td>
+<td>MIT</td>
+<td>Command-line interface</td>
+</tr>
+<tr>
+<td>rich</td>
+<td>&gt;=13</td>
+<td>MIT</td>
+<td>Terminal output</td>
+</tr>
+<tr>
+<td>mcp</td>
+<td>&gt;=2,&lt;3</td>
+<td>MIT</td>
+<td>MCP server</td>
+</tr>
+<tr>
+<td>markdown-it-py</td>
+<td>&gt;=3</td>
+<td>MIT</td>
+<td>Markdown parsing</td>
+</tr>
+<tr>
+<td>pyyaml</td>
+<td>&gt;=6</td>
+<td>MIT</td>
+<td>YAML in placeholders and front-matter</td>
+</tr>
+<tr>
+<td>jinja2</td>
+<td>&gt;=3</td>
+<td>BSD-3-Clause</td>
+<td><code>JINJA2</code> placeholders</td>
+</tr>
+<tr>
+<td>merm</td>
+<td>&gt;=0.1</td>
+<td>WTFPL</td>
+<td><code>MERMAID</code> rendering; optional, only with <code>mdship[mermaid]</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Details are in <a href="https://github.com/verhas/mdship/blob/master/LICENSES.txt" class="external">LICENSES.txt</a>.</p>
+<h2 id="10-development"><a class="anchor" href="#10-development" aria-hidden="true">#</a><span class="num">10</span>Development</h2>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>dev
+uv<span class="w"> </span>run<span class="w"> </span>pytest
+uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>check
+</code></pre></div>
+
+    </article>
+    <nav class="pager" aria-label="Previous and next page">
+      <span></span>
+      <a class="pager-next" href="ai.html"><small>Next →</small>AI placeholders</a>
+    </nav>
+    <p class="edit"><a href="https://github.com/verhas/mdship/edit/master/README.md">Edit this page on GitHub</a></p>
+  </main>
+  
+  <nav class="onpage" aria-label="On this page">
+    <h3>On this page</h3>
+    <ul>
+      
+      <li class="lvl2"><a href="#1-why-mdship">Why mdship</a></li>
+      
+      <li class="lvl2"><a href="#2-quickstart">Quickstart</a></li>
+      
+      <li class="lvl2"><a href="#3-enforce-it-in-ci">Enforce It in CI</a></li>
+      
+      <li class="lvl2"><a href="#4-generated-content-without-ai">Generated Content Without AI</a></li>
+      
+      <li class="lvl2"><a href="#5-markdown-and-editing-tools">Markdown and Editing Tools</a></li>
+      
+      <li class="lvl2"><a href="#6-mcp-server">MCP Server</a></li>
+      
+      <li class="lvl2"><a href="#7-installation">Installation</a></li>
+      
+      <li class="lvl2"><a href="#8-documentation">Documentation</a></li>
+      
+      <li class="lvl2"><a href="#9-dependencies-and-licensing">Dependencies and Licensing</a></li>
+      
+      <li class="lvl2"><a href="#10-development">Development</a></li>
+      
+    </ul>
+  </nav>
+  
+</div>
+
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <img src="../static/logo.svg" alt="" width="28" height="28">
+        <div>
+          <strong>mdship</strong> 1.3.0
+          <p>Documentation that knows when it is stale.</p>
+        </div>
+      </div>
+      <div class="footer-links">
+        <div>
+          <h4>Learn</h4>
+          <a href="../docs/index.html">Overview</a>
+          <a href="../docs/ai.html">AI placeholders</a>
+          <a href="../docs/github-actions.html">CI recipes</a>
+        </div>
+        <div>
+          <h4>Reference</h4>
+          <a href="../docs/commands/index.html">Commands</a>
+          <a href="../docs/reference.html">Full reference</a>
+          <a href="../docs/python.html">Python scripting</a>
+        </div>
+        <div>
+          <h4>Project</h4>
+          <a href="https://github.com/verhas/mdship">GitHub</a>
+          <a href="https://pypi.org/project/mdship/">PyPI</a>
+          <a href="https://github.com/verhas/mdship/issues">Issues</a>
+        </div>
+      </div>
+    </div>
+    <p class="footer-note">MIT or Apache-2.0 · Built from the repository's own Markdown documentation</p>
+  </footer>
+  <script src="../static/site.js" defer></script>
+</body>
+</html>

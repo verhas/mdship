@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JINJA2 Placeholder · mdship</title>
+  <meta name="description" content="mdship keeps AI-written and generated Markdown in sync with its sources, and tells you exactly which part is stale and why.">
+  <meta name="theme-color" content="#140b2e">
+  <link rel="icon" href="../static/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../static/style.css">
+  <link rel="stylesheet" href="../static/code.css">
+</head>
+<body class="docs">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../index.html" aria-label="mdship home">
+        <img src="../static/logo.svg" alt="" width="32" height="32">
+        <span>mdship</span>
+      </a>
+      <button class="menu-toggle" type="button" aria-controls="sidebar" aria-expanded="false">☰ <span>Menu</span></button>
+      <nav class="topnav" aria-label="Main">
+        <a href="../docs/index.html#2-quickstart">Quickstart</a>
+        <a href="../docs/ai.html">AI placeholders</a>
+        <a href="../docs/commands/index.html">Commands</a>
+        <a href="../docs/reference.html">Reference</a>
+        <a class="gh" href="https://github.com/verhas/mdship">
+          <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  
+<div class="docs-layout">
+  <aside class="sidebar" id="sidebar" aria-label="Documentation">
+  <div class="sidebar-search">
+    <input type="search" placeholder="Filter pages…" aria-label="Filter pages" data-nav-filter>
+  </div>
+  
+  <div class="nav-section nav-c1">
+    <h3>Get started</h3>
+    <ul>
+      
+      <li><a href="index.html">Overview &amp; quickstart</a></li>
+      
+      <li><a href="ai.html">AI placeholders</a></li>
+      
+      <li><a href="github-actions.html">CI with GitHub Actions</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c2">
+    <h3>Concepts</h3>
+    <ul>
+      
+      <li><a href="placeholder.html">Placeholders in Markdown</a></li>
+      
+      <li><a href="content-integrity.html">Content integrity</a></li>
+      
+      <li><a href="python.html">Python scripting</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c3">
+    <h3>Placeholders</h3>
+    <ul>
+      
+      <li><a href="include.html">INCLUDE</a></li>
+      
+      <li><a href="toc.html">TOC</a></li>
+      
+      <li><a href="set.html">SET</a></li>
+      
+      <li><a href="import.html">IMPORT</a></li>
+      
+      <li><a href="slurp.html">SLURP</a></li>
+      
+      <li><a href="sip.html">SIP</a></li>
+      
+      <li><a href="sup.html">SUP</a></li>
+      
+      <li><a href="jinja2.html" aria-current="page">JINJA2</a></li>
+      
+      <li><a href="mermaid.html">MERMAID</a></li>
+      
+      <li><a href="template.html">TEMPLATE (deprecated)</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c4">
+    <h3>Reference</h3>
+    <ul>
+      
+      <li><a href="reference.html">Full reference</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c5">
+    <h3>Articles</h3>
+    <ul>
+      
+      <li><a href="articles/ai-managed-conten.html">When documentation manages itself</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-commands">
+    <h3><a href="commands/index.html">Commands</a></h3>
+    
+    <h4>AI workflow</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/ai-list.html">ai-list</a></li>
+      
+      <li><a class="mono" href="commands/ai-check.html">ai-check</a></li>
+      
+      <li><a class="mono" href="commands/ai-fix.html">ai-fix</a></li>
+      
+      <li><a class="mono" href="commands/ai-comments.html">ai-comments</a></li>
+      
+      <li><a class="mono" href="commands/ai-context-and-update.html">ai-context-and-update</a></li>
+      
+    </ul>
+    
+    <h4>Content</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/update.html">update</a></li>
+      
+      <li><a class="mono" href="commands/init.html">init</a></li>
+      
+      <li><a class="mono" href="commands/scripts.html">scripts</a></li>
+      
+      <li><a class="mono" href="commands/mcp.html">mcp</a></li>
+      
+    </ul>
+    
+    <h4>Structure</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/fix-headings.html">fix-headings</a></li>
+      
+      <li><a class="mono" href="commands/shift-headings.html">shift-headings</a></li>
+      
+      <li><a class="mono" href="commands/number.html">number</a></li>
+      
+      <li><a class="mono" href="commands/unnumber.html">unnumber</a></li>
+      
+    </ul>
+    
+    <h4>Formatting</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/reflow.html">reflow</a></li>
+      
+      <li><a class="mono" href="commands/semantic-line-breaks.html">semantic-line-breaks</a></li>
+      
+      <li><a class="mono" href="commands/format-tables.html">format-tables</a></li>
+      
+    </ul>
+    
+    <h4>Reading &amp; editing</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/list-headings.html">list-headings</a></li>
+      
+      <li><a class="mono" href="commands/get-section.html">get-section</a></li>
+      
+      <li><a class="mono" href="commands/replace-section.html">replace-section</a></li>
+      
+      <li><a class="mono" href="commands/get-lines.html">get-lines</a></li>
+      
+      <li><a class="mono" href="commands/insert-lines.html">insert-lines</a></li>
+      
+      <li><a class="mono" href="commands/delete-lines.html">delete-lines</a></li>
+      
+      <li><a class="mono" href="commands/get-paragraphs.html">get-paragraphs</a></li>
+      
+      <li><a class="mono" href="commands/find-replace.html">find-replace</a></li>
+      
+      <li><a class="mono" href="commands/extract-table.html">extract-table</a></li>
+      
+      <li><a class="mono" href="commands/update-table.html">update-table</a></li>
+      
+      <li><a class="mono" href="commands/frontmatter-get.html">frontmatter-get</a></li>
+      
+      <li><a class="mono" href="commands/frontmatter-set.html">frontmatter-set</a></li>
+      
+    </ul>
+    
+    <h4>Checking</h4>
+    <ul>
+      
+      <li><a class="mono" href="commands/validate.html">validate</a></li>
+      
+      <li><a class="mono" href="commands/sum.html">sum</a></li>
+      
+      <li><a class="mono" href="commands/verify.html">verify</a></li>
+      
+    </ul>
+    
+  </div>
+</aside>
+  <main id="main" class="doc">
+    <p class="crumb"><span class="crumb-section">Placeholders</span></p>
+    <article class="prose">
+      <h1 id="jinja2-placeholder"><a class="anchor" href="#jinja2-placeholder" aria-hidden="true">#</a>JINJA2 Placeholder</h1>
+<h2 id="what-jinja2-does"><a class="anchor" href="#what-jinja2-does" aria-hidden="true">#</a>What JINJA2 Does</h2>
+<p><code>JINJA2</code> renders an inline Jinja2 template and writes the rendered result into the managed region between its opening marker and closing marker. It is a variable consumer: it uses variables already collected by mdship, renders the <code>content</code> template, and replaces the current generated output on each run.</p>
+<p>Use <code>JINJA2</code> when generated content needs template logic such as loops, conditionals, filters, or natural nested-object access. Normal mdship variable replacement is intentionally skipped inside fenced code blocks, so placeholders such as <code>$var</code> are not rewritten there. For simple explicit <code>$var</code> substitution, use <code>TEMPLATE</code>; for richer template control flow or repeated content, use <code>JINJA2</code>.</p>
+<h2 id="syntax"><a class="anchor" href="#syntax" aria-hidden="true">#</a>Syntax</h2>
+<p>A <code>JINJA2</code> placeholder has an opening HTML comment with YAML configuration, a managed output region, and a required closing tag:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--JINJA2
+content: |
+  # {{ appName }}
+
+  {% for author in authors %}
+<span class="w">  </span><span class="k">-</span><span class="w"> </span>{{ author }}
+  {% endfor %}
+--&gt;
+previous output
+&lt;!--/JINJA2--&gt;
+</code></pre></div>
+<p>The <code>content</code> field is required and must be a string. In practice it is usually written as a YAML literal block (<code>|</code>) so the template can span multiple lines. When <code>mdship update</code> runs, mdship renders that string through Jinja2 and replaces everything between <code>--&gt;</code> and <code>&lt;!--/JINJA2--&gt;</code> with the rendered output.</p>
+<p>The generated region is fully replaced on each run. Do not hand-edit the content between the markers after mdship has generated it; edit the <code>content</code> template or the variables that feed it instead.</p>
+<h2 id="template-variables"><a class="anchor" href="#template-variables" aria-hidden="true">#</a>Template Variables</h2>
+<p>All variables collected by mdship are passed into the Jinja2 renderer as template variables. That includes variables from <code>SET</code>, <code>IMPORT</code>, <code>SLURP</code>, <code>SIP</code>, <code>SUP</code>, front matter, and other variable sources available during the update pass.</p>
+<p>Use normal Jinja2 expression syntax:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">jinja2</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>{{ appName }}
+{{ config.database.host }}
+{{ items[0].name }}
+</code></pre></div>
+<p>Nested dictionaries can be accessed with Jinja2 dot syntax, and lists can be indexed or iterated. Missing or invalid template expressions cause <code>mdship update</code> to fail with a Jinja2 rendering error for the placeholder line.</p>
+<p>Unlike <code>TEMPLATE</code>, <code>JINJA2</code> does not perform mdship-style <code>$var</code> or <code>${var}</code> substitution inside the <code>content</code> field. Write Jinja2 variables as <code>{{ variable }}</code> and control structures as <code>{% ... %}</code>.</p>
+<h2 id="custom-closing-marker"><a class="anchor" href="#custom-closing-marker" aria-hidden="true">#</a>Custom Closing Marker</h2>
+<p><code>JINJA2</code> supports <code>_terminate_</code> for a custom closing marker name. This follows the same convention as other managed mdship placeholders:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--JINJA2
+<span class="ge">_terminate_</span>: "END_AUTHORS"
+content: |
+  {% for author in authors %}
+<span class="w">  </span><span class="k">-</span><span class="w"> </span>{{ author }}
+  {% endfor %}
+--&gt;
+previous output
+&lt;!--/END_AUTHORS--&gt;
+</code></pre></div>
+<p>Use a custom closing marker only when the generated output might contain the default <code>&lt;!--/JINJA2--&gt;</code> text.</p>
+<h2 id="example"><a class="anchor" href="#example" aria-hidden="true">#</a>Example</h2>
+<p>This example renders a fenced code block from variables. The values appear inside the generated code block because the substitution happens inside the inline Jinja2 template before the result is inserted into the document.</p>
+<div class="code"><div class="code-bar"><span class="code-lang">markdown</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>&lt;!--SET
+appName: "MyApp"
+config:
+  debug: true
+  port: 8000
+features:
+<span class="w">  </span><span class="k">-</span><span class="w"> </span>api
+<span class="w">  </span><span class="k">-</span><span class="w"> </span>docs
+--&gt;
+
+&lt;!--JINJA2
+content: |
+<span class="sb">  ```python</span>
+  <span class="n">APP_NAME</span> <span class="o">=</span> <span class="s2">"{{ appName }}"</span>
+  <span class="n">DEBUG</span> <span class="o">=</span> <span class="p">{{</span> <span class="n">config</span><span class="o">.</span><span class="n">debug</span> <span class="o">|</span> <span class="n">lower</span> <span class="p">}}</span>
+  <span class="n">PORT</span> <span class="o">=</span> <span class="p">{{</span> <span class="n">config</span><span class="o">.</span><span class="n">port</span> <span class="p">}}</span>
+  <span class="n">FEATURES</span> <span class="o">=</span> <span class="p">[</span>
+  <span class="p">{</span><span class="o">%</span> <span class="k">for</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">features</span> <span class="o">%</span><span class="p">}</span>
+      <span class="s2">"{{ feature }}"</span><span class="p">,</span>
+  <span class="p">{</span><span class="o">%</span> <span class="n">endfor</span> <span class="o">%</span><span class="p">}</span>
+  <span class="p">]</span>
+<span class="sb">  ```</span>
+--&gt;
+old generated code
+&lt;!--/JINJA2--&gt;
+</code></pre></div>
+<p>After <code>mdship update</code>, the managed region becomes:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">python</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="n">APP_NAME</span> <span class="o">=</span> <span class="s2">"MyApp"</span>
+<span class="n">DEBUG</span> <span class="o">=</span> <span class="n">true</span>
+<span class="n">PORT</span> <span class="o">=</span> <span class="mi">8000</span>
+<span class="n">FEATURES</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">"api"</span><span class="p">,</span>
+    <span class="s2">"docs"</span><span class="p">,</span>
+<span class="p">]</span>
+</code></pre></div>
+<h2 id="see-also"><a class="anchor" href="#see-also" aria-hidden="true">#</a>See Also</h2>
+<p><code>JINJA2</code> is neither a variable source nor a content importer. It does not define variables and it does not read an external file; it consumes variables that already exist and renders an inline template string.</p>
+<ul>
+<li><a href="template.html">TEMPLATE</a>: also renders an inline template, but uses simple mdship <code>$var</code> and <code>${var}</code> substitution instead of Jinja2 syntax and control flow.</li>
+<li><a href="set.html">SET</a>, <a href="import.html">IMPORT</a>, <a href="slurp.html">SLURP</a>, <a href="sip.html">SIP</a>, and <a href="sup.html">SUP</a>: define variables. <code>JINJA2</code> uses those variables after they have been collected.</li>
+<li><a href="include.html">INCLUDE</a>: embeds content from an external file. <code>JINJA2</code> embeds the rendered result of an inline <code>content</code> template.</li>
+<li><a href="toc.html">TOC</a>: generates a table of contents from headings rather than rendering an arbitrary template.</li>
+<li><a href="mermaid.html">MERMAID</a>: also uses variables during processing, but specifically to render diagram output rather than general markdown content.</li>
+</ul>
+
+    </article>
+    <nav class="pager" aria-label="Previous and next page">
+      <a class="pager-prev" href="sup.html"><small>← Previous</small>SUP</a>
+      <a class="pager-next" href="mermaid.html"><small>Next →</small>MERMAID</a>
+    </nav>
+    <p class="edit"><a href="https://github.com/verhas/mdship/edit/master/documentation/JINJA2.md">Edit this page on GitHub</a></p>
+  </main>
+  
+  <nav class="onpage" aria-label="On this page">
+    <h3>On this page</h3>
+    <ul>
+      
+      <li class="lvl2"><a href="#what-jinja2-does">What JINJA2 Does</a></li>
+      
+      <li class="lvl2"><a href="#syntax">Syntax</a></li>
+      
+      <li class="lvl2"><a href="#template-variables">Template Variables</a></li>
+      
+      <li class="lvl2"><a href="#custom-closing-marker">Custom Closing Marker</a></li>
+      
+      <li class="lvl2"><a href="#example">Example</a></li>
+      
+      <li class="lvl2"><a href="#see-also">See Also</a></li>
+      
+    </ul>
+  </nav>
+  
+</div>
+
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <img src="../static/logo.svg" alt="" width="28" height="28">
+        <div>
+          <strong>mdship</strong> 1.3.0
+          <p>Documentation that knows when it is stale.</p>
+        </div>
+      </div>
+      <div class="footer-links">
+        <div>
+          <h4>Learn</h4>
+          <a href="../docs/index.html">Overview</a>
+          <a href="../docs/ai.html">AI placeholders</a>
+          <a href="../docs/github-actions.html">CI recipes</a>
+        </div>
+        <div>
+          <h4>Reference</h4>
+          <a href="../docs/commands/index.html">Commands</a>
+          <a href="../docs/reference.html">Full reference</a>
+          <a href="../docs/python.html">Python scripting</a>
+        </div>
+        <div>
+          <h4>Project</h4>
+          <a href="https://github.com/verhas/mdship">GitHub</a>
+          <a href="https://pypi.org/project/mdship/">PyPI</a>
+          <a href="https://github.com/verhas/mdship/issues">Issues</a>
+        </div>
+      </div>
+    </div>
+    <p class="footer-note">MIT or Apache-2.0 · Built from the repository's own Markdown documentation</p>
+  </footer>
+  <script src="../static/site.js" defer></script>
+</body>
+</html>

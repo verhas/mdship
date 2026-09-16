@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Commands · mdship</title>
+  <meta name="description" content="mdship keeps AI-written and generated Markdown in sync with its sources, and tells you exactly which part is stale and why.">
+  <meta name="theme-color" content="#140b2e">
+  <link rel="icon" href="../../static/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../static/style.css">
+  <link rel="stylesheet" href="../../static/code.css">
+</head>
+<body class="docs">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../index.html" aria-label="mdship home">
+        <img src="../../static/logo.svg" alt="" width="32" height="32">
+        <span>mdship</span>
+      </a>
+      <button class="menu-toggle" type="button" aria-controls="sidebar" aria-expanded="false">☰ <span>Menu</span></button>
+      <nav class="topnav" aria-label="Main">
+        <a href="../../docs/index.html#2-quickstart">Quickstart</a>
+        <a href="../../docs/ai.html">AI placeholders</a>
+        <a href="../../docs/commands/index.html">Commands</a>
+        <a href="../../docs/reference.html">Reference</a>
+        <a class="gh" href="https://github.com/verhas/mdship">
+          <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  
+<div class="docs-layout">
+  <aside class="sidebar" id="sidebar" aria-label="Documentation">
+  <div class="sidebar-search">
+    <input type="search" placeholder="Filter pages…" aria-label="Filter pages" data-nav-filter>
+  </div>
+  
+  <div class="nav-section nav-c1">
+    <h3>Get started</h3>
+    <ul>
+      
+      <li><a href="../index.html">Overview &amp; quickstart</a></li>
+      
+      <li><a href="../ai.html">AI placeholders</a></li>
+      
+      <li><a href="../github-actions.html">CI with GitHub Actions</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c2">
+    <h3>Concepts</h3>
+    <ul>
+      
+      <li><a href="../placeholder.html">Placeholders in Markdown</a></li>
+      
+      <li><a href="../content-integrity.html">Content integrity</a></li>
+      
+      <li><a href="../python.html">Python scripting</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c3">
+    <h3>Placeholders</h3>
+    <ul>
+      
+      <li><a href="../include.html">INCLUDE</a></li>
+      
+      <li><a href="../toc.html">TOC</a></li>
+      
+      <li><a href="../set.html">SET</a></li>
+      
+      <li><a href="../import.html">IMPORT</a></li>
+      
+      <li><a href="../slurp.html">SLURP</a></li>
+      
+      <li><a href="../sip.html">SIP</a></li>
+      
+      <li><a href="../sup.html">SUP</a></li>
+      
+      <li><a href="../jinja2.html">JINJA2</a></li>
+      
+      <li><a href="../mermaid.html">MERMAID</a></li>
+      
+      <li><a href="../template.html">TEMPLATE (deprecated)</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c4">
+    <h3>Reference</h3>
+    <ul>
+      
+      <li><a href="../reference.html">Full reference</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c5">
+    <h3>Articles</h3>
+    <ul>
+      
+      <li><a href="../articles/ai-managed-conten.html">When documentation manages itself</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-commands">
+    <h3><a href="index.html" aria-current="page">Commands</a></h3>
+    
+    <h4>AI workflow</h4>
+    <ul>
+      
+      <li><a class="mono" href="ai-list.html">ai-list</a></li>
+      
+      <li><a class="mono" href="ai-check.html">ai-check</a></li>
+      
+      <li><a class="mono" href="ai-fix.html">ai-fix</a></li>
+      
+      <li><a class="mono" href="ai-comments.html">ai-comments</a></li>
+      
+      <li><a class="mono" href="ai-context-and-update.html">ai-context-and-update</a></li>
+      
+    </ul>
+    
+    <h4>Content</h4>
+    <ul>
+      
+      <li><a class="mono" href="update.html">update</a></li>
+      
+      <li><a class="mono" href="init.html">init</a></li>
+      
+      <li><a class="mono" href="scripts.html">scripts</a></li>
+      
+      <li><a class="mono" href="mcp.html">mcp</a></li>
+      
+    </ul>
+    
+    <h4>Structure</h4>
+    <ul>
+      
+      <li><a class="mono" href="fix-headings.html">fix-headings</a></li>
+      
+      <li><a class="mono" href="shift-headings.html">shift-headings</a></li>
+      
+      <li><a class="mono" href="number.html">number</a></li>
+      
+      <li><a class="mono" href="unnumber.html">unnumber</a></li>
+      
+    </ul>
+    
+    <h4>Formatting</h4>
+    <ul>
+      
+      <li><a class="mono" href="reflow.html">reflow</a></li>
+      
+      <li><a class="mono" href="semantic-line-breaks.html">semantic-line-breaks</a></li>
+      
+      <li><a class="mono" href="format-tables.html">format-tables</a></li>
+      
+    </ul>
+    
+    <h4>Reading &amp; editing</h4>
+    <ul>
+      
+      <li><a class="mono" href="list-headings.html">list-headings</a></li>
+      
+      <li><a class="mono" href="get-section.html">get-section</a></li>
+      
+      <li><a class="mono" href="replace-section.html">replace-section</a></li>
+      
+      <li><a class="mono" href="get-lines.html">get-lines</a></li>
+      
+      <li><a class="mono" href="insert-lines.html">insert-lines</a></li>
+      
+      <li><a class="mono" href="delete-lines.html">delete-lines</a></li>
+      
+      <li><a class="mono" href="get-paragraphs.html">get-paragraphs</a></li>
+      
+      <li><a class="mono" href="find-replace.html">find-replace</a></li>
+      
+      <li><a class="mono" href="extract-table.html">extract-table</a></li>
+      
+      <li><a class="mono" href="update-table.html">update-table</a></li>
+      
+      <li><a class="mono" href="frontmatter-get.html">frontmatter-get</a></li>
+      
+      <li><a class="mono" href="frontmatter-set.html">frontmatter-set</a></li>
+      
+    </ul>
+    
+    <h4>Checking</h4>
+    <ul>
+      
+      <li><a class="mono" href="validate.html">validate</a></li>
+      
+      <li><a class="mono" href="sum.html">sum</a></li>
+      
+      <li><a class="mono" href="verify.html">verify</a></li>
+      
+    </ul>
+    
+  </div>
+</aside>
+  <main id="main" class="doc">
+    <p class="crumb"><span class="crumb-section">Commands</span></p>
+    <article class="prose">
+      <h1 id="commands">Commands</h1>
+      <p>Every CLI command has its own page, with its options, examples, and the matching MCP tool where there is one.</p>
+    </article>
+    
+    <section class="cmd-group cmd-c1">
+      <h2 id="ai-workflow">AI workflow</h2>
+      <div class="cmd-grid">
+        
+        <a class="cmd-card" href="ai-list.html">
+          <code>ai-list</code>
+          <span>Lists every &lt;!--AI--&gt; placeholder in a document as JSON: its name (or null if unnamed), its 1-based line number, and a cheap status —…</span>
+        </a>
+        
+        <a class="cmd-card" href="ai-check.html">
+          <code>ai-check</code>
+          <span>Verifies that the content inside each AI placeholder still matches the checksums recorded by the last ai-fix or ai_update call.</span>
+        </a>
+        
+        <a class="cmd-card" href="ai-fix.html">
+          <code>ai-fix</code>
+          <span>Records content integrity checksums for AI placeholder sections.</span>
+        </a>
+        
+        <a class="cmd-card" href="ai-comments.html">
+          <code>ai-comments</code>
+          <span>Lists every //AI: inline review-comment line in a document as JSON: its 1-based line number and its text.</span>
+        </a>
+        
+        <a class="cmd-card" href="ai-context-and-update.html">
+          <code>ai-context-and-update</code>
+          <span>These two MCP tools have no CLI equivalents.</span>
+        </a>
+        
+      </div>
+    </section>
+    
+    <section class="cmd-group cmd-c2">
+      <h2 id="content">Content</h2>
+      <div class="cmd-grid">
+        
+        <a class="cmd-card" href="update.html">
+          <code>update</code>
+          <span>Processes all placeholders in a markdown file in a fixed order:</span>
+        </a>
+        
+        <a class="cmd-card" href="init.html">
+          <code>init</code>
+          <span>Initializes mdship in the current directory by creating the configuration files Claude Code and the MCP server need to work with the…</span>
+        </a>
+        
+        <a class="cmd-card" href="scripts.html">
+          <code>scripts</code>
+          <span>Manage the project&#39;s Python scripts in .mdship/scripts/.</span>
+        </a>
+        
+        <a class="cmd-card" href="mcp.html">
+          <code>mcp</code>
+          <span>Starts mdship as an MCP (Model Context Protocol) server on stdio, exposing every CLI operation — heading fixes,…</span>
+        </a>
+        
+      </div>
+    </section>
+    
+    <section class="cmd-group cmd-c3">
+      <h2 id="structure">Structure</h2>
+      <div class="cmd-grid">
+        
+        <a class="cmd-card" href="fix-headings.html">
+          <code>fix-headings</code>
+          <span>Normalizes heading hierarchy by fixing level skips.</span>
+        </a>
+        
+        <a class="cmd-card" href="shift-headings.html">
+          <code>shift-headings</code>
+          <span>Shifts all heading levels by a fixed number of levels.</span>
+        </a>
+        
+        <a class="cmd-card" href="number.html">
+          <code>number</code>
+          <span>Adds hierarchical numbering to headings.</span>
+        </a>
+        
+        <a class="cmd-card" href="unnumber.html">
+          <code>unnumber</code>
+          <span>Removes hierarchical numbering from headings.</span>
+        </a>
+        
+      </div>
+    </section>
+    
+    <section class="cmd-group cmd-c4">
+      <h2 id="formatting">Formatting</h2>
+      <div class="cmd-grid">
+        
+        <a class="cmd-card" href="reflow.html">
+          <code>reflow</code>
+          <span>Reflows paragraph text to a target line width.</span>
+        </a>
+        
+        <a class="cmd-card" href="semantic-line-breaks.html">
+          <code>semantic-line-breaks</code>
+          <span>Splits paragraph text so that each sentence (and major clause) is on its own line.</span>
+        </a>
+        
+        <a class="cmd-card" href="format-tables.html">
+          <code>format-tables</code>
+          <span>Reformats every GFM pipe table in a document so its columns are padded to align.</span>
+        </a>
+        
+      </div>
+    </section>
+    
+    <section class="cmd-group cmd-c5">
+      <h2 id="reading-editing">Reading &amp; editing</h2>
+      <div class="cmd-grid">
+        
+        <a class="cmd-card" href="list-headings.html">
+          <code>list-headings</code>
+          <span>Lists every heading in a document as JSON: its level, its 1-based line number, and its &#34; &gt; &#34;-joined ancestor path (e.g.</span>
+        </a>
+        
+        <a class="cmd-card" href="get-section.html">
+          <code>get-section</code>
+          <span>Prints one section&#39;s text — its heading line through the line before the next heading at the same or a shallower level (or end of…</span>
+        </a>
+        
+        <a class="cmd-card" href="replace-section.html">
+          <code>replace-section</code>
+          <span>Replaces one section — the same span get-section would return, including the heading line — with new text.</span>
+        </a>
+        
+        <a class="cmd-card" href="get-lines.html">
+          <code>get-lines</code>
+          <span>Prints a verbatim range of lines to stdout.</span>
+        </a>
+        
+        <a class="cmd-card" href="insert-lines.html">
+          <code>insert-lines</code>
+          <span>Inserts text as new lines after a given line number.</span>
+        </a>
+        
+        <a class="cmd-card" href="delete-lines.html">
+          <code>delete-lines</code>
+          <span>Deletes a range of lines.</span>
+        </a>
+        
+        <a class="cmd-card" href="get-paragraphs.html">
+          <code>get-paragraphs</code>
+          <span>Prints the paragraph(s) overlapping a line range, expanded to full paragraph boundaries.</span>
+        </a>
+        
+        <a class="cmd-card" href="find-replace.html">
+          <code>find-replace</code>
+          <span>Replaces regex matches in a document, skipping fenced code blocks.</span>
+        </a>
+        
+        <a class="cmd-card" href="extract-table.html">
+          <code>extract-table</code>
+          <span>Prints one GFM pipe table as JSON: {&#34;header&#34;: [...], &#34;rows&#34;: [[...], ...]}.</span>
+        </a>
+        
+        <a class="cmd-card" href="update-table.html">
+          <code>update-table</code>
+          <span>Replaces one GFM pipe table&#39;s header and rows from JSON, re-rendered with aligned columns.</span>
+        </a>
+        
+        <a class="cmd-card" href="frontmatter-get.html">
+          <code>frontmatter-get</code>
+          <span>Prints a value from a file&#39;s YAML front-matter to stdout, using dot notation for nested keys — or the whole front-matter block if --key…</span>
+        </a>
+        
+        <a class="cmd-card" href="frontmatter-set.html">
+          <code>frontmatter-set</code>
+          <span>Sets a value in a file&#39;s YAML front-matter, using dot notation for nested keys, creating the front-matter block and any intermediate…</span>
+        </a>
+        
+      </div>
+    </section>
+    
+    <section class="cmd-group cmd-c6">
+      <h2 id="checking">Checking</h2>
+      <div class="cmd-grid">
+        
+        <a class="cmd-card" href="validate.html">
+          <code>validate</code>
+          <span>Checks a markdown file for:</span>
+        </a>
+        
+        <a class="cmd-card" href="sum.html">
+          <code>sum</code>
+          <span>Adds or updates a content checksum in the YAML front-matter of a markdown file.</span>
+        </a>
+        
+        <a class="cmd-card" href="verify.html">
+          <code>verify</code>
+          <span>Verifies that the checksum stored in a file&#39;s YAML front-matter matches the current file content.</span>
+        </a>
+        
+      </div>
+    </section>
+    
+  </main>
+</div>
+
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <img src="../../static/logo.svg" alt="" width="28" height="28">
+        <div>
+          <strong>mdship</strong> 1.3.0
+          <p>Documentation that knows when it is stale.</p>
+        </div>
+      </div>
+      <div class="footer-links">
+        <div>
+          <h4>Learn</h4>
+          <a href="../../docs/index.html">Overview</a>
+          <a href="../../docs/ai.html">AI placeholders</a>
+          <a href="../../docs/github-actions.html">CI recipes</a>
+        </div>
+        <div>
+          <h4>Reference</h4>
+          <a href="../../docs/commands/index.html">Commands</a>
+          <a href="../../docs/reference.html">Full reference</a>
+          <a href="../../docs/python.html">Python scripting</a>
+        </div>
+        <div>
+          <h4>Project</h4>
+          <a href="https://github.com/verhas/mdship">GitHub</a>
+          <a href="https://pypi.org/project/mdship/">PyPI</a>
+          <a href="https://github.com/verhas/mdship/issues">Issues</a>
+        </div>
+      </div>
+    </div>
+    <p class="footer-note">MIT or Apache-2.0 · Built from the repository's own Markdown documentation</p>
+  </footer>
+  <script src="../../static/site.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>When Your Documentation Manages Itself: mdship and AI-Assisted Markdown · mdship</title>
+  <meta name="description" content="mdship keeps AI-written and generated Markdown in sync with its sources, and tells you exactly which part is stale and why.">
+  <meta name="theme-color" content="#140b2e">
+  <link rel="icon" href="../../static/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../static/style.css">
+  <link rel="stylesheet" href="../../static/code.css">
+</head>
+<body class="docs">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../index.html" aria-label="mdship home">
+        <img src="../../static/logo.svg" alt="" width="32" height="32">
+        <span>mdship</span>
+      </a>
+      <button class="menu-toggle" type="button" aria-controls="sidebar" aria-expanded="false">☰ <span>Menu</span></button>
+      <nav class="topnav" aria-label="Main">
+        <a href="../../docs/index.html#2-quickstart">Quickstart</a>
+        <a href="../../docs/ai.html">AI placeholders</a>
+        <a href="../../docs/commands/index.html">Commands</a>
+        <a href="../../docs/reference.html">Reference</a>
+        <a class="gh" href="https://github.com/verhas/mdship">
+          <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  
+<div class="docs-layout">
+  <aside class="sidebar" id="sidebar" aria-label="Documentation">
+  <div class="sidebar-search">
+    <input type="search" placeholder="Filter pages…" aria-label="Filter pages" data-nav-filter>
+  </div>
+  
+  <div class="nav-section nav-c1">
+    <h3>Get started</h3>
+    <ul>
+      
+      <li><a href="../index.html">Overview &amp; quickstart</a></li>
+      
+      <li><a href="../ai.html">AI placeholders</a></li>
+      
+      <li><a href="../github-actions.html">CI with GitHub Actions</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c2">
+    <h3>Concepts</h3>
+    <ul>
+      
+      <li><a href="../placeholder.html">Placeholders in Markdown</a></li>
+      
+      <li><a href="../content-integrity.html">Content integrity</a></li>
+      
+      <li><a href="../python.html">Python scripting</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c3">
+    <h3>Placeholders</h3>
+    <ul>
+      
+      <li><a href="../include.html">INCLUDE</a></li>
+      
+      <li><a href="../toc.html">TOC</a></li>
+      
+      <li><a href="../set.html">SET</a></li>
+      
+      <li><a href="../import.html">IMPORT</a></li>
+      
+      <li><a href="../slurp.html">SLURP</a></li>
+      
+      <li><a href="../sip.html">SIP</a></li>
+      
+      <li><a href="../sup.html">SUP</a></li>
+      
+      <li><a href="../jinja2.html">JINJA2</a></li>
+      
+      <li><a href="../mermaid.html">MERMAID</a></li>
+      
+      <li><a href="../template.html">TEMPLATE (deprecated)</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c4">
+    <h3>Reference</h3>
+    <ul>
+      
+      <li><a href="../reference.html">Full reference</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c5">
+    <h3>Articles</h3>
+    <ul>
+      
+      <li><a href="ai-managed-conten.html" aria-current="page">When documentation manages itself</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-commands">
+    <h3><a href="../commands/index.html">Commands</a></h3>
+    
+    <h4>AI workflow</h4>
+    <ul>
+      
+      <li><a class="mono" href="../commands/ai-list.html">ai-list</a></li>
+      
+      <li><a class="mono" href="../commands/ai-check.html">ai-check</a></li>
+      
+      <li><a class="mono" href="../commands/ai-fix.html">ai-fix</a></li>
+      
+      <li><a class="mono" href="../commands/ai-comments.html">ai-comments</a></li>
+      
+      <li><a class="mono" href="../commands/ai-context-and-update.html">ai-context-and-update</a></li>
+      
+    </ul>
+    
+    <h4>Content</h4>
+    <ul>
+      
+      <li><a class="mono" href="../commands/update.html">update</a></li>
+      
+      <li><a class="mono" href="../commands/init.html">init</a></li>
+      
+      <li><a class="mono" href="../commands/scripts.html">scripts</a></li>
+      
+      <li><a class="mono" href="../commands/mcp.html">mcp</a></li>
+      
+    </ul>
+    
+    <h4>Structure</h4>
+    <ul>
+      
+      <li><a class="mono" href="../commands/fix-headings.html">fix-headings</a></li>
+      
+      <li><a class="mono" href="../commands/shift-headings.html">shift-headings</a></li>
+      
+      <li><a class="mono" href="../commands/number.html">number</a></li>
+      
+      <li><a class="mono" href="../commands/unnumber.html">unnumber</a></li>
+      
+    </ul>
+    
+    <h4>Formatting</h4>
+    <ul>
+      
+      <li><a class="mono" href="../commands/reflow.html">reflow</a></li>
+      
+      <li><a class="mono" href="../commands/semantic-line-breaks.html">semantic-line-breaks</a></li>
+      
+      <li><a class="mono" href="../commands/format-tables.html">format-tables</a></li>
+      
+    </ul>
+    
+    <h4>Reading &amp; editing</h4>
+    <ul>
+      
+      <li><a class="mono" href="../commands/list-headings.html">list-headings</a></li>
+      
+      <li><a class="mono" href="../commands/get-section.html">get-section</a></li>
+      
+      <li><a class="mono" href="../commands/replace-section.html">replace-section</a></li>
+      
+      <li><a class="mono" href="../commands/get-lines.html">get-lines</a></li>
+      
+      <li><a class="mono" href="../commands/insert-lines.html">insert-lines</a></li>
+      
+      <li><a class="mono" href="../commands/delete-lines.html">delete-lines</a></li>
+      
+      <li><a class="mono" href="../commands/get-paragraphs.html">get-paragraphs</a></li>
+      
+      <li><a class="mono" href="../commands/find-replace.html">find-replace</a></li>
+      
+      <li><a class="mono" href="../commands/extract-table.html">extract-table</a></li>
+      
+      <li><a class="mono" href="../commands/update-table.html">update-table</a></li>
+      
+      <li><a class="mono" href="../commands/frontmatter-get.html">frontmatter-get</a></li>
+      
+      <li><a class="mono" href="../commands/frontmatter-set.html">frontmatter-set</a></li>
+      
+    </ul>
+    
+    <h4>Checking</h4>
+    <ul>
+      
+      <li><a class="mono" href="../commands/validate.html">validate</a></li>
+      
+      <li><a class="mono" href="../commands/sum.html">sum</a></li>
+      
+      <li><a class="mono" href="../commands/verify.html">verify</a></li>
+      
+    </ul>
+    
+  </div>
+</aside>
+  <main id="main" class="doc">
+    <p class="crumb"><span class="crumb-section">Articles</span></p>
+    <article class="prose">
+      <h1 id="when-your-documentation-manages-itself-mdship-and-ai-assisted-markdown"><a class="anchor" href="#when-your-documentation-manages-itself-mdship-and-ai-assisted-markdown" aria-hidden="true">#</a>When Your Documentation Manages Itself: mdship and AI-Assisted Markdown</h1>
+<p>If you write technical documentation in markdown, you already know the tension: some parts of your document are hand-written prose, while others — a table of contents, an included code snippet, a rendered diagram — are generated from somewhere else. How you handle that boundary says a lot about your workflow.</p>
+<p>Most documentation toolchains resolve it the same way preprocessors like PET or Jamal do: separate the source from the output. You maintain a template file, run a build step, and get a rendered document as the result. Clean, predictable, and easy to reason about — but it adds a build step, and the output file is not the thing you actually edit or share.</p>
+<p>mdship takes a different approach. It is a command-line tool and MCP server that edits your markdown <strong>in place</strong>: it reads the file, updates specific sections, and writes the result back to the same file. Everything else — your prose, your headings, your structure — is untouched. No separate output file, no build pipeline. The document you see is the document you ship.</p>
+<p>Think of it less like a preprocessor and more like a very opinionated editor that knows how to regenerate a table of contents, pull in a code snippet from another file, or render a Mermaid diagram — all within the file you are already editing.</p>
+<h2 id="one-file-the-trade-off"><a class="anchor" href="#one-file-the-trade-off" aria-hidden="true">#</a>One File: The Trade-off</h2>
+<p>Working in a single file has real advantages for technical writers. The managed content — included snippets, generated TOC entries — is visible inline while you are editing. You can read the full document as your readers will see it, without switching to a preview mode or running a build. There is no output file to track separately, and markdown-aware tools like GitHub or your IDE render it correctly wherever it lives.</p>
+<p>The downside is equally real: because managed and hand-written content share the same file, it is easy to accidentally edit a section that is meant to be regenerated. You fix a typo in an included code snippet; on the next run, your fix is gone. You add a note inside a generated TOC block; mdship overwrites it without warning.</p>
+<p>Preprocessor tools sidestep this entirely. The source is one file, the output is another, and you never edit the output directly. The separation of concerns is clean. But you pay for it: every change requires a build step, the output is not portable without that step, and contributors who are not familiar with the toolchain may not know which file to edit.</p>
+<p>Neither model is universally better. mdship makes the pragmatic choice that for most documentation workflows, a single file with good guardrails beats a clean architecture that requires a build.</p>
+<h2 id="content-integrity-the-guardrail"><a class="anchor" href="#content-integrity-the-guardrail" aria-hidden="true">#</a>Content Integrity: The Guardrail</h2>
+<p>The guardrail is a checksum.</p>
+<p>Every time mdship writes content into a managed section — a TOC block, an INCLUDE block, a MERMAID block — it records a checksum of that content inside the opening placeholder marker, under a key called <code>_content_generated_</code>. On the next run, before overwriting anything, it verifies that the checksum still matches. If it does not, mdship stops and reports an error instead of silently discarding your edits.</p>
+<div class="code"><div class="code-bar"><span class="code-lang">text</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>ERROR: Placeholder TOC content was manually edited.
+Hash mismatch detected.
+Delete _content_generated_ line to override and accept data loss.
+</code></pre></div>
+<p>This turns an accidental overwrite — which would otherwise be invisible until you noticed the missing content — into an explicit decision. You can delete the <code>_content_generated_</code> line to tell mdship &quot;I know, proceed anyway,&quot; or you can pass <code>--force</code> on the command line to skip the check for a single run. Either way, you are opting in, not being surprised.</p>
+<h2 id="ai-generated-sections-the-same-idea-extended"><a class="anchor" href="#ai-generated-sections-the-same-idea-extended" aria-hidden="true">#</a>AI-Generated Sections: The Same Idea, Extended</h2>
+<p>The same pattern extends naturally to sections written by an LLM.</p>
+<p>mdship supports an <code>&lt;!--AI--&gt;</code> placeholder: an HTML comment embedded in the markdown file that contains a prompt. When you invoke the <code>/ai-placeholder</code> skill in Claude Code, it reads the prompt and writes the generated content between the opening and closing markers — directly into the file, in place, just like any other mdship operation.</p>
+<p>The workflow has three steps, enforced by the skill:</p>
+<ol>
+<li><strong>Check</strong>: before writing anything, the skill calls <code>mdship ai-check</code> via MCP to verify that the existing content has not been manually edited since it was last generated. If the checksum does not match, the skill stops and reports the conflict to you rather than overwriting your edits.</li>
+<li><strong>Generate</strong>: if the check passes (or there is no checksum yet, meaning the section is new), the LLM reads the prompt and writes the content.</li>
+<li><strong>Seal</strong>: after writing, the skill calls <code>mdship ai-fix</code> via MCP to record a new checksum for the freshly generated content, protecting it against accidental edits until the next intentional update.</li>
+</ol>
+<p>The MCP integration means these calls happen automatically, as part of the skill's defined behavior — not as something the LLM has to remember to do.</p>
+<h2 id="the-prompt-is-documentation-too"><a class="anchor" href="#the-prompt-is-documentation-too" aria-hidden="true">#</a>The Prompt Is Documentation Too</h2>
+<p>There is a subtler benefit to this approach that is easy to overlook.</p>
+<p>The prompt that instructs the LLM stays embedded in the file, in a non-rendered HTML comment, right above the content it produced. It does not live in a commit message, a Jira ticket, or a separate prompt library that may be hard to find six months later. It is part of the document.</p>
+<p>This has practical consequences. If you need to regenerate a section — because the underlying API changed, or a referenced file was updated, or you simply want a fresh pass — you re-run the same prompt against the same file. The instruction is already there; you do not have to reconstruct it.</p>
+<p>The prompt can also reference external files: other documentation pages, source code, configuration files. If those change, rerunning the prompt picks up the changes automatically. The document becomes self-updating in the sense that the machinery to update it is built in.</p>
+<h2 id="conclusion"><a class="anchor" href="#conclusion" aria-hidden="true">#</a>Conclusion</h2>
+<p>mdship's in-place editing model and its LLM integration are two expressions of the same design choice: keep everything in one file, protect it with checksums, and let the tooling manage the regeneration cycle rather than the author.</p>
+<p>For technical writers, this means fewer context switches, no build step, and a document that carries both its content and the instructions for maintaining that content in a single portable file. The trade-off — shared space for managed and hand-written content — is managed by the checksum guardrail, which turns silent overwrites into explicit decisions.</p>
+<p>Whether the content is generated by mdship itself or by an LLM following an embedded prompt, the contract is the same: write it, seal it, and trust that the next update will ask before it overwrites.</p>
+
+    </article>
+    <nav class="pager" aria-label="Previous and next page">
+      <a class="pager-prev" href="../reference.html"><small>← Previous</small>Full reference</a>
+      <a class="pager-next" href="../commands/index.html"><small>Next →</small>All commands</a>
+    </nav>
+    <p class="edit"><a href="https://github.com/verhas/mdship/edit/master/documentation/articles/ai_managed_conten.md">Edit this page on GitHub</a></p>
+  </main>
+  
+  <nav class="onpage" aria-label="On this page">
+    <h3>On this page</h3>
+    <ul>
+      
+      <li class="lvl2"><a href="#one-file-the-trade-off">One File: The Trade-off</a></li>
+      
+      <li class="lvl2"><a href="#content-integrity-the-guardrail">Content Integrity: The Guardrail</a></li>
+      
+      <li class="lvl2"><a href="#ai-generated-sections-the-same-idea-extended">AI-Generated Sections: The Same Idea, Extended</a></li>
+      
+      <li class="lvl2"><a href="#the-prompt-is-documentation-too">The Prompt Is Documentation Too</a></li>
+      
+      <li class="lvl2"><a href="#conclusion">Conclusion</a></li>
+      
+    </ul>
+  </nav>
+  
+</div>
+
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <img src="../../static/logo.svg" alt="" width="28" height="28">
+        <div>
+          <strong>mdship</strong> 1.3.0
+          <p>Documentation that knows when it is stale.</p>
+        </div>
+      </div>
+      <div class="footer-links">
+        <div>
+          <h4>Learn</h4>
+          <a href="../../docs/index.html">Overview</a>
+          <a href="../../docs/ai.html">AI placeholders</a>
+          <a href="../../docs/github-actions.html">CI recipes</a>
+        </div>
+        <div>
+          <h4>Reference</h4>
+          <a href="../../docs/commands/index.html">Commands</a>
+          <a href="../../docs/reference.html">Full reference</a>
+          <a href="../../docs/python.html">Python scripting</a>
+        </div>
+        <div>
+          <h4>Project</h4>
+          <a href="https://github.com/verhas/mdship">GitHub</a>
+          <a href="https://pypi.org/project/mdship/">PyPI</a>
+          <a href="https://github.com/verhas/mdship/issues">Issues</a>
+        </div>
+      </div>
+    </div>
+    <p class="footer-note">MIT or Apache-2.0 · Built from the repository's own Markdown documentation</p>
+  </footer>
+  <script src="../../static/site.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ai-check · mdship</title>
+  <meta name="description" content="mdship keeps AI-written and generated Markdown in sync with its sources, and tells you exactly which part is stale and why.">
+  <meta name="theme-color" content="#140b2e">
+  <link rel="icon" href="../../static/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../static/style.css">
+  <link rel="stylesheet" href="../../static/code.css">
+</head>
+<body class="docs">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../index.html" aria-label="mdship home">
+        <img src="../../static/logo.svg" alt="" width="32" height="32">
+        <span>mdship</span>
+      </a>
+      <button class="menu-toggle" type="button" aria-controls="sidebar" aria-expanded="false">☰ <span>Menu</span></button>
+      <nav class="topnav" aria-label="Main">
+        <a href="../../docs/index.html#2-quickstart">Quickstart</a>
+        <a href="../../docs/ai.html">AI placeholders</a>
+        <a href="../../docs/commands/index.html">Commands</a>
+        <a href="../../docs/reference.html">Reference</a>
+        <a class="gh" href="https://github.com/verhas/mdship">
+          <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  
+<div class="docs-layout">
+  <aside class="sidebar" id="sidebar" aria-label="Documentation">
+  <div class="sidebar-search">
+    <input type="search" placeholder="Filter pages…" aria-label="Filter pages" data-nav-filter>
+  </div>
+  
+  <div class="nav-section nav-c1">
+    <h3>Get started</h3>
+    <ul>
+      
+      <li><a href="../index.html">Overview &amp; quickstart</a></li>
+      
+      <li><a href="../ai.html">AI placeholders</a></li>
+      
+      <li><a href="../github-actions.html">CI with GitHub Actions</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c2">
+    <h3>Concepts</h3>
+    <ul>
+      
+      <li><a href="../placeholder.html">Placeholders in Markdown</a></li>
+      
+      <li><a href="../content-integrity.html">Content integrity</a></li>
+      
+      <li><a href="../python.html">Python scripting</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c3">
+    <h3>Placeholders</h3>
+    <ul>
+      
+      <li><a href="../include.html">INCLUDE</a></li>
+      
+      <li><a href="../toc.html">TOC</a></li>
+      
+      <li><a href="../set.html">SET</a></li>
+      
+      <li><a href="../import.html">IMPORT</a></li>
+      
+      <li><a href="../slurp.html">SLURP</a></li>
+      
+      <li><a href="../sip.html">SIP</a></li>
+      
+      <li><a href="../sup.html">SUP</a></li>
+      
+      <li><a href="../jinja2.html">JINJA2</a></li>
+      
+      <li><a href="../mermaid.html">MERMAID</a></li>
+      
+      <li><a href="../template.html">TEMPLATE (deprecated)</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c4">
+    <h3>Reference</h3>
+    <ul>
+      
+      <li><a href="../reference.html">Full reference</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-c5">
+    <h3>Articles</h3>
+    <ul>
+      
+      <li><a href="../articles/ai-managed-conten.html">When documentation manages itself</a></li>
+      
+    </ul>
+  </div>
+  
+  <div class="nav-section nav-commands">
+    <h3><a href="index.html">Commands</a></h3>
+    
+    <h4>AI workflow</h4>
+    <ul>
+      
+      <li><a class="mono" href="ai-list.html">ai-list</a></li>
+      
+      <li><a class="mono" href="ai-check.html" aria-current="page">ai-check</a></li>
+      
+      <li><a class="mono" href="ai-fix.html">ai-fix</a></li>
+      
+      <li><a class="mono" href="ai-comments.html">ai-comments</a></li>
+      
+      <li><a class="mono" href="ai-context-and-update.html">ai-context-and-update</a></li>
+      
+    </ul>
+    
+    <h4>Content</h4>
+    <ul>
+      
+      <li><a class="mono" href="update.html">update</a></li>
+      
+      <li><a class="mono" href="init.html">init</a></li>
+      
+      <li><a class="mono" href="scripts.html">scripts</a></li>
+      
+      <li><a class="mono" href="mcp.html">mcp</a></li>
+      
+    </ul>
+    
+    <h4>Structure</h4>
+    <ul>
+      
+      <li><a class="mono" href="fix-headings.html">fix-headings</a></li>
+      
+      <li><a class="mono" href="shift-headings.html">shift-headings</a></li>
+      
+      <li><a class="mono" href="number.html">number</a></li>
+      
+      <li><a class="mono" href="unnumber.html">unnumber</a></li>
+      
+    </ul>
+    
+    <h4>Formatting</h4>
+    <ul>
+      
+      <li><a class="mono" href="reflow.html">reflow</a></li>
+      
+      <li><a class="mono" href="semantic-line-breaks.html">semantic-line-breaks</a></li>
+      
+      <li><a class="mono" href="format-tables.html">format-tables</a></li>
+      
+    </ul>
+    
+    <h4>Reading &amp; editing</h4>
+    <ul>
+      
+      <li><a class="mono" href="list-headings.html">list-headings</a></li>
+      
+      <li><a class="mono" href="get-section.html">get-section</a></li>
+      
+      <li><a class="mono" href="replace-section.html">replace-section</a></li>
+      
+      <li><a class="mono" href="get-lines.html">get-lines</a></li>
+      
+      <li><a class="mono" href="insert-lines.html">insert-lines</a></li>
+      
+      <li><a class="mono" href="delete-lines.html">delete-lines</a></li>
+      
+      <li><a class="mono" href="get-paragraphs.html">get-paragraphs</a></li>
+      
+      <li><a class="mono" href="find-replace.html">find-replace</a></li>
+      
+      <li><a class="mono" href="extract-table.html">extract-table</a></li>
+      
+      <li><a class="mono" href="update-table.html">update-table</a></li>
+      
+      <li><a class="mono" href="frontmatter-get.html">frontmatter-get</a></li>
+      
+      <li><a class="mono" href="frontmatter-set.html">frontmatter-set</a></li>
+      
+    </ul>
+    
+    <h4>Checking</h4>
+    <ul>
+      
+      <li><a class="mono" href="validate.html">validate</a></li>
+      
+      <li><a class="mono" href="sum.html">sum</a></li>
+      
+      <li><a class="mono" href="verify.html">verify</a></li>
+      
+    </ul>
+    
+  </div>
+</aside>
+  <main id="main" class="doc">
+    <p class="crumb"><span class="crumb-section">Commands · AI workflow</span></p>
+    <article class="prose">
+      <h1 id="ai-check"><a class="anchor" href="#ai-check" aria-hidden="true">#</a>ai-check</h1>
+<p>Verifies that the content inside each AI placeholder still matches the checksums recorded by the last <code>ai-fix</code> or <code>ai_update</code> call.
+Checks four things independently: the managed content, the <code>prompt:</code> field, the <code>brief:</code> file (if set), and each <code>deps:</code> file slice.</p>
+<p>Exits with code 0 if all hashed placeholders are intact.
+Exits with code 1 and prints an error for each mismatch.
+Placeholders that have no <code>_content_generated_</code> entry (not yet fixed) are silently skipped.</p>
+<p>For full documentation of the AI placeholder and its workflow, see <a href="../ai.html">AI.md</a>.</p>
+<h2 id="cli"><a class="anchor" href="#cli" aria-hidden="true">#</a>CLI</h2>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>ai-check<span class="w"> </span>file.md<span class="w">                 </span><span class="c1"># check all AI placeholders</span>
+mdship<span class="w"> </span>ai-check<span class="w"> </span>file.md<span class="w"> </span>--name<span class="w"> </span>intro<span class="w">    </span><span class="c1"># only the placeholder named "intro"</span>
+mdship<span class="w"> </span>ai-check<span class="w"> </span>file.md<span class="w"> </span>-n<span class="w"> </span>intro<span class="w">        </span><span class="c1"># short flag</span>
+</code></pre></div>
+<p><code>--no-bak</code> and <code>--track</code> are not supported (read-only command).</p>
+<h2 id="example"><a class="anchor" href="#example" aria-hidden="true">#</a>Example</h2>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>$<span class="w"> </span>mdship<span class="w"> </span>ai-check<span class="w"> </span>docs/guide.md
+✓<span class="w"> </span>docs/guide.md:<span class="w"> </span>AI<span class="w"> </span>placeholder<span class="w"> </span>content<span class="w"> </span>OK
+
+$<span class="w"> </span>mdship<span class="w"> </span>ai-check<span class="w"> </span>docs/guide.md
+Error:<span class="w"> </span>docs/guide.md:<span class="w"> </span>placeholder<span class="w"> </span><span class="s1">'overview'</span><span class="w"> </span>—<span class="w"> </span>managed<span class="w"> </span>content<span class="w"> </span>was<span class="w"> </span>manually<span class="w"> </span>edited
+Error:<span class="w"> </span>docs/guide.md:<span class="w"> </span>placeholder<span class="w"> </span><span class="s1">'examples'</span><span class="w"> </span>—<span class="w"> </span>prompt<span class="w"> </span>has<span class="w"> </span>changed
+</code></pre></div>
+<p><strong>Use in a pre-commit hook:</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">bash</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code>mdship<span class="w"> </span>ai-check<span class="w"> </span>docs/guide.md<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">  </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"AI placeholder checksums invalid — run 'mdship ai-fix' to accept manual edits"</span>
+<span class="w">  </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="o">}</span>
+</code></pre></div>
+<h2 id="mcp-interface"><a class="anchor" href="#mcp-interface" aria-hidden="true">#</a>MCP Interface</h2>
+<p><strong>Tool name:</strong> <code>ai_check</code></p>
+<p><strong>Parameters:</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>path</code></td>
+<td>string</td>
+<td>required</td>
+<td>Path to the markdown file</td>
+</tr>
+<tr>
+<td><code>name</code></td>
+<td>string | null</td>
+<td><code>null</code></td>
+<td>Only check the placeholder with this name (or line number)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Returns:</strong> <code>&quot;OK: AI placeholder content verified in &lt;path&gt;&quot;</code> or <code>&quot;MODIFIED:\n&lt;list of issues&gt;&quot;</code>.
+Unlike the CLI, the MCP tool does not exit with a non-zero code — callers should check the returned string.</p>
+<p><strong>Example call:</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">json</span><button class="copy" type="button" aria-label="Copy code">Copy</button></div><pre class="highlight"><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"tool"</span><span class="p">:</span><span class="w"> </span><span class="s2">"ai_check"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"arguments"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"docs/guide.md"</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="when-to-use-the-mcp-interface"><a class="anchor" href="#when-to-use-the-mcp-interface" aria-hidden="true">#</a>When to Use the MCP Interface</h2>
+<p>Use <code>ai_check</code> via MCP when you want a quick integrity check before displaying or publishing a document.
+It is lighter than <code>ai_context</code> because it only verifies checksums and does not extract dep file content.</p>
+<p>For the full generation workflow, prefer <code>ai_context</code> instead: it performs the same check but also returns everything needed for regeneration when a mismatch is found.</p>
+<p>The CLI form is best for CI pipelines and git pre-push hooks where the exit code directly gates the pipeline.</p>
+
+    </article>
+    <nav class="pager" aria-label="Previous and next page">
+      <a class="pager-prev" href="ai-list.html"><small>← Previous</small>ai-list</a>
+      <a class="pager-next" href="ai-fix.html"><small>Next →</small>ai-fix</a>
+    </nav>
+    <p class="edit"><a href="https://github.com/verhas/mdship/edit/master/documentation/commands/ai-check.md">Edit this page on GitHub</a></p>
+  </main>
+  
+  <nav class="onpage" aria-label="On this page">
+    <h3>On this page</h3>
+    <ul>
+      
+      <li class="lvl2"><a href="#cli">CLI</a></li>
+      
+      <li class="lvl2"><a href="#example">Example</a></li>
+      
+      <li class="lvl2"><a href="#mcp-interface">MCP Interface</a></li>
+      
+      <li class="lvl2"><a href="#when-to-use-the-mcp-interface">When to Use the MCP Interface</a></li>
+      
+    </ul>
+  </nav>
+  
+</div>
+
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <img src="../../static/logo.svg" alt="" width="28" height="28">
+        <div>
+          <strong>mdship</strong> 1.3.0
+          <p>Documentation that knows when it is stale.</p>
+        </div>
+      </div>
+      <div class="footer-links">
+        <div>
+          <h4>Learn</h4>
+          <a href="../../docs/index.html">Overview</a>
+          <a href="../../docs/ai.html">AI placeholders</a>
+          <a href="../../docs/github-actions.html">CI recipes</a>
+        </div>
+        <div>
+          <h4>Reference</h4>
+          <a href="../../docs/commands/index.html">Commands</a>
+          <a href="../../docs/reference.html">Full reference</a>
+          <a href="../../docs/python.html">Python scripting</a>
+        </div>
+        <div>
+          <h4>Project</h4>
+          <a href="https://github.com/verhas/mdship">GitHub</a>
+          <a href="https://pypi.org/project/mdship/">PyPI</a>
+          <a href="https://github.com/verhas/mdship/issues">Issues</a>
+        </div>
+      </div>
+    </div>
+    <p class="footer-note">MIT or Apache-2.0 · Built from the repository's own Markdown documentation</p>
+  </footer>
+  <script src="../../static/site.js" defer></script>
+</body>
+</html>
