@@ -46,6 +46,7 @@ from mdship.markdown import (
     ai_update_placeholder,
 )
 from mdship.markdown.extract import _extract_lines_from_file
+from mdship.markdown.managed import _apply_content_hash, _parse_placeholder
 from mdship.markdown.variables import _validate_placeholder_structure
 
 
@@ -840,6 +841,67 @@ class TestFormatTables:
     def test_skips_table_inside_fenced_code_block(self):
         content = "```\n| a | b |\n|---|---|\n| 1 | 2 |\n```\n"
         assert format_tables(content) == content
+
+    def test_skips_table_inside_placeholder_yaml(self):
+        # A table in a placeholder's YAML block scalar: padding it would shift
+        # the YAML indentation and change the template the placeholder renders.
+        content = (
+            "<!--JINJA2\n"
+            "template: |\n"
+            "  | Name | Age |\n"
+            "  |---|---|\n"
+            "  | {{ name }} | {{ age }} |\n"
+            "-->\n"
+            "<!--/JINJA2-->\n"
+        )
+        assert format_tables(content) == content
+
+    def test_skips_table_inside_plain_html_comment(self):
+        content = "<!--\n| a | b |\n|---|---|\n| 1 | 2 |\n-->\n"
+        assert format_tables(content) == content
+
+    def test_skips_table_in_hashed_generated_content(self):
+        body = "\n| a | b |\n|---|---|\n| 1 | 2 |\n"
+        marker = _apply_content_hash("<!--INCLUDE\nfrom: t.md\n-->", body)
+        content = f"# Doc\n\n{marker}{body}<!--/INCLUDE-->\n"
+        assert format_tables(content) == content
+        # The managed region is still intact after the reformat.
+        _parse_placeholder(format_tables(content), "INCLUDE")
+
+    def test_skips_table_in_unhashed_generated_content(self):
+        content = "<!--AI\nname: t\n-->\n| a | b |\n|---|---|\n| 1 | 2 |\n<!--/AI-->\n"
+        assert format_tables(content) == content
+
+    def test_skips_table_in_generated_content_with_custom_terminator(self):
+        content = (
+            "<!--TOC _terminate_: END-->\n"
+            "<!--/TOC-->\n"
+            "\n"
+            "| a | b |\n|---|---|\n| 1 | 2 |\n"
+            "<!--/END-->\n"
+        )
+        assert format_tables(content) == content
+
+    def test_still_formats_tables_around_placeholders(self):
+        managed = "<!--AI\nname: t\n-->\n| a | b |\n|---|---|\n| 1 | 2 |\n<!--/AI-->\n"
+        content = "| A | BB |\n|---|---|\n| 1 | 2 |\n\n" + managed + "\n| X |\n|---|\n| looooong |\n"
+        result = format_tables(content)
+        assert result.startswith("| A   | BB  |\n| --- | --- |\n| 1   | 2   |\n\n" + managed)
+        assert result.endswith("| X        |\n| -------- |\n| looooong |\n")
+
+    def test_placeholder_marker_in_code_block_does_not_protect_tables(self):
+        content = "```\n<!--AI\n-->\n```\n\n| A | BB |\n|---|---|\n\n```\n<!--/AI-->\n```\n"
+        result = format_tables(content)
+        assert "| A   | BB  |\n| --- | --- |\n" in result
+
+    def test_update_succeeds_after_formatting_included_table(self, tmp_path):
+        (tmp_path / "t.md").write_text("| a | bb |\n|---|---|\n| 1 | 2 |\n")
+        content = "# Doc\n\n<!--INCLUDE\nfrom: t.md\n-->\n<!--/INCLUDE-->\n"
+        content = update_includes(content, str(tmp_path))
+        formatted = format_tables(content)
+        assert formatted == content
+        # A second update must not report the managed content as manually edited.
+        assert update_includes(formatted, str(tmp_path)) == content
 
 
 def _first_delimiter_cell(rendered_table: str) -> str:
@@ -4128,3 +4190,39 @@ class TestAIUpdatePlaceholder:
         result = ai_update_placeholder(content, "first", "first new\n")
         assert "first new" in result
         assert "second old" in result
+
+    def test_content_starts_on_new_line_after_open_marker(self):
+        """Generated content never sits on the same line as the opening -->."""
+        result = ai_update_placeholder(self._BASE, "section", "new content\n")
+        assert "-->\nnew content\n<!--/AI-->\n" in result
+
+    def test_closing_marker_on_new_line_after_content(self):
+        """The closing <!--/AI--> never directly follows the content on its line."""
+        result = ai_update_placeholder(self._BASE, "section", "\nnew content")
+        assert "-->\nnew content\n<!--/AI-->\n" in result
+
+    def test_content_without_surrounding_newlines(self):
+        result = ai_update_placeholder(self._BASE, "section", "new content")
+        assert "-->\nnew content\n<!--/AI-->\n" in result
+
+    def test_content_already_on_own_lines_kept_as_is(self):
+        result = ai_update_placeholder(self._BASE, "section", "\nnew content\n")
+        assert "-->\nnew content\n<!--/AI-->\n" in result
+
+    def test_empty_content_keeps_markers_on_separate_lines(self):
+        result = ai_update_placeholder(self._BASE, "section", "")
+        assert "-->\n<!--/AI-->\n" in result
+
+    def test_single_line_placeholder_gets_content_on_own_line(self):
+        content = "<!--AI name: s--><!--/AI-->\n"
+        result = ai_update_placeholder(content, "s", "text")
+        assert result.endswith("-->\ntext\n<!--/AI-->\n")
+
+    def test_newline_wrapped_content_stays_up_to_date(self, tmp_path):
+        """The added newlines are part of the recorded hash, not a manual edit."""
+        updated = ai_update_placeholder(self._BASE, "section", "generated",
+                                         markdown_dir=str(tmp_path))
+        assert ai_check_placeholders(updated, markdown_dir=str(tmp_path)) == []
+        # Re-sending identical text is idempotent.
+        assert ai_update_placeholder(updated, "section", "generated",
+                                     markdown_dir=str(tmp_path)) == updated

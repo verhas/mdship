@@ -739,7 +739,12 @@ def ai_update_placeholder(content: str, name_or_line: str, new_content: str,
         ph = phs[0]
         fix_name = name_or_line_str
 
-    # Replace the managed content body.
+    # Replace the managed content body. Like every other managed placeholder,
+    # the content starts on the line after --> and the closing tag on its own line.
+    if not new_content.startswith('\n'):
+        new_content = '\n' + new_content
+    if not new_content.endswith('\n'):
+        new_content += '\n'
     new_document = content[:ph['start_pos']] + new_content + content[ph['end_pos']:]
 
     # Record all checksums.  When fix_name is None (unnamed placeholder) every

@@ -1,7 +1,10 @@
 """GFM pipe tables: extraction, replacement and column alignment."""
 
 import re
+from bisect import bisect_right
 from typing import Optional
+
+from mdship.markdown.managed import _CONTENT_GENERATED_KEY, _parse_stored_length
 
 
 def _split_table_row(line: str) -> list:
@@ -180,6 +183,70 @@ def update_table(content: str, header: list, rows: list, index: int = 1, line: O
     return "\n".join(result)
 
 
+def _protected_line_indices(content: str) -> set:
+    """Return the 0-based indices of lines that format_tables must not touch.
+
+    That is every line of an HTML comment (placeholder YAML configuration
+    included) and, for a placeholder opening marker such as <!--INCLUDE ...-->
+    or <!--AI ...-->, every line through its closing <!--/NAME--> marker (or
+    the custom `_terminate_` name), so generated content keeps its hash.
+    Comments that start inside a fenced code block are ignored.
+    """
+    lines = content.split("\n")
+    line_starts = []
+    offset = 0
+    for line in lines:
+        line_starts.append(offset)
+        offset += len(line) + 1
+
+    def line_of(pos: int) -> int:
+        return bisect_right(line_starts, pos) - 1
+
+    code_lines = set()
+    in_code_block = False
+    for i, line in enumerate(lines):
+        if line.strip().startswith("```"):
+            in_code_block = not in_code_block
+            code_lines.add(i)
+        elif in_code_block:
+            code_lines.add(i)
+
+    protected = set()
+    pos = 0
+    while (start := content.find("<!--", pos)) >= 0:
+        first = line_of(start)
+        if first in code_lines:
+            pos = start + 4
+            continue
+
+        close = content.find("-->", start + 4)
+        if close < 0:
+            protected.update(range(first, len(lines)))
+            break
+        end = close + 3
+        body = content[start + 4:close]
+
+        name_match = re.match(r"([A-Z][A-Z0-9_]*)(?=\s|$)", body)
+        if name_match:
+            terminate_match = re.search(r"""_terminate_\s*:\s*["']?(\w+)""", body)
+            terminator = terminate_match.group(1) if terminate_match else name_match.group(1)
+            closing = f"<!--/{terminator}-->"
+            closing_pos = -1
+            stored = re.search(rf"{_CONTENT_GENERATED_KEY}\s*:\s*(\S+)", body)
+            stored_length = _parse_stored_length(stored.group(1)) if stored else None
+            if stored_length is not None and content.startswith(closing, end + stored_length):
+                closing_pos = end + stored_length
+            else:
+                closing_pos = content.find(closing, end)
+            if closing_pos >= 0:
+                end = closing_pos + len(closing)
+
+        protected.update(range(first, line_of(end - 1) + 1))
+        pos = end
+
+    return protected
+
+
 def format_tables(content: str) -> str:
     """Reformat every GFM pipe table in the document so its columns are
     padded to align, without changing any cell content or declared column
@@ -187,9 +254,15 @@ def format_tables(content: str) -> str:
 
     Purely cosmetic: only inter-cell padding changes. Returns content
     unchanged if the document has no tables. Tables inside fenced code
-    blocks are left untouched (see _find_tables).
+    blocks, HTML comments (placeholder YAML included) and placeholder-managed
+    content are left untouched, so neither YAML indentation nor a managed
+    region's content hash is disturbed.
     """
-    tables = _find_tables(content)
+    protected = _protected_line_indices(content)
+    tables = [
+        t for t in _find_tables(content)
+        if not any(i - 1 in protected for i in range(t['start_line'], t['end_line'] + 1))
+    ]
     if not tables:
         return content
 
