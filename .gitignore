@@ -39,3 +39,8 @@ env/
 *.mp3
 # Local website builds (site/build.py)
 _site/
+
+# Local notes and scratch files, kept out of the sdist
+VIDEOS.md
+tmp.txt
+documentation/articles/ai_managed_conten.txt

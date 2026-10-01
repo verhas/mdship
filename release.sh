@@ -1,14 +1,7 @@
 #!/usr/bin/env bash
-set -e
-
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR"
-
-. ./build.sh
-
-echo "=== Uploading to PyPI ==="
-VERSION=$(uv run python -c "from importlib.metadata import version; print(version('mdship'))")
-PYPI_TOKEN=$(python3 -c "import configparser,os; c=configparser.ConfigParser(); c.read(os.path.expanduser('~/.pypirc')); print(c['pypi']['password'])")
-uv publish dist/mdship-"$VERSION"* --username __token__ --password "$PYPI_TOKEN"
-
-echo "=== Released mdship $VERSION ==="
+# Kept for muscle memory: builds and uploads to PyPI. The full release flow
+# (version, notes, GitHub release) lives in build.sh -- see ./build.sh --help.
+set -euo pipefail
+cd "$(dirname "$0")"
+./build.sh build
+./build.sh pypi
