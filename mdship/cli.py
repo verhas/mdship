@@ -189,8 +189,11 @@ def _print_diff(file: Path, original: str, new: str) -> None:
             err.print(text)
 
 
-def _write_file(file: Path, content: str, operation: str = "") -> bool:
-    """Write content to file. Returns True if the file changed, False if already up to date."""
+def _write_file(file: Path, content: str, operation: str = "", backup: bool | None = None) -> bool:
+    """Write content to file. Returns True if the file changed, False if already up to date.
+
+    `backup` overrides the global --bak/--no-bak policy when given.
+    """
     original_content = file.read_text()
 
     if state.track and operation:
@@ -208,7 +211,7 @@ def _write_file(file: Path, content: str, operation: str = "") -> bool:
 
     from mdship.operations import needs_backup
 
-    if needs_backup(file, state.backup):
+    if needs_backup(file, state.backup if backup is None else backup):
         backup_path = file.with_suffix(file.suffix + ".bak")
         backup_path.write_text(original_content)
 
@@ -1228,6 +1231,37 @@ def ai_comments(
             continue
         content = file.read_text()
         print(json.dumps(list_ai_comments(content)))
+    _exit_if_errors(errors)
+
+
+@app.command("STRIP")
+def strip(
+    files: Annotated[list[Path], typer.Argument(help="Markdown file(s) to convert")] = [],
+) -> None:
+    """Remove every mdship placeholder comment, keeping all manual and generated content.
+
+    A one-way conversion: the document stops being managed by mdship. Opening
+    markers with their YAML, closing tags and variable-reference comments are
+    removed; generated content and variable values stay as plain text. Always
+    writes a .bak backup, and refuses to run with --no-bak. CLI only -- there
+    is deliberately no MCP tool for it.
+    """
+    from mdship.markdown import strip_placeholders
+
+    if state.backup is False:
+        err.print("[red]Error:[/red] STRIP always creates a .bak backup and cannot be used with --no-bak")
+        raise typer.Exit(2)
+
+    errors = []
+    for file in _resolve_files(files):
+        if not file.exists():
+            err.print(f"[red]Error:[/red] file not found: {file}")
+            errors.append((file, "file not found"))
+            continue
+        content = file.read_text()
+        stripped = strip_placeholders(content)
+        if _write_file(file, stripped, "STRIP: removed mdship placeholder comments", backup=True):
+            err.print(f"[green]✓[/green] Stripped {file} (backup: {file}.bak)")
     _exit_if_errors(errors)
 
 

@@ -71,7 +71,7 @@ NAV = [
 
 COMMAND_GROUPS = [
     ("AI workflow", ["ai-list", "ai-check", "ai-fix", "ai-comments", "ai-context-and-update"]),
-    ("Content", ["update", "init", "scripts", "mcp"]),
+    ("Content", ["update", "init", "scripts", "mcp", "STRIP"]),
     ("Structure", ["fix-headings", "shift-headings", "number", "unnumber"]),
     ("Formatting", ["reflow", "semantic-line-breaks", "format-tables"]),
     ("Reading & editing", [

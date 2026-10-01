@@ -52,6 +52,9 @@ from mdship.markdown.python_scripts import (
 from mdship.markdown.reflow import (
     reflow_paragraphs,
 )
+from mdship.markdown.strip import (
+    strip_placeholders,
+)
 from mdship.markdown.tables import (
     extract_table,
     format_tables,
@@ -103,6 +106,7 @@ __all__ = [
     "replace_variables_in_document",
     "set_front_matter_value",
     "shift_heading_levels",
+    "strip_placeholders",
     "update_includes",
     "update_mermaid",
     "update_table",

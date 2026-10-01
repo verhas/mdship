@@ -53,6 +53,7 @@ mdship number file.md                    # Add hierarchical numbering to heading
 mdship unnumber file.md                  # Remove numbering from headings
 mdship update file.md                    # Update all placeholders (variables, includes, TOC, diagrams)
 mdship update --force file.md            # Update and skip managed-content hash checks (-f for short)
+mdship STRIP file.md                     # Remove all placeholder comments, keep the content (one-way)
 ```
 
 ### 1.2. Shift Validation
