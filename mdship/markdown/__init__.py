@@ -33,7 +33,10 @@ from mdship.markdown.frontmatter import (
 )
 from mdship.markdown.headings import (
     add_heading_numbers,
+    NumberingConfig,
     fix_heading_levels,
+    number_from_front_matter,
+    read_numbering_config,
     remove_heading_numbers,
     shift_heading_levels,
 )
@@ -97,6 +100,9 @@ __all__ = [
     "list_ai_comments",
     "list_ai_placeholders",
     "list_headings",
+    "number_from_front_matter",
+    "NumberingConfig",
+    "read_numbering_config",
     "process_jinja2",
     "process_python",
     "process_template",

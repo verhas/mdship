@@ -18,6 +18,9 @@ mdship --no-bak number file.md
 
 If the document already contains numbers, they are replaced.
 
+To keep a document numbered automatically, set `number:` in its front-matter instead;
+`mdship update` then applies the numbering on every run (see [update](update.md)).
+
 If the file contains a `<!--TOC-->` placeholder, a warning is printed reminding you to run `mdship update` to regenerate the TOC.
 
 ## Numbering Styles

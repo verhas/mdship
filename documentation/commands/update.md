@@ -2,6 +2,7 @@
 
 Processes all placeholders in a markdown file in a fixed order:
 
+0. **Heading numbering** — if the front-matter has a `number:` key, headings are (un)numbered first (see below)
 1. **Variable sources** (SET, IMPORT, SLURP, SIP, SUP, PYTHON `define:`) — collect variables from all sources
 2. **INCLUDE** — embed content from external files
 3. **Variable references** (`<!--$var-->`) — substitute collected variables in the document and included content
@@ -14,6 +15,62 @@ Variable sources may carry an `audit:` script hook, and content-manager placehol
 `transform:` hook; both are described in [PYTHON.md](../PYTHON.md).
 
 All placeholder types and the placeholder processing pipeline are documented in [placeholder.md](../placeholder.md).
+
+## Heading numbering from front-matter
+
+A `number:` front-matter key makes `update` number the headings before any placeholder
+is processed, so the TOC is generated from the numbered headings.
+
+```yaml
+---
+number: true            # number with the period style
+---
+```
+
+```yaml
+---
+number:
+  style: parenthesis    # period (default), space, or parenthesis
+  skip-title: true      # leave a single h1 title unnumbered (default: false)
+---
+```
+
+```yaml
+---
+number: false           # remove any existing heading numbers
+---
+```
+
+Without a `number:` key nothing happens: numbered headings stay numbered and unnumbered
+ones stay unnumbered. `number: false` is therefore not the same as a missing key. Any other
+value, an unknown key, or an invalid option value is an error.
+
+### Headings in generated content
+
+Placeholders such as INCLUDE, JINJA2 or PYTHON `run:` may generate headings. Their content
+is guarded by the `_content_generated_` checksum, so by default `update` stops with an error,
+writing nothing, when numbering would change a heading inside it. Two options handle this:
+
+```yaml
+---
+number:
+  generated: true       # let numbering change generated content and recalculate its checksum
+  post-process: true    # renumber after the update; if that changed anything, update again
+---
+```
+
+- `generated: true` — numbering may rewrite headings in generated regions and records the new
+  checksum: the change is reproducible and made by mdship, not by a person. A region that was
+  already edited by hand is still an error.
+- `post-process: true` — generated headings appear only during the update, so the numbering done
+  before it cannot see them. After the update the headings are numbered again (with
+  `generated: true`, generated headings included), and if that changed the document the TOC
+  is regenerated. Nothing else runs again: a variable or script that reads heading text sees
+  the numbering from before this final step. Avoid such circular dependencies.
+
+Without `post-process`, generated headings are counted in the numbering of the headings that
+follow them, but the placeholder regenerates its own content on every update, so those
+headings themselves end up as their source has them.
 
 ## CLI
 

@@ -1,6 +1,8 @@
 """Heading level fixing, shifting, numbering and unnumbering."""
 
+import bisect
 import re
+from dataclasses import dataclass
 from typing import Optional
 
 
@@ -501,3 +503,200 @@ def remove_heading_numbers(content: str, start_line: Optional[int] = None, end_l
         result.append(line)
 
     return "\n".join(result)
+
+
+
+_NUMBER_STYLES = ("period", "space", "parenthesis")
+_NUMBER_KEYS = ("style", "skip-title", "generated", "post-process")
+
+# An opening placeholder marker at the start of a line: <!--NAME ... -->
+_OPEN_MARKER = re.compile(r"^[ \t]*(<!--([A-Z][A-Z0-9_]*)(?=\s|-->)(.*?)-->)", re.MULTILINE | re.DOTALL)
+_CONTENT_GENERATED_LINE = re.compile(r"^\s*_content_generated_\s*:\s*['\"]?([^'\"\s]+)", re.MULTILINE)
+_YOLO_LINE = re.compile(r"^\s*_yolo_\s*:\s*true\s*$", re.MULTILINE)
+
+
+@dataclass(frozen=True)
+class NumberingConfig:
+    """The heading numbering requested by the ``number:`` front-matter key."""
+
+    number: bool
+    style: str = "period"
+    skip_title: bool = False
+    generated: bool = False
+    post_process: bool = False
+
+
+def read_numbering_config(content: str) -> Optional[NumberingConfig]:
+    """Parse the ``number:`` front-matter key; None when the key is absent.
+
+    ``number: true`` numbers with the defaults, ``number: false`` removes
+    numbering, and a mapping numbers with the given options:
+
+    - ``style``: ``period`` (default), ``space`` or ``parenthesis``
+    - ``skip-title``: leave a single h1 title unnumbered (default false)
+    - ``generated``: numbering may change guarded generated content, whose
+      ``_content_generated_`` checksum is then recalculated (default false)
+    - ``post-process``: renumber after the update, and if that changed the
+      document, run the update once more (default false)
+
+    Raises:
+        ValueError: If the front-matter is malformed, or ``number:`` has an
+            unsupported value, key, or option value.
+    """
+    from mdship.markdown.frontmatter import _split_front_matter
+
+    if not content.startswith("---\n"):
+        return None
+    fm_dict, _ = _split_front_matter(content)
+    if "number" not in fm_dict:
+        return None
+
+    value = fm_dict["number"]
+    if isinstance(value, bool):
+        return NumberingConfig(number=value)
+    if not isinstance(value, dict):
+        raise ValueError(
+            f"Front-matter 'number:' must be true, false, or a mapping of "
+            f"{', '.join(_NUMBER_KEYS)}, not {value!r}"
+        )
+
+    unknown = set(value) - set(_NUMBER_KEYS)
+    if unknown:
+        raise ValueError(
+            f"Unknown front-matter 'number:' key(s): {', '.join(sorted(map(str, unknown)))}. "
+            f"Allowed keys are {', '.join(_NUMBER_KEYS)}"
+        )
+    style = value.get("style", "period")
+    if style not in _NUMBER_STYLES:
+        raise ValueError(
+            f"Front-matter 'number.style' must be 'period', 'space', or 'parenthesis', not {style!r}"
+        )
+    flags = {}
+    for key in ("skip-title", "generated", "post-process"):
+        flag = value.get(key, False)
+        if not isinstance(flag, bool):
+            raise ValueError(f"Front-matter 'number.{key}' must be true or false, not {flag!r}")
+        flags[key.replace("-", "_")] = flag
+    return NumberingConfig(number=True, style=style, **flags)
+
+
+def number_from_front_matter(content: str) -> str:
+    """Apply the heading numbering requested by the ``number:`` front-matter key.
+
+    Without a ``number:`` key the content is returned unchanged. The
+    front-matter block itself is never touched; only the body is numbered.
+
+    Numbering that would change the content of a guarded generated region
+    (one carrying ``_content_generated_``) raises ``IntegrityError`` unless
+    ``generated: true`` is set; then the region's checksum is recalculated.
+    A region whose content was already edited by hand is never re-signed.
+
+    Raises:
+        ValueError: For an invalid ``number:`` value (see ``read_numbering_config``).
+        IntegrityError: If numbering would change guarded generated content.
+    """
+    config = read_numbering_config(content)
+    if config is None:
+        return content
+
+    from mdship.markdown.frontmatter import _split_front_matter
+
+    # Number only the lines after the closing '---' of the front-matter
+    _, body = _split_front_matter(content)
+    body_line = content.count("\n") - body.count("\n") + 1
+    if config.number:
+        numbered = add_heading_numbers(
+            content, style=config.style, start_line=body_line, skip_title=config.skip_title
+        )
+    else:
+        numbered = remove_heading_numbers(content, start_line=body_line)
+    if numbered == content:
+        return content
+    return _resign_guarded_regions(content, numbered, config.generated)
+
+
+@dataclass(frozen=True)
+class _GuardedRegion:
+    name: str
+    marker_start: int
+    body_start: int
+    body_end: int
+    stored_hash: Optional[str]
+    yolo: bool
+
+
+def _guarded_regions(content: str) -> list:
+    """Every placeholder region protected by a ``_content_generated_`` checksum."""
+    from mdship.markdown.codeblocks import _is_in_code_block
+    from mdship.markdown.managed import _parse_stored_hash, _parse_stored_length
+
+    regions = []
+    pos = 0
+    while match := _OPEN_MARKER.search(content, pos):
+        pos = match.end()
+        if _is_in_code_block(content, match.start(1)):
+            continue
+        entry = _CONTENT_GENERATED_LINE.search(match.group(3))
+        length = _parse_stored_length(entry.group(1)) if entry else None
+        if length is None:
+            continue
+        regions.append(_GuardedRegion(
+            name=match.group(2),
+            marker_start=match.start(1),
+            body_start=match.end(),
+            body_end=match.end() + length,
+            stored_hash=_parse_stored_hash(entry.group(1)),
+            yolo=bool(_YOLO_LINE.search(match.group(3))),
+        ))
+        pos = match.end() + length
+    return regions
+
+
+def _resign_guarded_regions(before: str, after: str, generated: bool) -> str:
+    """Check the guarded regions numbering changed, and recalculate their checksums.
+
+    Numbering rewrites heading lines in place and keeps the line count, so an
+    offset in ``before`` maps to the same line and column in ``after``.
+    """
+    from mdship.errors import IntegrityError
+    from mdship.markdown.managed import _apply_content_hash, _compute_content_hash
+
+    def line_starts(text):
+        return [0] + [i + 1 for i, ch in enumerate(text) if ch == "\n"]
+
+    before_starts, after_starts = line_starts(before), line_starts(after)
+
+    def remap(offset):
+        line = bisect.bisect_right(before_starts, offset) - 1
+        return after_starts[line] + offset - before_starts[line]
+
+    result = after
+    # Splice from the end so earlier offsets in `after` stay valid
+    for region in reversed(_guarded_regions(before)):
+        old_body = before[region.body_start:region.body_end]
+        new_start, new_end = remap(region.body_start), remap(region.body_end)
+        new_body = after[new_start:new_end]
+        if new_body == old_body:
+            continue
+
+        line = before.count("\n", 0, region.marker_start) + 1
+        if not generated:
+            raise IntegrityError(
+                f"Line {line}: heading numbering would change the generated content of the "
+                f"{region.name} placeholder. Set 'generated: true' under the front-matter "
+                "'number:' key to let numbering update generated content and its checksum."
+            )
+        if not region.yolo and _compute_content_hash(old_body)[1] != region.stored_hash:
+            raise IntegrityError(
+                f"Line {line}: {region.name} placeholder content was manually edited. "
+                "Hash mismatch detected, so numbering will not recalculate its checksum. "
+                "Delete _content_generated_ line to override and accept data loss."
+            )
+        marker = before[region.marker_start:region.body_start]
+        result = (
+            result[:remap(region.marker_start)]
+            + _apply_content_hash(marker, new_body)
+            + new_body
+            + result[new_end:]
+        )
+    return result

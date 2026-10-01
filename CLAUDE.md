@@ -403,6 +403,13 @@ The `mdship update` command processes placeholders in a specific order to ensure
 
 The order is defined in exactly one place: `update_document()` in `operations.py`.
 
+0. **Front-matter heading numbering** (`number_from_front_matter`) - before any placeholder
+   - `number: true` numbers (period style), `number: false` removes numbering
+   - `number: {style: period|space|parenthesis, skip-title: bool, generated: bool, post-process: bool}` numbers with options (defaults: period, false, false, false)
+   - No `number:` key: headings are left as they are
+   - A numbering change inside a guarded (`_content_generated_`) region is an `IntegrityError` unless `generated: true`, which recalculates that region's checksum
+   - `post-process: true`: renumber after phase 7; if that changed the document, regenerate only the TOC
+
 1. **Variable source placeholders** (collected in order they appear) - Define variables for use in subsequent placeholders
    - SET: Define inline with YAML values
    - IMPORT: Load from JSON/YAML/TOML/XML files

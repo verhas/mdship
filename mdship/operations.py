@@ -216,6 +216,8 @@ def update_document(
 
     This is the only place that defines the phase order:
 
+    0. ``number_from_front_matter`` — heading (un)numbering requested by the
+       ``number:`` front-matter key, before any placeholder is processed
     1. ``collect_set_variables`` — including PYTHON ``define:`` and ``audit:`` hooks
     2. ``update_includes``
     3. ``replace_variables_in_document``
@@ -224,6 +226,11 @@ def update_document(
     6. ``process_python`` — PYTHON ``run:`` mode
     7. ``insert_table_of_contents``
     8. ``update_mermaid``
+
+    With ``number: {post-process: true}`` in the front-matter, the headings are
+    renumbered after phase 8, so generated headings are numbered too; if that
+    changes the document, only the TOC (phase 7) is regenerated. Variables and
+    scripts that read heading text still see the earlier numbering.
 
     ``force`` is passed to every phase that supports it, ``dry_run`` reaches
     Mermaid rendering so no diagram files are written while previewing, and the
@@ -240,9 +247,11 @@ def update_document(
     from mdship.markdown import (
         collect_set_variables,
         insert_table_of_contents,
+        number_from_front_matter,
         process_jinja2,
         process_python,
         process_template,
+        read_numbering_config,
         replace_variables_in_document,
         update_includes,
         update_mermaid,
@@ -252,7 +261,17 @@ def update_document(
     file_path = str(path)
     written_files: list[str] = []
 
+    def update_toc(content: str, variables: dict) -> str:
+        try:
+            return insert_table_of_contents(
+                content, force=force, markdown_dir=markdown_dir,
+                variables=variables, file_path=file_path,
+            )
+        except PlaceholderNotFound:
+            return content  # No TOC placeholder in the document — that is fine.
+
     with scripting.collect_logs() as logs:
+        content = number_from_front_matter(content)
         variables = collect_set_variables(
             content, markdown_dir=markdown_dir, force=force, file_path=file_path
         )
@@ -271,15 +290,7 @@ def update_document(
         content = process_python(
             content, markdown_dir, variables=variables, force=force, file_path=file_path
         )
-
-        try:
-            content = insert_table_of_contents(
-                content, force=force, markdown_dir=markdown_dir,
-                variables=variables, file_path=file_path,
-            )
-        except PlaceholderNotFound:
-            pass  # No TOC placeholder in the document — that is fine.
-
+        content = update_toc(content, variables)
         content = update_mermaid(
             content,
             markdown_dir,
@@ -289,6 +300,12 @@ def update_document(
             dry_run=dry_run,
             file_path=file_path,
         )
+
+        numbering = read_numbering_config(content)
+        if numbering is not None and numbering.post_process:
+            renumbered = number_from_front_matter(content)
+            if renumbered != content:
+                content = update_toc(renumbered, variables)
 
     return DocumentUpdate(
         content=content,

@@ -251,6 +251,7 @@ class TestUpdateDocumentPhases:
 
         import mdship.markdown as md
 
+        monkeypatch.setattr(md, "number_from_front_matter", lambda content: calls.append(("number", None)) or content)
         monkeypatch.setattr(md, "collect_set_variables", record("collect", result={"a": 1}))
         monkeypatch.setattr(md, "update_includes", record("includes"))
         monkeypatch.setattr(md, "replace_variables_in_document", record("variables"))
@@ -263,6 +264,7 @@ class TestUpdateDocumentPhases:
         operations.update_document("body", tmp_path / "a.md", force=True)
 
         assert [name for name, _ in calls] == [
+            "number",
             "collect",
             "includes",
             "variables",
@@ -364,6 +366,157 @@ class TestUpdateDocumentPhases:
         operations.update_document(file.read_text(), file, dry_run=True)
 
         assert seen["dry_run"] is True
+
+
+class TestUpdateFrontMatterNumbering:
+    BODY = "# Title\n\n## Intro\n\n### Detail\n\n## Usage\n"
+
+    def update(self, tmp_path, content):
+        file = write(tmp_path, "a.md", content)
+        return operations.update_document(content, file).content
+
+    def test_no_number_key_leaves_headings_alone(self, tmp_path):
+        for body in (self.BODY, "# 1. Title\n\n## 1.1. Intro\n"):
+            content = "---\ntitle: x\n---\n" + body
+            assert self.update(tmp_path, content) == content
+
+    def test_no_front_matter_leaves_headings_alone(self, tmp_path):
+        assert self.update(tmp_path, self.BODY) == self.BODY
+
+    def test_true_numbers_with_period_style(self, tmp_path):
+        result = self.update(tmp_path, "---\nnumber: true\n---\n" + self.BODY)
+        assert result == (
+            "---\nnumber: true\n---\n"
+            "# 1. Title\n\n## 1.1. Intro\n\n### 1.1.1. Detail\n\n## 1.2. Usage\n"
+        )
+
+    def test_false_removes_numbering(self, tmp_path):
+        content = "---\nnumber: false\n---\n# 1. Title\n\n## 1.1. Intro\n"
+        assert self.update(tmp_path, content) == (
+            "---\nnumber: false\n---\n# Title\n\n## Intro\n"
+        )
+
+    def test_mapping_style_and_skip_title(self, tmp_path):
+        fm = "---\nnumber:\n  style: parenthesis\n  skip-title: true\n---\n"
+        assert self.update(tmp_path, fm + self.BODY) == (
+            fm + "# Title\n\n## 1) Intro\n\n### 1.1) Detail\n\n## 2) Usage\n"
+        )
+
+    def test_mapping_defaults(self, tmp_path):
+        fm = "---\nnumber:\n  skip-title: false\n---\n"
+        assert "## 1.1. Intro" in self.update(tmp_path, fm + self.BODY)
+
+    def test_existing_numbering_is_restyled(self, tmp_path):
+        fm = "---\nnumber:\n  style: space\n---\n"
+        result = self.update(tmp_path, fm + "# 1. Title\n\n## 1.1. Intro\n")
+        assert result == fm + "# 1 Title\n\n## 1.1 Intro\n"
+
+    def test_front_matter_yaml_comment_is_not_numbered(self, tmp_path):
+        fm = "---\n# a yaml comment\nnumber: true\n---\n"
+        assert self.update(tmp_path, fm + "# Title\n").startswith(fm + "# 1. Title")
+
+    def test_numbered_headings_reach_the_toc(self, tmp_path):
+        content = "---\nnumber: true\n---\n<!--TOC\n-->\n<!--/TOC-->\n\n# Title\n\n## Intro\n"
+        assert "1.1. Intro" in self.update(tmp_path, content).split("<!--/TOC-->")[0]
+
+    @pytest.mark.parametrize("fm, message", [
+        ("number: yes please", "must be true, false, or a mapping"),
+        ("number:", "must be true, false, or a mapping"),
+        ("number:\n  style: roman", "number.style"),
+        ("number:\n  skip-title: maybe", "number.skip-title"),
+        ("number:\n  styel: space", "Unknown front-matter 'number:' key"),
+        ("number:\n  generated: 1", "number.generated"),
+        ("number:\n  post-process: yes please", "number.post-process"),
+    ])
+    def test_invalid_values_are_rejected(self, tmp_path, fm, message):
+        with pytest.raises(ValueError, match=message):
+            self.update(tmp_path, f"---\n{fm}\n---\n" + self.BODY)
+
+
+class TestUpdateNumberingGeneratedContent:
+    """Numbering vs. guarded generated regions (INCLUDE bringing in a heading)."""
+
+    def setup_doc(self, tmp_path, number_yaml, toc=False):
+        write(tmp_path, "inc.md", "## Inc\n")
+        content = (
+            f"---\n{number_yaml}\n---\n"
+            + ("<!--TOC\n-->\n<!--/TOC-->\n\n" if toc else "")
+            + "# Title\n\n## First\n\n"
+            "<!--INCLUDE\nfrom: inc.md\n-->\n<!--/INCLUDE-->\n\n## After\n"
+        )
+        return write(tmp_path, "a.md", content)
+
+    def update_twice(self, file):
+        for _ in range(2):
+            file.write_text(operations.update_document(file.read_text(), file).content)
+        return file.read_text()
+
+    def test_change_in_generated_region_is_an_error(self, tmp_path):
+        file = self.setup_doc(tmp_path, "number: true")
+        file.write_text(operations.update_document(file.read_text(), file).content)
+        before = file.read_text()
+
+        with pytest.raises(IntegrityError, match="generated: true"):
+            operations.update_file(file, options=WriteOptions(backup=False))
+        assert file.read_text() == before
+
+    def test_generated_recalculates_the_checksum(self, tmp_path):
+        from mdship.markdown import number_from_front_matter, update_includes
+
+        file = self.setup_doc(tmp_path, "number:\n  generated: true")
+        file.write_text(operations.update_document(file.read_text(), file).content)
+
+        numbered = number_from_front_matter(file.read_text())
+
+        assert "## 1.2. Inc\n<!--/INCLUDE-->" in numbered
+        # The recalculated checksum is accepted by the INCLUDE integrity check
+        update_includes(numbered, str(tmp_path))
+
+    def test_generated_headings_are_counted(self, tmp_path):
+        file = self.setup_doc(tmp_path, "number:\n  generated: true")
+
+        assert "## 1.3. After" in self.update_twice(file)
+
+    def test_manually_edited_region_is_not_resigned(self, tmp_path):
+        from mdship.markdown import number_from_front_matter
+
+        file = self.setup_doc(tmp_path, "number:\n  generated: true")
+        file.write_text(operations.update_document(file.read_text(), file).content)
+        edited = file.read_text().replace("## Inc\n", "## Inc edited\n")
+
+        with pytest.raises(IntegrityError, match="manually edited"):
+            number_from_front_matter(edited)
+
+    def test_post_process_numbers_generated_headings_and_the_toc(self, tmp_path):
+        file = self.setup_doc(tmp_path, "number:\n  generated: true\n  post-process: true", toc=True)
+
+        once = operations.update_document(file.read_text(), file).content
+
+        assert "## 1.2. Inc\n<!--/INCLUDE-->" in once
+        assert "## 1.3. After" in once
+        assert "- [1.2. Inc](#12-inc)" in once
+        file.write_text(once)
+        assert operations.update_document(once, file).content == once
+
+    def test_post_process_runs_only_the_toc_again(self, tmp_path, monkeypatch):
+        import mdship.markdown as md
+
+        file = self.setup_doc(tmp_path, "number:\n  generated: true\n  post-process: true", toc=True)
+        calls = []
+        for name in ("update_includes", "insert_table_of_contents"):
+            original = getattr(md, name)
+            monkeypatch.setattr(md, name, lambda *a, _n=name, _f=original, **k: calls.append(_n) or _f(*a, **k))
+
+        operations.update_document(file.read_text(), file)
+
+        assert calls == ["update_includes", "insert_table_of_contents", "insert_table_of_contents"]
+
+    def test_without_post_process_one_update_is_not_enough(self, tmp_path):
+        file = self.setup_doc(tmp_path, "number:\n  generated: true")
+
+        once = operations.update_document(file.read_text(), file).content
+
+        assert "## 1.2. After" in once
 
 
 class TestUpdateFile:
