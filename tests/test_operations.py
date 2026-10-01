@@ -380,6 +380,15 @@ class TestUpdateFrontMatterNumbering:
             content = "---\ntitle: x\n---\n" + body
             assert self.update(tmp_path, content) == content
 
+    @pytest.mark.parametrize("content", [
+        "---\n\nText after a horizontal rule\n\n## Section\n",   # never closed
+        "---\n- a\n- b\n---\n# Title\n",                       # not a mapping
+        "---\nkey: [unclosed\n---\n# Title\n",                  # malformed YAML
+    ])
+    def test_unreadable_front_matter_is_not_an_error(self, tmp_path, content):
+        """mdship 1.3.1 updated these documents; numbering must not break them."""
+        assert self.update(tmp_path, content) == content
+
     def test_no_front_matter_leaves_headings_alone(self, tmp_path):
         assert self.update(tmp_path, self.BODY) == self.BODY
 

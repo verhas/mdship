@@ -539,15 +539,22 @@ def read_numbering_config(content: str) -> Optional[NumberingConfig]:
     - ``post-process``: renumber after the update, and if that changed the
       document, run the update once more (default false)
 
+    A leading ``---`` block that is not readable front-matter (unclosed,
+    malformed YAML, or not a mapping) counts as no ``number:`` key.
+
     Raises:
-        ValueError: If the front-matter is malformed, or ``number:`` has an
-            unsupported value, key, or option value.
+        ValueError: If ``number:`` has an unsupported value, key, or option value.
     """
     from mdship.markdown.frontmatter import _split_front_matter
 
     if not content.startswith("---\n"):
         return None
-    fm_dict, _ = _split_front_matter(content)
+    try:
+        fm_dict, _ = _split_front_matter(content)
+    except ValueError:
+        # Not front-matter mdship can read -- e.g. a leading '---' rule with no
+        # closing line. There is no 'number:' key to honour, so leave it alone.
+        return None
     if "number" not in fm_dict:
         return None
 
